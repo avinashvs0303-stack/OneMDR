@@ -60,8 +60,16 @@ async function bootstrap(): Promise<void> {
 
   // ── Cookie support (for httpOnly refresh tokens) ───────────────────────────
   await app.register(fastifyCookie, {
-    // Cookie secret for signed cookies — added in Step 1 (auth)
-    // secret: configService.get('REFRESH_TOKEN_SECRET'),
+    secret: configService.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
+  });
+
+  // ── Trust proxy headers (X-Forwarded-For) for accurate IP logging ──────────
+  // Required when running behind Netlify Functions / AWS ALB / Render
+  app.getInstance().addHook('onRequest', async (req) => {
+    const xff = req.headers['x-forwarded-for'];
+    if (typeof xff === 'string') {
+      req.ip = xff.split(',')[0].trim();
+    }
   });
 
   // ── CORS — strict allowlist (OWASP A05) ───────────────────────────────────
@@ -103,14 +111,11 @@ async function bootstrap(): Promise<void> {
       .setTitle(`${appName} API`)
       .setDescription(
         'Production-grade multi-tenant Work OS API.\n\n' +
-        'All endpoints require `Authorization: Bearer <access_token>` ' +
-        'except `/auth/login`, `/auth/register`, and `/health/*`.',
+          'All endpoints require `Authorization: Bearer <access_token>` ' +
+          'except `/auth/login`, `/auth/register`, and `/health/*`.',
       )
       .setVersion('1.0')
-      .addBearerAuth(
-        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-        'access-token',
-      )
+      .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
       .addCookieAuth('refresh_token')
       .addTag('health', 'Service health and readiness probes')
       .addTag('auth', 'Authentication, MFA, session management')

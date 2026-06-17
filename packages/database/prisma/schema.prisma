@@ -126,9 +126,10 @@ model User {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id])
-  refreshTokens RefreshToken[]
-  auditLogs     AuditLog[]    @relation("AuditActor")
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  refreshTokens       RefreshToken[]
+  auditLogs           AuditLog[]           @relation("AuditActor")
+  passwordResetTokens PasswordResetToken[]
 
   // Email must be unique per tenant (same email can exist in different tenants)
   @@unique([email, tenantId])
@@ -187,13 +188,15 @@ model AuditLog {
 // ── Password Reset Tokens ─────────────────────────────────────────────────────
 
 model PasswordResetToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  tokenHash String   @unique @map("token_hash") // SHA-256 of the raw token
-  expiresAt DateTime @map("expires_at")
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") // SHA-256 of the raw token
+  expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")  // single-use enforcement
 
   createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("password_reset_tokens")
