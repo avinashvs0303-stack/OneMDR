@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   // Transpile workspace packages (they ship TS source, not compiled JS)
   transpilePackages: ['@clarbit/shared'],
 
+  // ESLint is run separately in CI — skip during `next build` to avoid
+  // false failures when the root flat config lacks eslint-config-next.
+  eslint: { ignoreDuringBuilds: true },
+
   // Security headers — supplement to Helmet on the API side
   async headers() {
     return [
