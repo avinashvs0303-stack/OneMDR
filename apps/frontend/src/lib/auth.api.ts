@@ -16,6 +16,7 @@ export interface AuthUser {
   lastName: string;
   role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST';
   tenantId: string;
+  tenantName?: string;
   avatarUrl?: string;
   mfaEnabled: boolean;
 }

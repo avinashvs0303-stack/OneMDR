@@ -41,6 +41,7 @@ export const DEV_MOCK_USER: AuthUser = {
   lastName: 'Owner',
   role: 'OWNER',
   tenantId: 'dev-00000000-0000-0000-0000-000000000000',
+  tenantName: 'Clarbit Demo',
   mfaEnabled: false,
 };
 
