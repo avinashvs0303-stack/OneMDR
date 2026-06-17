@@ -309,7 +309,7 @@ export default function DashboardPage() {
   );
 }
 
-function KpiCard({ label, value, sub, badge, badgeColor, icon: Icon, iconColor, trendLabel, href, linkLabel }: {
+function KpiCard({ label, value, sub, badge, badgeColor, icon: Icon, iconColor, trendLabel: _trendLabel, href, linkLabel }: {
   label: string; value: string; sub: string; badge: string; badgeColor: string;
   icon: React.ElementType; iconColor: string; trendLabel: string;
   href: string; linkLabel: string;

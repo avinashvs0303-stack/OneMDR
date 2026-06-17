@@ -122,7 +122,7 @@ export function LoginForm() {
       </div>
 
       {/* ── Email / Password Form ─────────────────────────────────────── */}
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+      <form onSubmit={(e) => { void handleSubmit(onSubmit)(e); }} noValidate className="space-y-4">
         {/* Server-level error */}
         {serverError && (
           <div

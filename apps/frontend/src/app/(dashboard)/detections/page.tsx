@@ -198,7 +198,7 @@ export default function DetectionsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-[10px] font-bold uppercase text-slate-400 dark:text-zinc-500">{selected.queryLanguage} Query</p>
-                  <button type="button" onClick={copyQuery} className="flex items-center gap-1 text-xs text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                  <button type="button" onClick={() => { void copyQuery(); }} className="flex items-center gap-1 text-xs text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors">
                     <Copy className="h-3 w-3" />
                     {copied ? 'Copied!' : 'Copy'}
                   </button>
