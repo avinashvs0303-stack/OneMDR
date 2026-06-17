@@ -1,0 +1,200 @@
+// ============================================================
+//  Clarbit — Prisma Schema
+//  PostgreSQL 16 · Multi-tenant (shared DB, tenant_id isolation + RLS)
+//  Convention: snake_case columns, PascalCase models, UUID PKs
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+enum TenantPlan {
+  FREE
+  PRO
+  ENTERPRISE
+
+  @@map("tenant_plan")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+
+  @@map("user_role")
+}
+
+enum AuditAction {
+  // Auth
+  AUTH_LOGIN
+  AUTH_LOGOUT
+  AUTH_REGISTER
+  AUTH_PASSWORD_RESET
+  AUTH_MFA_ENABLED
+  AUTH_MFA_DISABLED
+  AUTH_REFRESH_REVOKED
+  // Tenant
+  TENANT_CREATED
+  TENANT_UPDATED
+  TENANT_DELETED
+  // User
+  USER_INVITED
+  USER_ROLE_CHANGED
+  USER_REMOVED
+  // Resource (generic — specific modules extend this)
+  RESOURCE_CREATED
+  RESOURCE_UPDATED
+  RESOURCE_DELETED
+
+  @@map("audit_action")
+}
+
+// ── Tenants ───────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String     @unique // URL-safe identifier, e.g. "acme-corp"
+  plan      TenantPlan @default(FREE)
+  isActive  Boolean    @default(true) @map("is_active")
+
+  // MFA policy — if true, all members must have MFA enabled
+  mfaEnforced Boolean @default(false) @map("mfa_enforced")
+
+  // Billing (Step 9)
+  stripeCustomerId     String? @unique @map("stripe_customer_id")
+  stripeSubscriptionId String? @unique @map("stripe_subscription_id")
+  billingEmail         String? @map("billing_email")
+  trialEndsAt          DateTime? @map("trial_ends_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  users      User[]
+  auditLogs  AuditLog[]
+
+  @@index([slug])
+  @@map("tenants")
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id       String   @id @default(uuid()) @db.Uuid
+  tenantId String   @map("tenant_id") @db.Uuid
+  email    String
+  role     UserRole @default(MEMBER)
+  isActive Boolean  @default(true) @map("is_active")
+
+  // Profile
+  firstName   String  @map("first_name")
+  lastName    String  @map("last_name")
+  avatarUrl   String? @map("avatar_url")
+  timezone    String  @default("UTC")
+  locale      String  @default("en")
+
+  // Auth (added in Step 1 — stubbed here so migrations are additive)
+  passwordHash     String?  @map("password_hash")
+  emailVerified    Boolean  @default(false) @map("email_verified")
+  emailVerifyToken String?  @map("email_verify_token")  // hashed
+  emailVerifyExpires DateTime? @map("email_verify_expires")
+
+  // MFA
+  mfaEnabled      Boolean  @default(false) @map("mfa_enabled")
+  mfaSecret       String?  @map("mfa_secret")        // AES-256 encrypted
+  mfaBackupCodes  String[] @map("mfa_backup_codes")  // bcrypt hashed
+
+  // OAuth
+  googleId String? @unique @map("google_id")
+
+  // Account lockout (brute-force protection)
+  loginAttempts   Int       @default(0) @map("login_attempts")
+  lockedUntil     DateTime? @map("locked_until")
+  lastLoginAt     DateTime? @map("last_login_at")
+  lastLoginIp     String?   @map("last_login_ip")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]    @relation("AuditActor")
+
+  // Email must be unique per tenant (same email can exist in different tenants)
+  @@unique([email, tenantId])
+  @@index([tenantId])
+  @@index([email])
+  @@index([googleId])
+  @@map("users")
+}
+
+// ── Refresh Tokens ────────────────────────────────────────────────────────────
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") // SHA-256 of the raw token
+  familyId  String    @map("family_id") @db.Uuid // for reuse-detection; revoke whole family on theft
+  deviceInfo String?  @map("device_info")
+  ipAddress  String?  @map("ip_address")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+// ── Audit Log — immutable, append-only ────────────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  tenantId   String      @map("tenant_id") @db.Uuid
+  actorId    String?     @map("actor_id") @db.Uuid  // NULL = system event
+  action     AuditAction
+  resource   String?     // e.g. "board", "item", "user"
+  resourceId String?     @map("resource_id") @db.Uuid
+  metadata   Json?       // extra context (diff, old/new values)
+  ipAddress  String?     @map("ip_address")
+  userAgent  String?     @map("user_agent")
+
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  actor  User?  @relation("AuditActor", fields: [actorId], references: [id])
+
+  // No updated_at / deleted_at — audit logs are immutable
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, actorId])
+  @@index([tenantId, action])
+  @@map("audit_logs")
+}
+
+// ── Password Reset Tokens ─────────────────────────────────────────────────────
+
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash") // SHA-256 of the raw token
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")  // single-use enforcement
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}

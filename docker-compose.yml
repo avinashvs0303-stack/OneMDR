@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: clarbit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-clarbit}
+      POSTGRES_USER: ${POSTGRES_USER:-clarbit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clarbit_secret}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-clarbit} -d ${POSTGRES_DB:-clarbit}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - clarbit-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: clarbit-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-redis_secret}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'redis-cli',
+          '--no-auth-warning',
+          '-a',
+          '${REDIS_PASSWORD:-redis_secret}',
+          'ping',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - clarbit-net
+
+  # Mailpit — local SMTP + web UI for email testing (dev only)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: clarbit-mailpit
+    restart: unless-stopped
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # Web UI
+    networks:
+      - clarbit-net
+    profiles:
+      - mail
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  clarbit-net:
+    driver: bridge

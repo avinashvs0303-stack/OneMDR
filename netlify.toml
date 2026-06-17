@@ -1,0 +1,62 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  Netlify — Clarbit Detection as a Service
+#  Monorepo: apps/frontend (Next.js 15, pnpm workspaces)
+# ══════════════════════════════════════════════════════════════════════════════
+
+[build]
+  # Install all workspace packages from repo root, then build the frontend app.
+  # pnpm-lock.yaml lives at root, so we must install from here.
+  command = "pnpm install --frozen-lockfile && pnpm --filter @clarbit/frontend build"
+
+  # Next.js output directory (relative to repo root).
+  # Netlify's Next.js runtime auto-detects this and handles SSR/ISR/Edge.
+  publish = "apps/frontend/.next"
+
+[build.environment]
+  NODE_VERSION            = "20"
+  PNPM_VERSION            = "9"
+  # Disable Next.js anonymous telemetry in CI
+  NEXT_TELEMETRY_DISABLED = "1"
+  # Skip the Turbopack dev server warning in build mode
+  TURBOPACK               = "0"
+
+# ── Preview / branch deploy overrides ─────────────────────────────────────────
+[context.deploy-preview.environment]
+  NEXT_PUBLIC_DEV_BYPASS_AUTH = "true"
+
+[context.branch-deploy.environment]
+  NEXT_PUBLIC_DEV_BYPASS_AUTH = "true"
+
+# ── Production overrides ───────────────────────────────────────────────────────
+[context.production.environment]
+  NEXT_PUBLIC_DEV_BYPASS_AUTH = "false"
+
+# ── Static asset caching ───────────────────────────────────────────────────────
+# Next.js hashes all _next/static/* filenames — safe to cache forever.
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Fonts are also hash-named
+[[headers]]
+  for = "/_next/static/media/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Security headers on all pages (supplement next.config.ts headers())
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"
+    Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
+
+# ── Required environment variables ────────────────────────────────────────────
+# Set these in Netlify UI → Site → Environment variables:
+#
+#   NEXT_PUBLIC_SUPABASE_URL        https://xxxx.supabase.co
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY   your-anon-key
+#   NEXT_PUBLIC_API_URL             https://api.yourdomain.com/api/v1  (when backend is live)
+#   NEXT_PUBLIC_DEV_BYPASS_AUTH     false  (production) / true (preview)

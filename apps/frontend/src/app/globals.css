@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ── Light mode CSS variables (default) ─────────────────── */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+    --radius: 0.5rem;
+  }
+
+  /* ── Dark mode CSS variables ─────────────────────────────── */
+  .dark {
+    --background: 222 47% 5%;
+    --foreground: 210 40% 92%;
+    --card: 222 47% 5%;
+    --card-foreground: 210 40% 92%;
+    --popover: 220 40% 6%;
+    --popover-foreground: 210 40% 92%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 14%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 12%;
+    --muted-foreground: 215 20% 52%;
+    --accent: 217 33% 14%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 14%;
+    --input: 217 33% 14%;
+    --ring: 224 76% 48%;
+  }
+}
+
+/* ── Light mode canvas — plain white ─────────────────────── */
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: #ffffff;
+  background-image: none;
+  background-attachment: fixed;
+  color: #0f172a;
+}
+
+/* ── Dark mode canvas — deep slate gradient ──────────────── */
+html.dark, html.dark body {
+  background-color: #050506;
+  background-image:
+    radial-gradient(circle at 0% 0%, #1c1544 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, #0f2d6e 0%, transparent 50%);
+  color: #e2e8f0;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.25); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.45); }
+
+/* ── Neon glow helpers ───────────────────────────────────── */
+.glow-red    { box-shadow: 0 0 8px rgba(239, 68, 68, 0.25); }
+.glow-amber  { box-shadow: 0 0 8px rgba(245, 158, 11, 0.2); }
+.glow-emerald{ box-shadow: 0 0 8px rgba(16, 185, 129, 0.2); }
