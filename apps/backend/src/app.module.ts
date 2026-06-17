@@ -2,9 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { LoggerModule } from 'nestjs-pino';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { validateEnv } from './config/env.config';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -61,12 +65,21 @@ import { HealthModule } from './health/health.module';
       maxListeners: 20,
     }),
 
+    // ── Rate limiting (OWASP A07) ────────────────────────────────────────────
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000, // 1 minute window
+        limit: 120, // 120 req/min global default; tighter limits per-route via @Throttle()
+      },
+    ]),
+
     // ── Core infrastructure ─────────────────────────────────────────────────
     DatabaseModule,
     HealthModule,
 
-    // ── Feature modules (added in subsequent steps) ─────────────────────────
-    // AuthModule,        ← Step 1
+    // ── Feature modules ──────────────────────────────────────────────────────
+    AuthModule, // Step 1 ← active
     // TenantsModule,     ← Step 2
     // UsersModule,       ← Step 2
     // WorkspacesModule,  ← Step 3
@@ -75,6 +88,12 @@ import { HealthModule } from './health/health.module';
     // NotificationsModule, ← Step 6
     // AutomationsModule, ← Step 7
     // BillingModule,     ← Step 9
+  ],
+  providers: [
+    // Apply rate limiting globally (individual routes can override with @Throttle)
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Apply JWT auth globally — routes opt out with @Public()
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })
 export class AppModule {}

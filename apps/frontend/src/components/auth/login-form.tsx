@@ -25,15 +25,12 @@ const DEV_BYPASS = process.env['NEXT_PUBLIC_DEV_BYPASS_AUTH'] === 'true';
 
 export function LoginForm() {
   const router = useRouter();
+  const loginFn = useAuthStore((s) => s.login);
   const devBypass = useAuthStore((s) => s.devBypass);
+
   const [showPassword, setShowPassword] = useState(false);
   const [ssoLoading, setSsoLoading] = useState<'google' | 'microsoft' | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
-
-  const handleDevBypass = () => {
-    devBypass();
-    router.push('/dashboard');
-  };
 
   const {
     register,
@@ -41,39 +38,37 @@ export function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema) });
 
-  // SSO — redirect to backend OAuth flow
+  const handleDevBypass = () => {
+    devBypass();
+    router.push('/dashboard');
+  };
+
   const handleSSO = (provider: 'google' | 'microsoft') => {
     setSsoLoading(provider);
-    // Backend OAuth routes wired up in Step 1
     window.location.href = `${API_BASE}/auth/${provider}`;
   };
 
   const onSubmit = async (data: LoginValues) => {
     setServerError(null);
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email: data.email, password: data.password }),
-      });
+      const result = await loginFn(data.email, data.password, data.rememberMe);
 
-      if (!res.ok) {
-        const body = (await res.json()) as { error?: { message?: string } };
-        setServerError(body.error?.message ?? 'Login failed. Please try again.');
+      if (result.requiresMfa) {
+        // Redirect to MFA verification page with the short-lived challenge token
+        router.push(`/auth/mfa?token=${encodeURIComponent(result.mfaToken)}`);
         return;
       }
 
-      // Step 1 will handle: store access token, redirect to /dashboard
-      window.location.href = '/dashboard';
-    } catch {
-      setServerError('Network error. Please check your connection and try again.');
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Login failed. Please try again.';
+      setServerError(msg);
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* ── Dev bypass banner (local only) ───────────────────────────── */}
+      {/* ── Dev bypass banner (local only) ─────────────────────────────── */}
       {DEV_BYPASS && (
         <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-800/40 dark:bg-violet-950/30">
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
@@ -122,12 +117,17 @@ export function LoginForm() {
       </div>
 
       {/* ── Email / Password Form ─────────────────────────────────────── */}
-      <form onSubmit={(e) => { void handleSubmit(onSubmit)(e); }} noValidate className="space-y-4">
-        {/* Server-level error */}
+      <form
+        onSubmit={(e) => {
+          void handleSubmit(onSubmit)(e);
+        }}
+        noValidate
+        className="space-y-4"
+      >
         {serverError && (
           <div
             role="alert"
-            className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-950/30 dark:text-red-400"
           >
             {serverError}
           </div>
@@ -146,16 +146,13 @@ export function LoginForm() {
             {...register('email')}
             className={cn(
               'block w-full rounded-lg border bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60',
-              'shadow-sm outline-none ring-0 transition-all',
-              'focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20',
+              'shadow-sm outline-none transition-all focus:ring-2',
               errors.email
-                ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
-                : 'border-border',
+                ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
+                : 'border-border focus:border-indigo-500 focus:ring-indigo-500/20',
             )}
           />
-          {errors.email && (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
         </div>
 
         {/* Password */}
@@ -181,11 +178,10 @@ export function LoginForm() {
               {...register('password')}
               className={cn(
                 'block w-full rounded-lg border bg-background px-3.5 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground/60',
-                'shadow-sm outline-none ring-0 transition-all',
-                'focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20',
+                'shadow-sm outline-none transition-all focus:ring-2',
                 errors.password
-                  ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
-                  : 'border-border',
+                  ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
+                  : 'border-border focus:border-indigo-500 focus:ring-indigo-500/20',
               )}
             />
             <button
@@ -197,9 +193,7 @@ export function LoginForm() {
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.password && (
-            <p className="text-xs text-destructive">{errors.password.message}</p>
-          )}
+          {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
         </div>
 
         {/* Remember me */}
@@ -215,7 +209,6 @@ export function LoginForm() {
           </label>
         </div>
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={isSubmitting || ssoLoading !== null}
@@ -235,17 +228,9 @@ export function LoginForm() {
           )}
         </button>
       </form>
-
-      {!DEV_BYPASS && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs text-amber-700 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-400">
-          Auth backend wires up in Step 1 — SSO + JWT + MFA
-        </p>
-      )}
     </div>
   );
 }
-
-// ── Reusable SSO button ────────────────────────────────────────────────────────
 
 interface SSOButtonProps {
   onClick: () => void;
@@ -265,15 +250,10 @@ function SSOButton({ onClick, loading, disabled, icon, label }: SSOButtonProps) 
         'flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-background px-4 py-2.5',
         'text-sm font-medium text-foreground shadow-sm transition-all',
         'hover:bg-accent hover:text-accent-foreground',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         'disabled:cursor-not-allowed disabled:opacity-50',
       )}
     >
-      {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      ) : (
-        icon
-      )}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : icon}
       {label}
     </button>
   );

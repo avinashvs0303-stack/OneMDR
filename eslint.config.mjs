@@ -14,6 +14,8 @@ export default [
       '**/coverage/**',
       '**/.turbo/**',
       'eslint.config.mjs',
+      // Prisma compiled output — auto-generated, not source
+      'packages/database/src/**',
     ],
   },
   {
@@ -46,6 +48,19 @@ export default [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'prefer-const': 'error',
       'no-var': 'error',
+    },
+  },
+  // Backend: Prisma client methods and Fastify internals are typed as `any` by
+  // @typescript-eslint when the generated client isn't fully resolved in the
+  // monorepo tsconfig graph. Disable `no-unsafe-*` for backend source only.
+  {
+    files: ['apps/backend/src/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
   prettierConfig,
