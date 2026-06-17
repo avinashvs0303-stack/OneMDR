@@ -17,8 +17,6 @@
   PNPM_VERSION            = "9"
   # Disable Next.js anonymous telemetry in CI
   NEXT_TELEMETRY_DISABLED = "1"
-  # Skip the Turbopack dev server warning in build mode
-  TURBOPACK               = "0"
 
 # ── Preview / branch deploy overrides ─────────────────────────────────────────
 [context.deploy-preview.environment]
