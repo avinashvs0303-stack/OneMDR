@@ -9,8 +9,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")   // Supabase: use direct conn for migrations, pooled for runtime
 }
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
@@ -24,12 +25,21 @@ enum TenantPlan {
 }
 
 enum UserRole {
-  OWNER
-  ADMIN
-  MEMBER
-  GUEST
+  SUPER_ADMIN // Platform-level: manages all tenants and tenant requests
+  OWNER       // Tenant owner (created at approval)
+  ADMIN       // Tenant admin
+  MEMBER      // Regular member
+  GUEST       // Read-only
 
   @@map("user_role")
+}
+
+enum TenantRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("tenant_request_status")
 }
 
 enum AuditAction {
@@ -49,6 +59,10 @@ enum AuditAction {
   USER_INVITED
   USER_ROLE_CHANGED
   USER_REMOVED
+  // Tenant requests
+  TENANT_REQUEST_SUBMITTED
+  TENANT_REQUEST_APPROVED
+  TENANT_REQUEST_REJECTED
   // Resource (generic — specific modules extend this)
   RESOURCE_CREATED
   RESOURCE_UPDATED
@@ -69,6 +83,11 @@ model Tenant {
   // MFA policy — if true, all members must have MFA enabled
   mfaEnforced Boolean @default(false) @map("mfa_enforced")
 
+  // License / entitlements (set at approval time)
+  maxUsers         Int      @default(10)  @map("max_users")
+  licenseModules   String[] @map("license_modules")  // e.g. ["SIEM","HUNT","COVERAGE"]
+  licenseExpiresAt DateTime? @map("license_expires_at")
+
   // Billing (Step 9)
   stripeCustomerId     String? @unique @map("stripe_customer_id")
   stripeSubscriptionId String? @unique @map("stripe_subscription_id")
@@ -79,8 +98,9 @@ model Tenant {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  users      User[]
-  auditLogs  AuditLog[]
+  users         User[]
+  auditLogs     AuditLog[]
+  tenantRequest TenantRequest?
 
   @@index([slug])
   @@map("tenants")
@@ -200,4 +220,44 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+// ── Tenant Requests — approval queue ─────────────────────────────────────────
+
+model TenantRequest {
+  id   String @id @default(uuid()) @db.Uuid
+
+  // Applicant details
+  companyName   String  @map("company_name")
+  companySize   String? @map("company_size")  // e.g. "1-10", "11-50", "51-200", "201+"
+  industry      String?
+  website       String?
+  contactName   String  @map("contact_name")
+  contactEmail  String  @unique @map("contact_email")
+  contactPhone  String? @map("contact_phone")
+  useCase       String? @map("use_case")  // free-text: why they want the product
+
+  // Workflow status
+  status          TenantRequestStatus @default(PENDING)
+  reviewedById    String?             @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?           @map("reviewed_at")
+  rejectionReason String?             @map("rejection_reason")
+  adminNotes      String?             @map("admin_notes")
+
+  // License configuration — set by super admin during approval
+  planType         TenantPlan @default(FREE) @map("plan_type")
+  maxUsers         Int        @default(10)   @map("max_users")
+  licenseModules   String[]   @map("license_modules")  // ["SIEM","HUNT","COVERAGE",...]
+  licenseExpiresAt DateTime?  @map("license_expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  // Once approved a Tenant + OWNER User are created and linked here
+  tenantId String? @unique @map("tenant_id") @db.Uuid
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([contactEmail])
+  @@map("tenant_requests")
 }
