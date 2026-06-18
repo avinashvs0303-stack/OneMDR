@@ -6,6 +6,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import fastifyCookie from '@fastify/cookie';
 import fastifyHelmet from '@fastify/helmet';
+import fastifyCors from '@fastify/cors';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { RequestIdInterceptor } from './common/interceptors/logging.interceptor';
@@ -67,25 +68,28 @@ async function bootstrap(): Promise<void> {
 
   // ── Trust proxy headers (X-Forwarded-For) for accurate IP logging ──────────
   // Required when running behind Netlify Functions / AWS ALB / Render
+  const fastifyInstance = app.getHttpAdapter().getInstance();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  app
-    .getHttpAdapter()
-    .getInstance()
-    .addHook('onRequest', async (req: any) => {
-      const xff = req.headers['x-forwarded-for'];
-      if (typeof xff === 'string') {
-        req.ip = xff.split(',')[0].trim();
-      }
-    });
+  fastifyInstance.addHook('onRequest', async (req: any) => {
+    const xff = req.headers['x-forwarded-for'];
+    if (typeof xff === 'string') {
+      req.ip = xff.split(',')[0].trim();
+    }
+  });
 
   // ── CORS — strict allowlist (OWASP A05) ───────────────────────────────────
-  app.enableCors({
+  // Register @fastify/cors directly so we can set strictPreflight: false,
+  // which ensures OPTIONS preflight is handled even without explicit handlers.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await app.register(fastifyCors as any, {
     origin: frontendUrl,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Request-Id'],
     exposedHeaders: ['X-Request-Id'],
-    maxAge: 86400, // 24h preflight cache
+    maxAge: 86400,
+    preflight: true,
+    strictPreflight: false,
   });
 
   // ── Global API prefix (/api/v1) ────────────────────────────────────────────
