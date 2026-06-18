@@ -1,4 +1,4 @@
-import type { UserRole } from '@clarbit/database';
+﻿import type { UserRole } from '@onemdr/database';
 
 export interface JwtPayload {
   /** User UUID */

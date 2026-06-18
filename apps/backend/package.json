@@ -1,5 +1,5 @@
-{
-  "name": "@clarbit/backend",
+﻿{
+  "name": "@onemdr/backend",
   "version": "0.1.0",
   "private": true,
   "license": "UNLICENSED",
@@ -15,8 +15,8 @@
     "test:e2e": "jest --config test/jest-e2e.json --passWithNoTests"
   },
   "dependencies": {
-    "@clarbit/database": "workspace:*",
-    "@clarbit/shared": "workspace:*",
+    "@onemdr/database": "workspace:*",
+    "@onemdr/shared": "workspace:*",
     "@fastify/cookie": "^9.4.0",
     "@fastify/cors": "^9.0.1",
     "@fastify/helmet": "^11.1.1",

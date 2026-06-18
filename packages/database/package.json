@@ -1,5 +1,5 @@
-{
-  "name": "@clarbit/database",
+﻿{
+  "name": "@onemdr/database",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",

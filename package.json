@@ -1,5 +1,5 @@
-{
-  "name": "clarbit",
+﻿{
+  "name": "onemdr",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@9.14.4",
@@ -16,11 +16,11 @@
     "test:e2e": "turbo run test:e2e",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\" --ignore-path .prettierignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\" --ignore-path .prettierignore",
-    "db:generate": "pnpm --filter @clarbit/database db:generate",
-    "db:migrate": "pnpm --filter @clarbit/database db:migrate",
-    "db:migrate:deploy": "pnpm --filter @clarbit/database db:migrate:deploy",
-    "db:studio": "pnpm --filter @clarbit/database db:studio",
-    "db:seed": "pnpm --filter @clarbit/database db:seed",
+    "db:generate": "pnpm --filter @onemdr/database db:generate",
+    "db:migrate": "pnpm --filter @onemdr/database db:migrate",
+    "db:migrate:deploy": "pnpm --filter @onemdr/database db:migrate:deploy",
+    "db:studio": "pnpm --filter @onemdr/database db:studio",
+    "db:seed": "pnpm --filter @onemdr/database db:seed",
     "prepare": "husky"
   },
   "devDependencies": {

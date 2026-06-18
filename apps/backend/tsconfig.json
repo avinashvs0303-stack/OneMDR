@@ -1,4 +1,4 @@
-{
+﻿{
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "CommonJS",
@@ -9,8 +9,8 @@
     "rootDir": "./src",
     "baseUrl": "./",
     "paths": {
-      "@clarbit/database": ["../../packages/database/src/index.ts"],
-      "@clarbit/shared": ["../../packages/shared/src/index.ts"]
+      "@onemdr/database": ["../../packages/database/src/index.ts"],
+      "@onemdr/shared": ["../../packages/shared/src/index.ts"]
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

@@ -30,7 +30,7 @@ async function bootstrap(): Promise<void> {
   const apiPrefix = configService.get<string>('API_PREFIX', 'api/v1');
   const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
-  const appName = configService.get<string>('APP_NAME', 'Clarbit');
+  const appName = configService.get<string>('APP_NAME', 'OneMDR');
 
   // ── Security headers (OWASP A05) ───────────────────────────────────────────
   await app.register(fastifyHelmet, {

@@ -1,4 +1,4 @@
-# Clarbit — Work OS · Master Skill Reference
+﻿# OneMDR — Master Skill Reference (by Clarbit)
 
 > **Always read this file before touching any code in this repo.**  
 > It is the single source of truth for architecture decisions, security rules, workflow commands, and coding conventions.
@@ -7,12 +7,12 @@
 
 ## 1. Project Identity
 
-| Property | Value |
-|---|---|
-| **Product** | Clarbit — multi-tenant Work OS (boards, items, automations, dashboards) |
-| **Stage** | Production-grade SaaS, built incrementally |
-| **Package manager** | pnpm 9 + Turborepo 2 |
-| **Build target** | Node 20 LTS |
+| Property            | Value                                                                      |
+| ------------------- | -------------------------------------------------------------------------- |
+| **Product**         | OneMDR — multi-tenant MDR platform (DaaS, THaaS, CaaS and more) by Clarbit |
+| **Stage**           | Production-grade SaaS, built incrementally                                 |
+| **Package manager** | pnpm 9 + Turborepo 2                                                       |
+| **Build target**    | Node 20 LTS                                                                |
 
 ---
 
@@ -36,13 +36,14 @@ clarbit-Detection-as-a-Service/
 └── .env.example
 ```
 
-Package names: `@clarbit/backend`, `@clarbit/frontend`, `@clarbit/database`, `@clarbit/shared`
+Package names: `@onemdr/backend`, `@onemdr/frontend`, `@onemdr/database`, `@onemdr/shared`
 
 ---
 
 ## 3. Tech Stack — Rationale
 
 ### Backend
+
 - **NestJS 10 + Fastify** — modular DI framework, 2× faster than Express under load. Fastify is the platform; `@nestjs/platform-fastify` bridges them.
 - **Prisma 5** — typed SQL, migration runner, introspection. Postgres dialect. Schema lives in `packages/database/prisma/schema.prisma`.
 - **BullMQ + Redis** — queues for automations, email dispatch, webhook delivery. Never do heavy work in the request cycle.
@@ -53,6 +54,7 @@ Package names: `@clarbit/backend`, `@clarbit/frontend`, `@clarbit/database`, `@c
 - **@nestjs/swagger** — auto-generated OpenAPI at `/docs` (non-production only).
 
 ### Frontend
+
 - **Next.js 15 App Router** — Server Components by default; Client Components only when needed (interactivity, hooks, real-time).
 - **TanStack Query v5** — server state, cache, background refetching.
 - **Zustand v4** — client-only UI state (modals, sidebar open/close, optimistic updates).
@@ -61,6 +63,7 @@ Package names: `@clarbit/backend`, `@clarbit/frontend`, `@clarbit/database`, `@c
 - **Socket.IO client** — real-time board collaboration (Step 5+).
 
 ### Database
+
 - **PostgreSQL 16** — primary store.
 - **Multi-tenancy model**: shared database, `tenant_id` column on every tenant-scoped table, enforced via:
   1. Application-layer: NestJS middleware injects `tenantId` from JWT into every service call.
@@ -93,6 +96,7 @@ HTTP request
 ```
 
 **Rules:**
+
 - No business logic in controllers. Controllers map HTTP ↔ service calls.
 - No raw SQL in services. All DB access via Prisma.
 - Every `findMany` must accept `PaginationDto` (page, limit, sort, order).
@@ -119,20 +123,21 @@ CREATE POLICY tenant_isolation ON <table>
 
 ## 6. Security Checklist (OWASP Top 10 + ASVS)
 
-| # | Control | Where implemented |
-|---|---|---|
-| A01 | Broken Access Control | TenantGuard + PermissionGuard + RLS |
-| A02 | Cryptographic Failures | Argon2id passwords, AES-256-GCM field encryption, TLS |
-| A03 | Injection | Prisma parameterized queries, class-validator on all inputs |
-| A04 | Insecure Design | RBAC (owner/admin/member/guest), resource-level checks |
-| A05 | Security Misconfiguration | Helmet, strict CORS, validated env, no debug in prod |
-| A06 | Vulnerable Components | npm audit in CI, Dependabot alerts |
-| A07 | Auth Failures | Argon2id, rate limiting, account lockout, MFA (TOTP) |
-| A08 | Software Integrity | Lockfile CI check, no untrusted CDN scripts |
-| A09 | Logging Failures | Pino structured logs, immutable audit_log table |
-| A10 | SSRF | Allowlist-based URL validation for webhooks |
+| #   | Control                   | Where implemented                                           |
+| --- | ------------------------- | ----------------------------------------------------------- |
+| A01 | Broken Access Control     | TenantGuard + PermissionGuard + RLS                         |
+| A02 | Cryptographic Failures    | Argon2id passwords, AES-256-GCM field encryption, TLS       |
+| A03 | Injection                 | Prisma parameterized queries, class-validator on all inputs |
+| A04 | Insecure Design           | RBAC (owner/admin/member/guest), resource-level checks      |
+| A05 | Security Misconfiguration | Helmet, strict CORS, validated env, no debug in prod        |
+| A06 | Vulnerable Components     | npm audit in CI, Dependabot alerts                          |
+| A07 | Auth Failures             | Argon2id, rate limiting, account lockout, MFA (TOTP)        |
+| A08 | Software Integrity        | Lockfile CI check, no untrusted CDN scripts                 |
+| A09 | Logging Failures          | Pino structured logs, immutable audit_log table             |
+| A10 | SSRF                      | Allowlist-based URL validation for webhooks                 |
 
 **Auth token rules:**
+
 - Access token: JWT, 15-minute TTL, signed with `JWT_SECRET`, contains `{ sub, tenantId, role, email }`.
 - Refresh token: opaque random bytes, stored hashed in DB, 7-day TTL, sent as `httpOnly Secure SameSite=Strict` cookie.
 - Refresh token rotation: on every use, old token is revoked and a new one issued.
@@ -142,16 +147,16 @@ CREATE POLICY tenant_isolation ON <table>
 
 ## 7. RBAC Matrix
 
-| Permission | OWNER | ADMIN | MEMBER | GUEST |
-|---|:---:|:---:|:---:|:---:|
-| Delete tenant | ✅ | ❌ | ❌ | ❌ |
-| Manage members | ✅ | ✅ | ❌ | ❌ |
-| Enforce MFA | ✅ | ✅ | ❌ | ❌ |
-| Create workspace | ✅ | ✅ | ❌ | ❌ |
-| Create board | ✅ | ✅ | ✅ | ❌ |
-| Edit items | ✅ | ✅ | ✅ | ❌ |
-| View boards | ✅ | ✅ | ✅ | ✅ (if invited) |
-| View audit log | ✅ | ✅ | ❌ | ❌ |
+| Permission       | OWNER | ADMIN | MEMBER |      GUEST      |
+| ---------------- | :---: | :---: | :----: | :-------------: |
+| Delete tenant    |  ✅   |  ❌   |   ❌   |       ❌        |
+| Manage members   |  ✅   |  ✅   |   ❌   |       ❌        |
+| Enforce MFA      |  ✅   |  ✅   |   ❌   |       ❌        |
+| Create workspace |  ✅   |  ✅   |   ❌   |       ❌        |
+| Create board     |  ✅   |  ✅   |   ✅   |       ❌        |
+| Edit items       |  ✅   |  ✅   |   ✅   |       ❌        |
+| View boards      |  ✅   |  ✅   |   ✅   | ✅ (if invited) |
+| View audit log   |  ✅   |  ✅   |   ❌   |       ❌        |
 
 ---
 
@@ -170,7 +175,9 @@ CREATE POLICY tenant_isolation ON <table>
   ```
 - **Error envelope**:
   ```json
-  { "error": { "code": "BOARD_NOT_FOUND", "message": "...", "statusCode": 404, "requestId": "uuid" } }
+  {
+    "error": { "code": "BOARD_NOT_FOUND", "message": "...", "statusCode": 404, "requestId": "uuid" }
+  }
   ```
 - **Audit**: Every POST/PUT/PATCH/DELETE route MUST fire an audit event via `this.eventEmitter.emit('audit.log', payload)`.
 
@@ -181,15 +188,15 @@ CREATE POLICY tenant_isolation ON <table>
 All env vars are validated with Zod on startup via `validateEnv()` in `apps/backend/src/config/env.config.ts`.  
 The app exits with a clear error if any required var is missing or malformed — fail fast.
 
-| Variable | Required | Notes |
-|---|---|---|
-| `DATABASE_URL` | ✅ | Postgres connection string |
-| `REDIS_URL` | ✅ | Redis connection string (with password) |
-| `JWT_SECRET` | ✅ | min 32 chars, use `openssl rand -hex 32` |
-| `REFRESH_TOKEN_SECRET` | ✅ | min 32 chars, separate from JWT |
-| `ENCRYPTION_KEY` | ✅ | exactly 32 bytes, for AES-256 field encryption |
-| `GOOGLE_CLIENT_ID/SECRET` | Optional | OAuth (Step 1) |
-| `SMTP_*` | Optional | Email via SMTP (Step 6) |
+| Variable                  | Required | Notes                                          |
+| ------------------------- | -------- | ---------------------------------------------- |
+| `DATABASE_URL`            | ✅       | Postgres connection string                     |
+| `REDIS_URL`               | ✅       | Redis connection string (with password)        |
+| `JWT_SECRET`              | ✅       | min 32 chars, use `openssl rand -hex 32`       |
+| `REFRESH_TOKEN_SECRET`    | ✅       | min 32 chars, separate from JWT                |
+| `ENCRYPTION_KEY`          | ✅       | exactly 32 bytes, for AES-256 field encryption |
+| `GOOGLE_CLIENT_ID/SECRET` | Optional | OAuth (Step 1)                                 |
+| `SMTP_*`                  | Optional | Email via SMTP (Step 6)                        |
 
 **Never hardcode secrets. Never log them. In production: AWS Secrets Manager or HashiCorp Vault.**
 
@@ -208,8 +215,8 @@ pnpm db:migrate                    # run migrations
 # ── Daily development ────────────────────────────────────────────
 docker compose up -d               # ensure infra is running
 pnpm dev                           # start all apps in watch mode (turbo)
-pnpm --filter @clarbit/backend dev # backend only (port 3001)
-pnpm --filter @clarbit/frontend dev # frontend only (port 3000)
+pnpm --filter @onemdr/backend dev # backend only (port 3001)
+pnpm --filter @onemdr/frontend dev # frontend only (port 3000)
 
 # ── Database ─────────────────────────────────────────────────────
 pnpm db:generate                   # regenerate Prisma client after schema change
@@ -234,18 +241,18 @@ pnpm build                         # production build (turbo)
 
 ## 11. Step Build Order
 
-| Step | Feature | Branch convention |
-|---|---|---|
-| **0** | Scaffold monorepo, Prisma init, health check, CI ← **DONE** | `feat/step-0-scaffold` |
-| **1** | Auth: email/password + Google OAuth + JWT + MFA (TOTP) | `feat/step-1-auth` |
-| **2** | Tenants, users, RBAC, session management | `feat/step-2-tenants-rbac` |
-| **3** | Workspaces + Boards | `feat/step-3-boards` |
-| **4** | Items + dynamic typed columns | `feat/step-4-items-columns` |
-| **5** | Real-time (WebSocket gateway, presence, optimistic UI) | `feat/step-5-realtime` |
-| **6** | Notifications (in-app + email queue) | `feat/step-6-notifications` |
-| **7** | Automations engine | `feat/step-7-automations` |
-| **8** | Dashboards + reporting | `feat/step-8-dashboards` |
-| **9** | Billing (Stripe scaffold) | `feat/step-9-billing` |
+| Step  | Feature                                                     | Branch convention           |
+| ----- | ----------------------------------------------------------- | --------------------------- |
+| **0** | Scaffold monorepo, Prisma init, health check, CI ← **DONE** | `feat/step-0-scaffold`      |
+| **1** | Auth: email/password + Google OAuth + JWT + MFA (TOTP)      | `feat/step-1-auth`          |
+| **2** | Tenants, users, RBAC, session management                    | `feat/step-2-tenants-rbac`  |
+| **3** | Workspaces + Boards                                         | `feat/step-3-boards`        |
+| **4** | Items + dynamic typed columns                               | `feat/step-4-items-columns` |
+| **5** | Real-time (WebSocket gateway, presence, optimistic UI)      | `feat/step-5-realtime`      |
+| **6** | Notifications (in-app + email queue)                        | `feat/step-6-notifications` |
+| **7** | Automations engine                                          | `feat/step-7-automations`   |
+| **8** | Dashboards + reporting                                      | `feat/step-8-dashboards`    |
+| **9** | Billing (Stripe scaffold)                                   | `feat/step-9-billing`       |
 
 ---
 

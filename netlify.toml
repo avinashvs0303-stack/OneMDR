@@ -1,12 +1,12 @@
-# ══════════════════════════════════════════════════════════════════════════════
-#  Netlify — Clarbit Detection as a Service
+﻿# ══════════════════════════════════════════════════════════════════════════════
+#  Netlify — OneMDR Platform (by Clarbit)
 #  Monorepo: apps/frontend (Next.js 15, pnpm workspaces)
 # ══════════════════════════════════════════════════════════════════════════════
 
 [build]
   # Install all workspace packages from repo root, then build the frontend app.
   # pnpm-lock.yaml lives at root, so we must install from here.
-  command = "pnpm install --frozen-lockfile && pnpm --filter @clarbit/frontend build"
+  command = "pnpm install --frozen-lockfile && pnpm --filter @onemdr/frontend build"
 
   # Next.js output directory (relative to repo root).
   # Netlify's Next.js runtime auto-detects this and handles SSR/ISR/Edge.

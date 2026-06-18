@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   ConflictException,
   UnauthorizedException,
@@ -24,7 +24,7 @@ import {
 } from '../common/utils/crypto.util';
 import type { RegisterDto } from './dto/register.dto';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
-import { AuditAction, type User } from '@clarbit/database';
+import { AuditAction, type User } from '@onemdr/database';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
@@ -46,7 +46,7 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {
     this.encKey = config.getOrThrow<string>('ENCRYPTION_KEY');
-    this.appName = config.get<string>('APP_NAME', 'Clarbit');
+    this.appName = config.get<string>('APP_NAME', 'OneMDR');
   }
 
   // ── Registration ─────────────────────────────────────────────────────────────

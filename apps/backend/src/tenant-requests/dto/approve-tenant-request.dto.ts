@@ -1,4 +1,4 @@
-import {
+﻿import {
   IsEnum,
   IsInt,
   IsArray,
@@ -10,7 +10,7 @@ import {
   ArrayMinSize,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TenantPlan } from '@clarbit/database';
+import { TenantPlan } from '@onemdr/database';
 
 export const LICENSE_MODULES = [
   'SIEM',

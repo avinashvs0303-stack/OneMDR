@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../database/prisma.service';
-import { AuditAction } from '@clarbit/database';
+import { AuditAction } from '@onemdr/database';
 
 export interface AuditEventPayload {
   tenantId: string;

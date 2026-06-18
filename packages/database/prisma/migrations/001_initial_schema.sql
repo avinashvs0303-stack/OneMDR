@@ -238,7 +238,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- ── Super Admin seed ──────────────────────────────────────────────────────────
 -- Run separately after generating the argon2id hash (see README).
 -- INSERT INTO tenants (id, name, slug, plan, is_active)
--- VALUES ('00000000-0000-0000-0000-000000000001', 'Clarbit Platform', 'clarbit-platform', 'ENTERPRISE', true);
+-- VALUES ('00000000-0000-0000-0000-000000000001', 'OneMDR Platform', 'onemdr-platform', 'ENTERPRISE', true);
 --
 -- INSERT INTO users (tenant_id, email, first_name, last_name, role, password_hash, email_verified)
 -- VALUES ('00000000-0000-0000-0000-000000000001', 'admin@clarbit.com', 'Super', 'Admin',

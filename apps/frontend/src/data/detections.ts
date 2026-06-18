@@ -32,7 +32,8 @@ export const DETECTIONS: Detection[] = [
   {
     id: 'DET-0001',
     title: 'PowerShell Encoded Command Execution',
-    description: 'Detects PowerShell launched with encoded command arguments (-EncodedCommand, -enc, -ec). A primary obfuscation technique used by malware loaders, ransomware stagers, and post-exploitation frameworks including Cobalt Strike and Empire.',
+    description:
+      'Detects PowerShell launched with encoded command arguments (-EncodedCommand, -enc, -ec). A primary obfuscation technique used by malware loaders, ransomware stagers, and post-exploitation frameworks including Cobalt Strike and Empire.',
     tactic: 'Execution',
     tacticId: 'TA0002',
     technique: 'Command and Scripting Interpreter: PowerShell',
@@ -59,7 +60,8 @@ export const DETECTIONS: Detection[] = [
   {
     id: 'DET-0002',
     title: 'LSASS Memory Access for Credential Dumping',
-    description: 'Detects attempts to access LSASS memory using suspicious granted access masks — the signature pattern of Mimikatz, ProcDump, and direct WinAPI credential harvesting. Excludes known-good system processes.',
+    description:
+      'Detects attempts to access LSASS memory using suspicious granted access masks — the signature pattern of Mimikatz, ProcDump, and direct WinAPI credential harvesting. Excludes known-good system processes.',
     tactic: 'Credential Access',
     tacticId: 'TA0006',
     technique: 'OS Credential Dumping: LSASS Memory',
@@ -87,7 +89,8 @@ export const DETECTIONS: Detection[] = [
   {
     id: 'DET-0003',
     title: 'Azure AD Sign-in from New Country',
-    description: 'Detects Azure AD interactive sign-ins from a country not present in the user\'s 30-day baseline. Surfaces account compromise, credential theft, and impossible-travel scenarios for cloud identity.',
+    description:
+      "Detects Azure AD interactive sign-ins from a country not present in the user's 30-day baseline. Surfaces account compromise, credential theft, and impossible-travel scenarios for cloud identity.",
     tactic: 'Initial Access',
     tacticId: 'TA0001',
     technique: 'Valid Accounts: Cloud Accounts',
@@ -119,7 +122,8 @@ SigninLogs
   {
     id: 'DET-0004',
     title: 'WMI Lateral Movement via wmic.exe',
-    description: 'Detects wmic.exe invocations targeting remote systems, a classic lateral movement technique used for remote process execution and persistence on Windows hosts.',
+    description:
+      'Detects wmic.exe invocations targeting remote systems, a classic lateral movement technique used for remote process execution and persistence on Windows hosts.',
     tactic: 'Lateral Movement',
     tacticId: 'TA0008',
     technique: 'Remote Services: Windows Remote Management',
@@ -145,7 +149,8 @@ SigninLogs
   {
     id: 'DET-0005',
     title: 'Ransomware Shadow Copy Deletion',
-    description: 'Detects deletion of Volume Shadow Copies via vssadmin or wmic — the first action taken by virtually every ransomware family before encryption to prevent recovery.',
+    description:
+      'Detects deletion of Volume Shadow Copies via vssadmin or wmic — the first action taken by virtually every ransomware family before encryption to prevent recovery.',
     tactic: 'Impact',
     tacticId: 'TA0040',
     technique: 'Inhibit System Recovery',
@@ -171,7 +176,8 @@ SigninLogs
   {
     id: 'DET-0006',
     title: 'Kerberoasting — SPN Ticket Requests',
-    description: 'Detects anomalous Kerberos TGS requests for RC4-encrypted service tickets (etype 23) from non-service accounts — the Kerberoasting signature used to crack service account passwords offline.',
+    description:
+      'Detects anomalous Kerberos TGS requests for RC4-encrypted service tickets (etype 23) from non-service accounts — the Kerberoasting signature used to crack service account passwords offline.',
     tactic: 'Credential Access',
     tacticId: 'TA0006',
     technique: 'Steal or Forge Kerberos Tickets: Kerberoasting',
@@ -200,7 +206,8 @@ SigninLogs
   {
     id: 'DET-0007',
     title: 'DNS Beaconing to Newly Registered Domain',
-    description: 'Identifies hosts making regular, low-volume DNS requests to newly registered domains (<30 days old) — characteristic of C2 beaconing patterns designed to evade threat intel blocklists.',
+    description:
+      'Identifies hosts making regular, low-volume DNS requests to newly registered domains (<30 days old) — characteristic of C2 beaconing patterns designed to evade threat intel blocklists.',
     tactic: 'Command and Control',
     tacticId: 'TA0011',
     technique: 'Application Layer Protocol: DNS',
@@ -211,7 +218,7 @@ SigninLogs
     queryLanguage: 'YARA-L',
     query: `rule dns_beaconing_new_domain {
   meta:
-    author = "Clarbit Detection Engineering"
+    author = "OneMDR Detection Engineering"
     description = "DNS beaconing to newly registered domain"
     mitre_technique = "T1071.004"
   events:
@@ -240,7 +247,8 @@ SigninLogs
   {
     id: 'DET-0008',
     title: 'AWS Console Login Without MFA',
-    description: 'Detects successful AWS Console authentication events where MFA was not used. Cloud console access without MFA is a critical control gap frequently exploited after credential theft.',
+    description:
+      'Detects successful AWS Console authentication events where MFA was not used. Cloud console access without MFA is a critical control gap frequently exploited after credential theft.',
     tactic: 'Initial Access',
     tacticId: 'TA0001',
     technique: 'Valid Accounts: Cloud Accounts',
@@ -266,7 +274,8 @@ SigninLogs
   {
     id: 'DET-0009',
     title: 'Scheduled Task Created by Uncommon Process',
-    description: 'Detects new scheduled tasks created by parent processes that do not normally create tasks (non-admin tools, scripting engines, Office applications) — a persistence technique widely used by APTs.',
+    description:
+      'Detects new scheduled tasks created by parent processes that do not normally create tasks (non-admin tools, scripting engines, Office applications) — a persistence technique widely used by APTs.',
     tactic: 'Persistence',
     tacticId: 'TA0003',
     technique: 'Scheduled Task/Job: Scheduled Task',
@@ -295,7 +304,8 @@ SigninLogs
   {
     id: 'DET-0010',
     title: 'Excessive Failed Logins Followed by Success',
-    description: 'Detects a password spray or brute-force pattern: N failed logins within a window followed by a successful authentication from the same source — indicating successful credential compromise.',
+    description:
+      'Detects a password spray or brute-force pattern: N failed logins within a window followed by a successful authentication from the same source — indicating successful credential compromise.',
     tactic: 'Credential Access',
     tacticId: 'TA0006',
     technique: 'Brute Force: Password Spraying',
@@ -333,7 +343,8 @@ failures
   {
     id: 'DET-0011',
     title: 'Suspicious Registry Run Key Modification',
-    description: 'Detects new entries written to common autorun registry keys by non-standard processes — a ubiquitous persistence mechanism used by malware to survive reboots.',
+    description:
+      'Detects new entries written to common autorun registry keys by non-standard processes — a ubiquitous persistence mechanism used by malware to survive reboots.',
     tactic: 'Persistence',
     tacticId: 'TA0003',
     technique: 'Boot/Logon Autostart Execution: Registry Run Keys',
@@ -364,7 +375,8 @@ failures
   {
     id: 'DET-0012',
     title: 'Outbound HTTPS to Non-Categorised IP',
-    description: 'Identifies endpoints making HTTPS connections to IP addresses with no associated hostname or domain — a C2 pattern used when attackers use direct-IP infrastructure to avoid DNS-based detection.',
+    description:
+      'Identifies endpoints making HTTPS connections to IP addresses with no associated hostname or domain — a C2 pattern used when attackers use direct-IP infrastructure to avoid DNS-based detection.',
     tactic: 'Command and Control',
     tacticId: 'TA0011',
     technique: 'Application Layer Protocol: Web Protocols',
@@ -412,7 +424,8 @@ export const SIEM_COLORS: Record<string, string> = {
 };
 
 export const SEVERITY_COLORS: Record<string, string> = {
-  Critical: 'text-red-400 bg-red-500/20 border border-red-500/30 shadow-[0_0_8px_rgba(239,68,68,0.15)]',
+  Critical:
+    'text-red-400 bg-red-500/20 border border-red-500/30 shadow-[0_0_8px_rgba(239,68,68,0.15)]',
   High: 'text-orange-400 bg-orange-500/20 border border-orange-500/30',
   Medium: 'text-amber-400 bg-amber-500/20 border border-amber-500/25',
   Low: 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/25',

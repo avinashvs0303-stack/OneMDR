@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Get,
@@ -29,7 +29,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { EnableMfaDto, DisableMfaDto, MfaChallengeDto } from './dto/mfa.dto';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
-import type { User } from '@clarbit/database';
+import type { User } from '@onemdr/database';
 
 @ApiTags('auth')
 @Controller('auth')

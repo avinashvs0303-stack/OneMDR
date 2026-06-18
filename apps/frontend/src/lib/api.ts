@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Thin API client — wraps fetch with auth headers, base URL, and error handling.
  * Reads the access token from the auth store and attaches it as Bearer header.
  * On 401, attempts one silent token refresh before propagating the error.
  */
 
-import type { ApiError } from '@clarbit/shared';
+import type { ApiError } from '@onemdr/shared';
 
 const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001/api/v1';
 

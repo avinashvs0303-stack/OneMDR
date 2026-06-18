@@ -1,11 +1,11 @@
-import type { NextConfig } from 'next';
+﻿import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   // Strict mode to catch subtle React bugs early
   reactStrictMode: true,
 
   // Transpile workspace packages (they ship TS source, not compiled JS)
-  transpilePackages: ['@clarbit/shared'],
+  transpilePackages: ['@onemdr/shared'],
 
   // ESLint is run separately in CI — skip during `next build` to avoid
   // false failures when the root flat config lacks eslint-config-next.
