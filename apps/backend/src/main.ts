@@ -6,7 +6,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import fastifyCookie from '@fastify/cookie';
 import fastifyHelmet from '@fastify/helmet';
-import fastifyCors from '@fastify/cors';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { RequestIdInterceptor } from './common/interceptors/logging.interceptor';
@@ -67,29 +66,34 @@ async function bootstrap(): Promise<void> {
   });
 
   // ── Trust proxy headers (X-Forwarded-For) for accurate IP logging ──────────
-  // Required when running behind Netlify Functions / AWS ALB / Render
+  // ── CORS + proxy IP — single onRequest hook ───────────────────────────────
+  // @fastify/cors v9 requires Fastify v5; we're on v4. Handle CORS manually
+  // so OPTIONS preflight works regardless of plugin version compatibility.
   const fastifyInstance = app.getHttpAdapter().getInstance();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fastifyInstance.addHook('onRequest', async (req: any) => {
-    const xff = req.headers['x-forwarded-for'];
-    if (typeof xff === 'string') {
-      req.ip = xff.split(',')[0].trim();
-    }
-  });
+  fastifyInstance.addHook('onRequest', async (req: any, reply: any) => {
+    // Proxy IP
+    const xff = req.headers['x-forwarded-for'] as string | undefined;
+    if (xff) req.ip = xff.split(',')[0].trim();
 
-  // ── CORS — strict allowlist (OWASP A05) ───────────────────────────────────
-  // Register @fastify/cors directly so we can set strictPreflight: false,
-  // which ensures OPTIONS preflight is handled even without explicit handlers.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await app.register(fastifyCors as any, {
-    origin: frontendUrl,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Request-Id'],
-    exposedHeaders: ['X-Request-Id'],
-    maxAge: 86400,
-    preflight: true,
-    strictPreflight: false,
+    // CORS headers
+    const origin = req.headers.origin as string | undefined;
+    if (!origin || origin === frontendUrl) {
+      reply.header('Access-Control-Allow-Origin', origin ?? frontendUrl);
+      reply.header('Access-Control-Allow-Credentials', 'true');
+      reply.header('Access-Control-Expose-Headers', 'X-Request-Id');
+    }
+
+    // Handle preflight — must reply here so Fastify doesn't 404 the OPTIONS
+    if (req.method === 'OPTIONS') {
+      reply.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      reply.header(
+        'Access-Control-Allow-Headers',
+        'Content-Type,Authorization,X-CSRF-Token,X-Request-Id',
+      );
+      reply.header('Access-Control-Max-Age', '86400');
+      await reply.status(204).send();
+    }
   });
 
   // ── Global API prefix (/api/v1) ────────────────────────────────────────────
