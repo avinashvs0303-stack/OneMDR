@@ -40,8 +40,10 @@ export function middleware(request: NextRequest) {
   }
 
   // ── Production: JWT required ──────────────────────────────────────────────
-  const accessToken = request.cookies.get('access_token');
-  const isAuthenticated = Boolean(accessToken);
+  // The backend sets refresh_token as an httpOnly cookie on login — use that
+  // as the auth signal since access_token lives in sessionStorage (no Edge access)
+  const refreshToken = request.cookies.get('refresh_token');
+  const isAuthenticated = Boolean(refreshToken);
 
   if (isAuthenticated && isPublicPath) {
     return NextResponse.redirect(new URL('/modules', request.url));
