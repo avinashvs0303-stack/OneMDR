@@ -61,7 +61,7 @@ export default function RequestAccessPage() {
         </div>
         <Link
           href="/auth/login"
-          className="inline-block text-sm font-medium text-indigo-600 hover:underline underline-offset-4 dark:text-indigo-400"
+          className="inline-block text-sm font-medium text-amber-600 hover:underline underline-offset-4 dark:text-amber-400"
         >
           Back to sign in
         </Link>
@@ -187,7 +187,7 @@ export default function RequestAccessPage() {
           disabled={isSubmitting}
           className={cn(
             'flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all',
-            'bg-indigo-600 hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600',
+            'bg-amber-600 hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600',
             'disabled:cursor-not-allowed disabled:opacity-50',
           )}
         >
@@ -206,7 +206,7 @@ export default function RequestAccessPage() {
         Already have an account?{' '}
         <Link
           href="/auth/login"
-          className="font-medium text-indigo-600 hover:underline underline-offset-4 dark:text-indigo-400"
+          className="font-medium text-amber-600 hover:underline underline-offset-4 dark:text-amber-400"
         >
           Sign in
         </Link>
@@ -242,6 +242,6 @@ function inputCls(hasError: boolean) {
     'shadow-sm outline-none transition-all focus:ring-2',
     hasError
       ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
-      : 'border-border focus:border-indigo-500 focus:ring-indigo-500/20',
+      : 'border-border focus:border-amber-500 focus:ring-amber-500/20',
   );
 }

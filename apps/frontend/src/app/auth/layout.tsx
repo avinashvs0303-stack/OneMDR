@@ -6,7 +6,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       {/* Left panel — branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-slate-900 p-12 text-white">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500 text-sm font-black tracking-tight">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500 text-sm font-black tracking-tight">
             M
           </div>
           <span className="text-lg font-semibold tracking-tight">OneMDR</span>
@@ -36,7 +36,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 lg:px-12">
         {/* Mobile logo */}
         <div className="mb-10 flex items-center gap-2 lg:hidden">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-xs font-black text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-xs font-black text-white">
             M
           </div>
           <span className="text-base font-semibold tracking-tight text-foreground">OneMDR</span>

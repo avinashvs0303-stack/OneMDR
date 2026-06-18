@@ -30,16 +30,14 @@ export function Header({ title }: HeaderProps) {
   return (
     <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b border-black/10 dark:border-white/10 bg-white/60 dark:bg-black/30 backdrop-blur-md px-6">
       {/* Left: page title */}
-      {title && (
-        <h1 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h1>
-      )}
+      {title && <h1 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h1>}
 
       {/* Centre: search */}
       <div
         className={cn(
           'flex items-center gap-2 rounded-lg border bg-black/5 dark:bg-white/5 px-3 py-1.5 transition-all backdrop-blur-md',
           searchFocused
-            ? 'border-blue-500/60 ring-1 ring-blue-500/20'
+            ? 'border-amber-500/60 ring-1 ring-amber-500/20'
             : 'border-black/10 dark:border-white/10',
           !title && 'mx-auto w-full max-w-sm',
           title && 'flex-1 mx-6 max-w-md',
@@ -68,17 +66,13 @@ export function Header({ title }: HeaderProps) {
           aria-label="Toggle theme"
           suppressHydrationWarning
         >
-          {mounted && theme === 'dark' ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
+          {mounted && theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
 
         {/* New item */}
         <button
           type="button"
-          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-blue-500 active:scale-95"
+          className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-amber-500/20 transition-all hover:bg-amber-500 active:scale-95"
         >
           <Plus className="h-3.5 w-3.5" />
           New
@@ -118,8 +112,18 @@ export function Header({ title }: HeaderProps) {
                   <p className="text-xs text-slate-500 dark:text-zinc-500">{user?.email}</p>
                 </div>
                 <div className="p-1.5">
-                  <MenuLink icon={User} label="Profile" href="/settings/profile" onClick={() => setMenuOpen(false)} />
-                  <MenuLink icon={Zap} label="Upgrade plan" href="/billing" onClick={() => setMenuOpen(false)} />
+                  <MenuLink
+                    icon={User}
+                    label="Profile"
+                    href="/settings/profile"
+                    onClick={() => setMenuOpen(false)}
+                  />
+                  <MenuLink
+                    icon={Zap}
+                    label="Upgrade plan"
+                    href="/billing"
+                    onClick={() => setMenuOpen(false)}
+                  />
                 </div>
                 <div className="border-t border-black/10 dark:border-white/10 p-1.5">
                   <button

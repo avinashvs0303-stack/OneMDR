@@ -37,8 +37,8 @@ const MODULES: Module[] = [
       'MITRE ATT&CK-mapped detection engineering. Deploy, tune, and monitor rules across every SIEM in your stack.',
     icon: ShieldCheck,
     href: '/dashboard',
-    color: 'border-indigo-500/30 hover:border-indigo-500/60 hover:shadow-indigo-500/10',
-    iconBg: 'bg-indigo-500/10 text-indigo-400',
+    color: 'border-amber-500/30 hover:border-amber-500/60 hover:shadow-amber-500/10',
+    iconBg: 'bg-amber-500/10 text-amber-400',
     active: true,
     badge: 'Active',
   },
@@ -146,7 +146,7 @@ export default function ModulesPage() {
                     className={cn(
                       'absolute right-4 top-4 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black tracking-widest uppercase',
                       mod.active
-                        ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                         : 'bg-muted text-muted-foreground border border-border',
                     )}
                   >
@@ -176,7 +176,7 @@ export default function ModulesPage() {
 
                 {/* CTA */}
                 {mod.active && (
-                  <div className="flex items-center gap-1 text-sm font-medium text-indigo-400 group-hover:text-indigo-300 transition-colors">
+                  <div className="flex items-center gap-1 text-sm font-medium text-amber-400 group-hover:text-amber-300 transition-colors">
                     Open {mod.abbr}{' '}
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                   </div>

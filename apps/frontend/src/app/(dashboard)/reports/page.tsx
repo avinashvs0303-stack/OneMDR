@@ -90,9 +90,9 @@ export default function ReportsPage() {
     <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
       <Header title="Executive Bulletins" />
       <main className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-        <div className="rounded-xl border border-blue-500/20 bg-blue-50 dark:bg-blue-500/5 backdrop-blur-md p-5">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 backdrop-blur-md p-5">
           <div className="flex items-start gap-3">
-            <FileText className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+            <FileText className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-slate-900 dark:text-white">
                 Weekly Detection Briefs
@@ -114,7 +114,7 @@ export default function ReportsPage() {
             >
               <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 px-5 py-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 border border-blue-500/20 text-blue-600 dark:text-blue-400">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 border border-amber-500/20 text-amber-600 dark:text-amber-400">
                     <FileText className="h-4 w-4" />
                   </div>
                   <div>
@@ -160,7 +160,7 @@ export default function ReportsPage() {
                   <Metric
                     label="Updated"
                     value={String(report.updated)}
-                    color="text-blue-600 dark:text-blue-400"
+                    color="text-amber-600 dark:text-amber-400"
                   />
                   <Metric
                     label="FP Δ"

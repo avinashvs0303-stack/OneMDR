@@ -63,7 +63,7 @@ export default function TenantRequestsPage() {
               className={cn(
                 'rounded-lg px-3 py-1.5 text-xs font-black tracking-widest uppercase transition-all',
                 filter === s
-                  ? 'bg-indigo-600 text-white shadow'
+                  ? 'bg-amber-600 text-white shadow'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80',
               )}
             >
@@ -284,7 +284,7 @@ function RequestCard({ request, onRefresh }: { request: TenantRequest; onRefresh
                           planType: e.target.value as ApprovePayload['planType'],
                         }))
                       }
-                      className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                     >
                       {PLANS.map((p) => (
                         <option key={p}>{p}</option>
@@ -301,7 +301,7 @@ function RequestCard({ request, onRefresh }: { request: TenantRequest; onRefresh
                       onChange={(e) =>
                         setApproveForm((p) => ({ ...p, maxUsers: Number(e.target.value) }))
                       }
-                      className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                     />
                   </div>
                 </div>
@@ -317,8 +317,8 @@ function RequestCard({ request, onRefresh }: { request: TenantRequest; onRefresh
                         className={cn(
                           'rounded-full px-2.5 py-1 text-xs font-semibold border transition-all',
                           approveForm.licenseModules.includes(mod)
-                            ? 'bg-indigo-600 border-indigo-600 text-white'
-                            : 'border-border text-muted-foreground hover:border-indigo-500',
+                            ? 'bg-amber-600 border-amber-600 text-white'
+                            : 'border-border text-muted-foreground hover:border-amber-500',
                         )}
                       >
                         {mod}
@@ -340,7 +340,7 @@ function RequestCard({ request, onRefresh }: { request: TenantRequest; onRefresh
                         licenseExpiresAt: e.target.value ? `${e.target.value}T23:59:59Z` : '',
                       }))
                     }
-                    className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                   />
                 </div>
 
@@ -350,7 +350,7 @@ function RequestCard({ request, onRefresh }: { request: TenantRequest; onRefresh
                     rows={2}
                     value={approveForm.adminNotes ?? ''}
                     onChange={(e) => setApproveForm((p) => ({ ...p, adminNotes: e.target.value }))}
-                    className="w-full resize-none rounded-lg border border-border bg-background px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full resize-none rounded-lg border border-border bg-background px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                   />
                 </div>
 

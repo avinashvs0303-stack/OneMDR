@@ -149,7 +149,7 @@ export function LoginForm() {
               'shadow-sm outline-none transition-all focus:ring-2',
               errors.email
                 ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
-                : 'border-border focus:border-indigo-500 focus:ring-indigo-500/20',
+                : 'border-border focus:border-amber-500 focus:ring-amber-500/20',
             )}
           />
           {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
@@ -163,7 +163,7 @@ export function LoginForm() {
             </label>
             <Link
               href="/auth/forgot-password"
-              className="text-xs font-medium text-indigo-600 hover:underline underline-offset-4 dark:text-indigo-400"
+              className="text-xs font-medium text-amber-600 hover:underline underline-offset-4 dark:text-amber-400"
               tabIndex={-1}
             >
               Forgot password?
@@ -181,7 +181,7 @@ export function LoginForm() {
                 'shadow-sm outline-none transition-all focus:ring-2',
                 errors.password
                   ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
-                  : 'border-border focus:border-indigo-500 focus:ring-indigo-500/20',
+                  : 'border-border focus:border-amber-500 focus:ring-amber-500/20',
               )}
             />
             <button
@@ -202,7 +202,7 @@ export function LoginForm() {
             id="rememberMe"
             type="checkbox"
             {...register('rememberMe')}
-            className="h-4 w-4 rounded border-border accent-indigo-600"
+            className="h-4 w-4 rounded border-border accent-amber-600"
           />
           <label htmlFor="rememberMe" className="text-sm text-muted-foreground select-none">
             Keep me signed in for 30 days
@@ -214,7 +214,7 @@ export function LoginForm() {
           disabled={isSubmitting || ssoLoading !== null}
           className={cn(
             'flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all',
-            'bg-indigo-600 hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600',
+            'bg-amber-600 hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600',
             'disabled:cursor-not-allowed disabled:opacity-50',
           )}
         >

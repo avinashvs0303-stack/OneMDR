@@ -51,8 +51,8 @@ function MfaForm() {
   return (
     <div className="w-full max-w-sm space-y-8">
       <div className="flex flex-col items-center gap-3 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-500/10">
-          <ShieldCheck className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-500/10">
+          <ShieldCheck className="h-7 w-7 text-amber-600 dark:text-amber-400" />
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -97,7 +97,7 @@ function MfaForm() {
               'shadow-sm outline-none transition-all focus:ring-2',
               errors.code
                 ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
-                : 'border-border focus:border-indigo-500 focus:ring-indigo-500/20',
+                : 'border-border focus:border-amber-500 focus:ring-amber-500/20',
             )}
           />
           {errors.code && <p className="text-xs text-red-500">{errors.code.message}</p>}
@@ -108,7 +108,7 @@ function MfaForm() {
           disabled={isSubmitting}
           className={cn(
             'flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white',
-            'bg-indigo-600 hover:bg-indigo-500 transition-all',
+            'bg-amber-600 hover:bg-amber-500 transition-all',
             'disabled:cursor-not-allowed disabled:opacity-50',
           )}
         >
@@ -125,7 +125,7 @@ function MfaForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Can&apos;t access your authenticator?{' '}
-        <span className="text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline underline-offset-4">
+        <span className="text-amber-600 dark:text-amber-400 cursor-pointer hover:underline underline-offset-4">
           Use a backup code
         </span>
       </p>
