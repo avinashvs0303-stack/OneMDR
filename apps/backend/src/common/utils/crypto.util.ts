@@ -58,7 +58,7 @@ export function encrypt(plaintext: string, keyHex: string): string {
 
   const iv = crypto.randomBytes(IV_LEN);
   const cipher = crypto.createCipheriv(CIPHER, key, iv) as crypto.CipherGCM;
-  cipher.setAAD(Buffer.from('clarbit-v1'));
+  cipher.setAAD(Buffer.from('onemdr-v1'));
 
   const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const authTag = cipher.getAuthTag();
@@ -84,7 +84,7 @@ export function decrypt(ciphertext: string, keyHex: string): string {
 
   const decipher = crypto.createDecipheriv(CIPHER, key, iv) as crypto.DecipherGCM;
   decipher.setAuthTag(authTag);
-  decipher.setAAD(Buffer.from('clarbit-v1'));
+  decipher.setAAD(Buffer.from('onemdr-v1'));
 
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
 }

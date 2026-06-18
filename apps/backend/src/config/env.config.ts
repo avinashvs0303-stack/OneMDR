@@ -9,7 +9,7 @@ const envSchema = z.object({
   // ── App ────────────────────────────────────────────────────────────────────
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
-  APP_NAME: z.string().default('Clarbit'),
+  APP_NAME: z.string().default('OneMDR'),
   API_PREFIX: z.string().default('api/v1'),
 
   // ── Database ────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
     const formatted = result.error.issues
       .map((issue) => `  • ${issue.path.join('.')}: ${issue.message}`)
       .join('\n');
-    // eslint-disable-next-line no-console
+
     console.error(`\n❌ Invalid environment variables:\n${formatted}\n`);
     process.exit(1);
   }
@@ -72,9 +72,8 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
       }
     }
     if (warnFields.length > 0) {
-      // eslint-disable-next-line no-console
       console.warn(`\n⚠️  Placeholder secrets detected in: ${warnFields.join(', ')}`);
-      // eslint-disable-next-line no-console
+
       console.warn('   Run: openssl rand -hex 32  to generate real secrets.\n');
     }
   }

@@ -36,12 +36,12 @@ interface AuthStore {
 /** Mock user for dev bypass mode. */
 export const DEV_MOCK_USER: AuthUser = {
   id: 'dev-00000000-0000-0000-0000-000000000001',
-  email: 'owner@demo.clarbit.com',
+  email: 'owner@demo.onemdr.com',
   firstName: 'Alice',
   lastName: 'Owner',
   role: 'OWNER',
   tenantId: 'dev-00000000-0000-0000-0000-000000000000',
-  tenantName: 'Clarbit Demo',
+  tenantName: 'OneMDR Demo',
   mfaEnabled: false,
 };
 
@@ -120,7 +120,7 @@ export const useAuthStore = create<AuthStore>()(
       },
     }),
     {
-      name: 'clarbit-auth',
+      name: 'onemdr-auth',
       storage: createJSONStorage(() => sessionStorage),
       // Persist user identity + token (token needed for API Authorization header)
       partialize: (state) => ({

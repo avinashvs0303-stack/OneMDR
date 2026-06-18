@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  LayoutGrid,
   LayoutDashboard,
   ShieldCheck,
   Target,
@@ -13,17 +14,17 @@ import {
   Users,
   Settings,
   Building2,
-  Compass,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/store/auth.store';
 import { getInitials } from '@/lib/utils';
 
-const MAIN_NAV = [
+const DAAS_NAV = [
   { label: 'SOC Command Center', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Detection Library', href: '/detections', icon: ShieldCheck },
   { label: 'ATT&CK Navigator', href: '/coverage', icon: Target },
-  { label: 'SIEM Ingest Monitors', href: '/siem', icon: Database },
+  { label: 'SIEM Monitors', href: '/siem', icon: Database },
   { label: 'Threat Hunt Missions', href: '/hunts', icon: Search },
   { label: 'Executive Bulletins', href: '/reports', icon: FileText },
 ];
@@ -33,32 +34,83 @@ const OPS_NAV = [
   { label: 'Notifications', href: '/notifications', icon: Bell },
 ];
 
+const DAAS_PATHS = DAAS_NAV.map((n) => n.href);
+
 export function Sidebar() {
   const pathname = usePathname();
   const user = useCurrentUser();
+  const inDaaS = DAAS_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  const inModules = pathname === '/modules';
 
   return (
     <aside className="flex h-full w-64 flex-col bg-white/80 dark:bg-black/40 border-r border-black/10 dark:border-white/10 backdrop-blur-xl shrink-0">
-      {/* ── Platform Identity ────────────────────────────────────── */}
-      <div className="flex items-center gap-2.5 border-b border-black/10 dark:border-white/10 px-5 py-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-500/30">
-          <Compass className="h-4 w-4" />
+      {/* ── Brand ──────────────────────────────────────────────────── */}
+      <Link
+        href="/modules"
+        className="flex items-center gap-2.5 border-b border-black/10 dark:border-white/10 px-5 py-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-black shadow-lg shadow-indigo-500/30">
+          M
         </div>
         <div>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">DaaS Command</h2>
-          <p className="text-[10px] text-slate-400 dark:text-zinc-500">SOC SECURE SUITE</p>
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+            OneMDR
+          </h2>
+          <p className="text-[10px] text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
+            Platform
+          </p>
         </div>
-      </div>
+      </Link>
 
+      {/* ── Module breadcrumb (when inside DaaS) ────────────────────── */}
+      {inDaaS && (
+        <div className="flex items-center gap-1.5 border-b border-black/10 dark:border-white/10 px-4 py-2.5">
+          <Link
+            href="/modules"
+            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Modules
+          </Link>
+          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+          <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">
+            DaaS
+          </span>
+        </div>
+      )}
 
-      {/* ── Nav ─────────────────────────────────────────────────── */}
+      {/* ── Nav ─────────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+        {/* Module hub link — always visible */}
         <div>
           <span className="block px-2.5 pb-1.5 text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold">
-            OPERATIONAL VIEWS
+            Home
+          </span>
+          <Link
+            href="/modules"
+            className={cn(
+              'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
+              inModules
+                ? 'bg-indigo-50 border-indigo-200 text-indigo-900 font-semibold dark:bg-indigo-500/10 dark:border-indigo-500/20 dark:text-indigo-300'
+                : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
+            )}
+          >
+            <LayoutGrid
+              className={cn(
+                'h-4 w-4 shrink-0',
+                inModules ? 'text-indigo-500' : 'text-slate-400 dark:text-zinc-500',
+              )}
+            />
+            Module Hub
+          </Link>
+        </div>
+
+        {/* DaaS nav — shown when inside DaaS or always */}
+        <div>
+          <span className="block px-2.5 pb-1.5 text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold">
+            Detection as a Service
           </span>
           <ul className="space-y-0.5">
-            {MAIN_NAV.map(({ label, href, icon: Icon }) => {
+            {DAAS_NAV.map(({ label, href, icon: Icon }) => {
               const active = pathname === href || pathname.startsWith(href + '/');
               return (
                 <li key={href}>
@@ -71,7 +123,14 @@ export function Sidebar() {
                         : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
                     )}
                   >
-                    <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-blue-700 dark:text-white' : 'text-slate-400 dark:text-zinc-500')} />
+                    <Icon
+                      className={cn(
+                        'h-4 w-4 shrink-0',
+                        active
+                          ? 'text-blue-700 dark:text-white'
+                          : 'text-slate-400 dark:text-zinc-500',
+                      )}
+                    />
                     {label}
                   </Link>
                 </li>
@@ -82,7 +141,7 @@ export function Sidebar() {
 
         <div>
           <span className="block px-2.5 pb-1.5 text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold">
-            OPERATIONS
+            Operations
           </span>
           <ul className="space-y-0.5">
             {OPS_NAV.map(({ label, href, icon: Icon }) => {
@@ -98,7 +157,14 @@ export function Sidebar() {
                         : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
                     )}
                   >
-                    <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-blue-700 dark:text-white' : 'text-slate-400 dark:text-zinc-500')} />
+                    <Icon
+                      className={cn(
+                        'h-4 w-4 shrink-0',
+                        active
+                          ? 'text-blue-700 dark:text-white'
+                          : 'text-slate-400 dark:text-zinc-500',
+                      )}
+                    />
                     {label}
                   </Link>
                 </li>
@@ -108,9 +174,22 @@ export function Sidebar() {
         </div>
       </nav>
 
-
-      {/* ── Bottom nav + profile ─────────────────────────────────── */}
+      {/* ── Bottom: admin + settings + profile ──────────────────────── */}
       <div className="border-t border-black/10 dark:border-white/10 px-3 py-3 space-y-0.5">
+        {user?.role === 'SUPER_ADMIN' && (
+          <Link
+            href="/admin/tenant-requests"
+            className={cn(
+              'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
+              pathname.startsWith('/admin')
+                ? 'bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-300'
+                : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
+            )}
+          >
+            <Building2 className="h-4 w-4 shrink-0 text-amber-400" />
+            Tenant Requests
+          </Link>
+        )}
         {(user?.role === 'OWNER' || user?.role === 'ADMIN') && (
           <Link
             href="/tenants"
@@ -122,7 +201,7 @@ export function Sidebar() {
             )}
           >
             <Building2 className="h-4 w-4 shrink-0 text-slate-400 dark:text-zinc-500" />
-            Multi-Tenant Operators
+            Organisation
           </Link>
         )}
         <Link
@@ -133,7 +212,7 @@ export function Sidebar() {
           Settings
         </Link>
         <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 mt-1">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
             {user ? getInitials(user.firstName, user.lastName) : 'U'}
           </div>
           <div className="min-w-0 flex-1">

@@ -41,7 +41,7 @@ function MfaForm() {
     try {
       const session = await verifyMfaLogin({ mfaToken, code: data.code });
       setSession(session.user, session.accessToken);
-      router.push('/dashboard');
+      router.push('/modules');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Invalid code. Please try again.';
       setServerError(msg);

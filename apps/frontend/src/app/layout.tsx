@@ -12,10 +12,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Clarbit DaaS',
-    template: '%s | Clarbit',
+    default: 'OneMDR',
+    template: '%s | OneMDR',
   },
-  description: 'Detection as a Service — MITRE ATT&CK-mapped detections, multi-SIEM, SOC operations.',
+  description: 'OneMDR — Detection as a Service, Threat Hunting as a Service, and more.',
   robots: {
     index: false,
     follow: false,

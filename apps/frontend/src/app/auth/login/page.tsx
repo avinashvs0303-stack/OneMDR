@@ -12,7 +12,7 @@ export default function LoginPage() {
       {/* Heading */}
       <div className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
-        <p className="text-sm text-muted-foreground">Sign in to your Clarbit workspace</p>
+        <p className="text-sm text-muted-foreground">Sign in to your OneMDR workspace</p>
       </div>
 
       <LoginForm />

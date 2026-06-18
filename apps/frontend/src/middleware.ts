@@ -9,18 +9,13 @@ const PUBLIC_PATHS = [
 ];
 
 const DEV_BYPASS_ENABLED =
-  process.env['NEXT_PUBLIC_DEV_BYPASS_AUTH'] === 'true' &&
-  process.env['NODE_ENV'] !== 'production';
+  process.env['NEXT_PUBLIC_DEV_BYPASS_AUTH'] === 'true' && process.env['NODE_ENV'] !== 'production';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Always pass through Next.js internals and static assets
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname === '/favicon.ico'
-  ) {
+  if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname === '/favicon.ico') {
     return NextResponse.next();
   }
 
@@ -33,7 +28,7 @@ export function middleware(request: NextRequest) {
 
     // Authenticated users visiting auth pages → send to dashboard
     if (isAuthenticated && isPublicPath) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.redirect(new URL('/modules', request.url));
     }
     // Unauthenticated users visiting protected pages → send to login
     if (!isAuthenticated && !isPublicPath) {
@@ -49,7 +44,7 @@ export function middleware(request: NextRequest) {
   const isAuthenticated = Boolean(accessToken);
 
   if (isAuthenticated && isPublicPath) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/modules', request.url));
   }
   if (!isAuthenticated && !isPublicPath) {
     const loginUrl = new URL('/auth/login', request.url);

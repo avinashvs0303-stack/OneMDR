@@ -40,7 +40,7 @@ export function LoginForm() {
 
   const handleDevBypass = () => {
     devBypass();
-    router.push('/dashboard');
+    router.push('/modules');
   };
 
   const handleSSO = (provider: 'google' | 'microsoft') => {
@@ -59,7 +59,7 @@ export function LoginForm() {
         return;
       }
 
-      router.push('/dashboard');
+      router.push('/modules');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed. Please try again.';
       setServerError(msg);

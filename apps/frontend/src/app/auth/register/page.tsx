@@ -55,8 +55,8 @@ export default function RequestAccessPage() {
             Application received
           </h1>
           <p className="text-sm text-muted-foreground">
-            Thank you for your interest in Clarbit. Our team will review your application and
-            contact you at the email you provided within 1–2 business days.
+            Thank you for your interest in OneMDR. Our team will review your application and contact
+            you at the email you provided within 1–2 business days.
           </p>
         </div>
         <Link
@@ -170,7 +170,7 @@ export default function RequestAccessPage() {
 
         {/* Use case */}
         <Field
-          label="How will you use Clarbit?"
+          label="How will you use OneMDR?"
           error={errors.useCase?.message}
           hint="Describe your security environment, current tooling, and what you want to achieve."
         >

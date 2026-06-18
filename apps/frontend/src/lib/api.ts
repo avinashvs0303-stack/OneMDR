@@ -23,7 +23,7 @@ export class ApiRequestError extends Error {
 function getStoredAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = sessionStorage.getItem('clarbit-auth');
+    const raw = sessionStorage.getItem('onemdr-auth');
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { state?: { accessToken?: string } };
     return parsed?.state?.accessToken ?? null;
@@ -54,12 +54,12 @@ async function silentRefresh(): Promise<string | null> {
     const token = body.data.accessToken;
     // Persist new token into session storage so store picks it up
     try {
-      const raw = sessionStorage.getItem('clarbit-auth');
+      const raw = sessionStorage.getItem('onemdr-auth');
       if (raw) {
         const parsed = JSON.parse(raw) as { state?: Record<string, unknown> };
         if (parsed.state) {
           parsed.state['accessToken'] = token;
-          sessionStorage.setItem('clarbit-auth', JSON.stringify(parsed));
+          sessionStorage.setItem('onemdr-auth', JSON.stringify(parsed));
         }
       }
     } catch {
@@ -98,7 +98,7 @@ async function request<T>(path: string, options: RequestInit = {}, _retry = true
     if (newToken) return request<T>(path, options, false);
     // Refresh failed — clear session and redirect to login
     if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('clarbit-auth');
+      sessionStorage.removeItem('onemdr-auth');
       window.location.href = '/auth/login';
     }
   }

@@ -42,7 +42,7 @@ export class SubmitTenantRequestDto {
   @MaxLength(30)
   contactPhone?: string;
 
-  @ApiPropertyOptional({ description: 'What will you use Clarbit for?' })
+  @ApiPropertyOptional({ description: 'What will you use OneMDR for?' })
   @IsOptional()
   @IsString()
   @MaxLength(1000)
