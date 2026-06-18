@@ -66,34 +66,23 @@ async function bootstrap(): Promise<void> {
   });
 
   // ── Trust proxy headers (X-Forwarded-For) for accurate IP logging ──────────
-  // ── CORS + proxy IP — single onRequest hook ───────────────────────────────
-  // @fastify/cors v9 requires Fastify v5; we're on v4. Handle CORS manually
-  // so OPTIONS preflight works regardless of plugin version compatibility.
   const fastifyInstance = app.getHttpAdapter().getInstance();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fastifyInstance.addHook('onRequest', async (req: any, reply: any) => {
-    // Proxy IP
+  fastifyInstance.addHook('onRequest', async (req: any) => {
     const xff = req.headers['x-forwarded-for'] as string | undefined;
     if (xff) req.ip = xff.split(',')[0].trim();
+  });
 
-    // CORS headers
-    const origin = req.headers.origin as string | undefined;
-    if (!origin || origin === frontendUrl) {
-      reply.header('Access-Control-Allow-Origin', origin ?? frontendUrl);
-      reply.header('Access-Control-Allow-Credentials', 'true');
-      reply.header('Access-Control-Expose-Headers', 'X-Request-Id');
-    }
-
-    // Handle preflight — must reply here so Fastify doesn't 404 the OPTIONS
-    if (req.method === 'OPTIONS') {
-      reply.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-      reply.header(
-        'Access-Control-Allow-Headers',
-        'Content-Type,Authorization,X-CSRF-Token,X-Request-Id',
-      );
-      reply.header('Access-Control-Max-Age', '86400');
-      await reply.status(204).send();
-    }
+  // ── CORS — @fastify/cors v8 (Fastify v4 compatible) ───────────────────────
+  app.enableCors({
+    origin: frontendUrl,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Request-Id'],
+    exposedHeaders: ['X-Request-Id'],
+    maxAge: 86400,
+    preflight: true,
+    strictPreflight: false,
   });
 
   // ── Global API prefix (/api/v1) ────────────────────────────────────────────
