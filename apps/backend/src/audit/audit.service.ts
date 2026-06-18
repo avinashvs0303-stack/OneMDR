@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../database/prisma.service';
-import { AuditAction } from '@onemdr/database';
+import { AuditAction, Prisma } from '@onemdr/database';
 
 export interface AuditEventPayload {
   tenantId: string;
@@ -30,7 +30,7 @@ export class AuditService {
           action: payload.action,
           resource: payload.resource,
           resourceId: payload.resourceId,
-          metadata: payload.metadata ?? {},
+          metadata: (payload.metadata ?? {}) as Prisma.InputJsonValue,
           ipAddress: payload.ipAddress,
           userAgent: payload.userAgent,
         },

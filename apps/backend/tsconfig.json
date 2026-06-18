@@ -12,6 +12,8 @@
       "@onemdr/database": ["../../packages/database/src/index.ts"],
       "@onemdr/shared": ["../../packages/shared/src/index.ts"]
     },
+    "declaration": false,
+    "declarationMap": false,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "noUncheckedIndexedAccess": false,

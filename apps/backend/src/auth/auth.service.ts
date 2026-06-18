@@ -9,7 +9,15 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { authenticator } from 'otplib';
+// otplib v13 CJS declarations don't expose named exports — use require
+
+const { authenticator } = require('otplib') as {
+  authenticator: {
+    generateSecret(): string;
+    keyuri(accountName: string, service: string, secret: string): string;
+    check(token: string, secret: string): boolean;
+  };
+};
 import * as QRCode from 'qrcode';
 import { PrismaService } from '../database/prisma.service';
 import { TokenService } from './token.service';
