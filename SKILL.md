@@ -1,4 +1,4 @@
-﻿# OneMDR — Master Skill Reference (by Clarbit)
+# OneMDR — Master Skill Reference (by Clarbit)
 
 > **Always read this file before touching any code in this repo.**  
 > It is the single source of truth for architecture decisions, security rules, workflow commands, and coding conventions.

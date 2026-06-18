@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @onemdr/database — re-exports the generated Prisma client.
  *
  * Usage in other packages:

@@ -1,4 +1,4 @@
-﻿import { SetMetadata } from '@nestjs/common';
+import { SetMetadata } from '@nestjs/common';
 import type { UserRole } from '@onemdr/database';
 
 export const ROLES_KEY = 'roles';

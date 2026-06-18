@@ -1,8 +1,8 @@
 /**
- * @clarbit/database — re-exports the generated Prisma client.
+ * @onemdr/database — re-exports the generated Prisma client.
  *
  * Usage in other packages:
- *   import { PrismaClient, type User, type Tenant, Prisma } from '@clarbit/database';
+ *   import { PrismaClient, type User, type Tenant, Prisma } from '@onemdr/database';
  *
  * Run `pnpm db:generate` after any schema change to regenerate.
  */

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Thin API client — wraps fetch with auth headers, base URL, and error handling.
  * Reads the access token from the auth store and attaches it as Bearer header.
  * On 401, attempts one silent token refresh before propagating the error.
