@@ -14,7 +14,7 @@ export interface AuthUser {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST';
+  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST' | 'SUPER_ADMIN';
   tenantId: string;
   tenantName?: string;
   avatarUrl?: string;
