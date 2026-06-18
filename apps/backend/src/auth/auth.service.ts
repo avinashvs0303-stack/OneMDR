@@ -9,7 +9,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import * as OTPLib from 'otplib';
+import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
 import { PrismaService } from '../database/prisma.service';
 import { TokenService } from './token.service';
@@ -252,9 +252,9 @@ export class AuthService {
       throw new ConflictException('MFA is already enabled');
     }
 
-    const secret = OTPLib.authenticator.generateSecret();
+    const secret = authenticator.generateSecret();
     const encSecret = encrypt(secret, this.encKey);
-    const otpAuthUrl = OTPLib.authenticator.keyuri(user.email, this.appName, secret);
+    const otpAuthUrl = authenticator.keyuri(user.email, this.appName, secret);
     const qrDataUrl = await QRCode.toDataURL(otpAuthUrl);
 
     // Store encrypted secret but don't enable yet — user must verify first
@@ -393,7 +393,7 @@ export class AuthService {
       throw new BadRequestException('MFA is not configured for this account');
     }
     const secret = decrypt(user.mfaSecret, this.encKey);
-    const isValid = OTPLib.authenticator.check(code, secret);
+    const isValid = authenticator.check(code, secret);
     if (!isValid) {
       throw new UnauthorizedException('Invalid or expired TOTP code');
     }

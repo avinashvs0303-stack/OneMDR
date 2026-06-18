@@ -33,7 +33,8 @@ async function bootstrap(): Promise<void> {
   const appName = configService.get<string>('APP_NAME', 'OneMDR');
 
   // ── Security headers (OWASP A05) ───────────────────────────────────────────
-  await app.register(fastifyHelmet, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await app.register(fastifyHelmet as any, {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
@@ -59,18 +60,23 @@ async function bootstrap(): Promise<void> {
   });
 
   // ── Cookie support (for httpOnly refresh tokens) ───────────────────────────
-  await app.register(fastifyCookie, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await app.register(fastifyCookie as any, {
     secret: configService.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
   });
 
   // ── Trust proxy headers (X-Forwarded-For) for accurate IP logging ──────────
   // Required when running behind Netlify Functions / AWS ALB / Render
-  app.getInstance().addHook('onRequest', async (req) => {
-    const xff = req.headers['x-forwarded-for'];
-    if (typeof xff === 'string') {
-      req.ip = xff.split(',')[0].trim();
-    }
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addHook('onRequest', async (req: any) => {
+      const xff = req.headers['x-forwarded-for'];
+      if (typeof xff === 'string') {
+        req.ip = xff.split(',')[0].trim();
+      }
+    });
 
   // ── CORS — strict allowlist (OWASP A05) ───────────────────────────────────
   app.enableCors({

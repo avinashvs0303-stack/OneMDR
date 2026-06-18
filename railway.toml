@@ -1,6 +1,6 @@
 [build]
-builder = "nixpacks"
-buildCommand = "HUSKY=0 pnpm install --frozen-lockfile && pnpm --filter @onemdr/database db:generate && pnpm --filter @onemdr/backend build"
+builder = "RAILPACK"
+buildCommand = "HUSKY=0 pnpm install --frozen-lockfile && pnpm --filter @onemdr/database db:generate && pnpm --filter @onemdr/database build && pnpm --filter @onemdr/shared build && pnpm --filter @onemdr/backend build"
 
 [deploy]
 startCommand = "node apps/backend/dist/main"

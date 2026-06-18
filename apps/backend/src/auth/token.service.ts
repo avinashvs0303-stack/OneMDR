@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
+import { randomUUID } from 'crypto';
 import { generateSecureToken, hashToken } from '../common/utils/crypto.util';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 
@@ -37,8 +38,7 @@ export class TokenService {
     userId: string,
     meta: { ip?: string; device?: string; rememberMe?: boolean },
   ): Promise<string> {
-    const { v4: uuid } = await import('uuid');
-    const familyId = uuid();
+    const familyId = randomUUID();
     return this.createToken(userId, familyId, meta);
   }
 

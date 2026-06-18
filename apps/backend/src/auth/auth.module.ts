@@ -20,7 +20,8 @@ import { AuditModule } from '../audit/audit.module';
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: config.get<string>('JWT_ACCESS_EXPIRES_IN', '15m'),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          expiresIn: config.get<string>('JWT_ACCESS_EXPIRES_IN', '15m') as any,
           issuer: 'onemdr',
           audience: 'onemdr-app',
         },

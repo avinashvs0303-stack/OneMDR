@@ -9,6 +9,9 @@ build/
 .next/
 out/
 
+# Compiled package outputs (built by tsc before backend build)
+packages/*/dist/
+
 # Prisma generated
 packages/database/src/generated/
 

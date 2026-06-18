@@ -6,7 +6,7 @@
     "target": "ES2021",
     "lib": ["ES2021"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDirs": ["./src", "../../packages/database/src", "../../packages/shared/src"],
     "baseUrl": "./",
     "paths": {
       "@onemdr/database": ["../../packages/database/src/index.ts"],
