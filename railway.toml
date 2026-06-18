@@ -1,0 +1,10 @@
+[build]
+builder = "nixpacks"
+buildCommand = "HUSKY=0 pnpm install --frozen-lockfile && pnpm --filter @onemdr/database db:generate && pnpm --filter @onemdr/backend build"
+
+[deploy]
+startCommand = "node apps/backend/dist/main"
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
