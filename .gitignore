@@ -25,7 +25,8 @@ pnpm-debug.log*
 logs/
 
 # Testing
-coverage/
+**/coverage/
+!apps/frontend/src/app/**/coverage/
 .nyc_output/
 
 # OS
