@@ -1,6 +1,0 @@
-[[redirects]]
-  from = "/api/*"
-  to = "https://onemdrbackend-production.up.railway.app/api/:splat"
-  status = 200
-  force = true
-  headers = {X-From = "Netlify"}
