@@ -27,9 +27,14 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const tenantId = appMeta['tenant_id'] as string | undefined;
     const appRole = appMeta['app_role'] as string | undefined;
 
-    if (!tenantId || !appRole) {
-      // User exists in Supabase Auth but has no tenant provisioned yet.
-      // This happens if someone signs up via OAuth without being invited first.
+    if (!appRole) {
+      throw new UnauthorizedException(
+        'Account not provisioned. Please contact your administrator.',
+      );
+    }
+
+    // SUPER_ADMIN is vendor-level — no tenant scoping required
+    if (appRole !== 'SUPER_ADMIN' && !tenantId) {
       throw new UnauthorizedException(
         'Account not provisioned. Please contact your administrator.',
       );

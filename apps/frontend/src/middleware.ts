@@ -10,6 +10,7 @@ const AUTH_PATHS = [
   '/auth/set-password',
   '/auth/verify-email',
   '/auth/callback',
+  '/request-access',
 ];
 
 const ADMIN_PUBLIC_PATHS = ['/admin/login'];
