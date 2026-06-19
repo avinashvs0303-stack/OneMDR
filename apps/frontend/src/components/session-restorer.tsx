@@ -22,7 +22,7 @@ export function SessionRestorer() {
     // Hydrate from the current session on mount (handles hard refresh / new tab)
     void supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setSession(mapSupabaseSession(session.user, session), session.access_token);
+        setSession(mapSupabaseSession(session.user), session.access_token);
       }
     });
 
@@ -31,7 +31,7 @@ export function SessionRestorer() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        setSession(mapSupabaseSession(session.user, session), session.access_token);
+        setSession(mapSupabaseSession(session.user), session.access_token);
       } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
         clearSession();
       }

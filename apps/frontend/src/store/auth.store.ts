@@ -45,8 +45,8 @@ export const DEV_MOCK_USER: AuthUser = {
 const DEV_BYPASS_ENABLED =
   process.env['NEXT_PUBLIC_DEV_BYPASS_AUTH'] === 'true' && process.env['NODE_ENV'] !== 'production';
 
-/** Map a Supabase User + Session to our AuthUser shape. */
-export function mapSupabaseSession(user: SupabaseUser, _session?: Session): AuthUser {
+/** Map a Supabase User to our AuthUser shape. */
+export function mapSupabaseSession(user: SupabaseUser): AuthUser {
   const appMeta = (user.app_metadata ?? {}) as Record<string, unknown>;
   const userMeta = (user.user_metadata ?? {}) as Record<string, unknown>;
 
@@ -97,7 +97,7 @@ export const useAuthStore = create<AuthStore>()((set) => ({
         );
       }
 
-      const user = mapSupabaseSession(data.user, data.session);
+      const user = mapSupabaseSession(data.user);
 
       // Guard: user must have a provisioned tenant (set via app_metadata by Railway on approval)
       if (!user.tenantId) {
