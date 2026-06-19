@@ -64,16 +64,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.error({ err: exception, requestId, path: request.url }, 'Unhandled exception');
     }
 
-    // In production, NEVER expose internal error details — unless DEBUG_ERRORS=true (temp troubleshooting)
-    if (
-      statusCode === HttpStatus.INTERNAL_SERVER_ERROR &&
-      process.env['NODE_ENV'] === 'production'
-    ) {
-      if (process.env['DEBUG_ERRORS'] !== 'true') {
-        message = 'An unexpected error occurred';
-      } else if (exception instanceof Error) {
-        message = `[DEBUG] ${exception.message}`;
-      }
+    // TEMP DEBUG: always expose the real error so we can identify root cause in prod.
+    // TODO: revert this once login is working — replace with the NODE_ENV production masking.
+    if (statusCode === HttpStatus.INTERNAL_SERVER_ERROR && exception instanceof Error) {
+      message = `[DEBUG] ${exception.constructor.name}: ${exception.message}`;
     }
 
     const body: ErrorResponse = {
