@@ -14,10 +14,11 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
-      // Disable Fastify's built-in logger — nestjs-pino takes over
       logger: false,
-      // Security: limit request body size to 10MB
       bodyLimit: 10 * 1024 * 1024,
+      // Tell Fastify to trust X-Forwarded-For from Railway's proxy layer
+      // so req.ip returns the real client IP (req.ip is a getter — cannot assign to it directly)
+      trustProxy: true,
     }),
     { bufferLogs: true },
   );
@@ -63,14 +64,6 @@ async function bootstrap(): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await app.register(fastifyCookie as any, {
     secret: configService.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
-  });
-
-  // ── Trust proxy headers (X-Forwarded-For) for accurate IP logging ──────────
-  const fastifyInstance = app.getHttpAdapter().getInstance();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fastifyInstance.addHook('onRequest', async (req: any) => {
-    const xff = req.headers['x-forwarded-for'] as string | undefined;
-    if (xff) req.ip = xff.split(',')[0].trim();
   });
 
   // ── CORS — @fastify/cors v8 (Fastify v4 compatible) ───────────────────────
