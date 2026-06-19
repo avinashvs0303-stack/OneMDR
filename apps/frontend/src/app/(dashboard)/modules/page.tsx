@@ -122,9 +122,7 @@ export default function ModulesPage() {
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
             Welcome{user?.firstName ? `, ${user.firstName}` : ''}.
           </h2>
-          <p className="text-sm text-muted-foreground">
-            {user?.tenantName} · Select a module to get started.
-          </p>
+          <p className="text-sm text-muted-foreground">Select a module to get started.</p>
         </div>
 
         {/* Module grid */}

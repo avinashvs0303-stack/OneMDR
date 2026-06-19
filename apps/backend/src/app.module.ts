@@ -9,6 +9,7 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { TenantRequestsModule } from './tenant-requests/tenant-requests.module';
+import { AdminModule } from './admin/admin.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -80,8 +81,9 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     HealthModule,
 
     // ── Feature modules ──────────────────────────────────────────────────────
-    AuthModule, // Step 1
-    TenantRequestsModule, // Step 2 ← active
+    AuthModule,
+    TenantRequestsModule,
+    AdminModule,
     // TenantsModule,     ← Step 2
     // UsersModule,       ← Step 2
     // WorkspacesModule,  ← Step 3

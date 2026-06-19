@@ -32,7 +32,7 @@ export function SessionRestorer() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         setSession(mapSupabaseSession(session.user), session.access_token);
-      } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+      } else if (event === 'SIGNED_OUT' || (event as string) === 'USER_DELETED') {
         clearSession();
       }
     });
