@@ -34,7 +34,7 @@ export class TenantRequestsController {
 
   @Public()
   @Post()
-  @Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 submissions per hour per IP
+  @Throttle({ default: { limit: 10, ttl: 3600000 } }) // 10 submissions per hour per IP
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Submit a new tenant access request (public)' })
   async submit(@Body() dto: SubmitTenantRequestDto, @Req() req: FastifyRequest) {
