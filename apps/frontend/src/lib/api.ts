@@ -92,8 +92,9 @@ async function request<T>(path: string, options: RequestInit = {}, _retry = true
     credentials: 'include',
   });
 
-  // Silent refresh on first 401
-  if (res.status === 401 && _retry && path !== '/auth/refresh') {
+  // Silent refresh on first 401 — but NOT for login/logout, where 401 means wrong credentials
+  const SKIP_SILENT_REFRESH = ['/auth/refresh', '/auth/login', '/auth/logout'];
+  if (res.status === 401 && _retry && !SKIP_SILENT_REFRESH.some((p) => path.endsWith(p))) {
     const newToken = await silentRefresh();
     if (newToken) return request<T>(path, options, false);
     // Refresh failed — clear session and redirect to login

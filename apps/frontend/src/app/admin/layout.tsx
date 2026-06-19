@@ -14,19 +14,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const logout = useAuthStore((s) => s.logout);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/auth/login');
-      return;
-    }
-    const isClarbit = user?.email?.toLowerCase().endsWith('@clarbit.com') ?? false;
-    if (user?.role !== 'SUPER_ADMIN' || !isClarbit) {
-      router.push('/modules');
-    }
-  }, [user, isAuthenticated, router]);
-
   const isClarbit = user?.email?.toLowerCase().endsWith('@clarbit.com') ?? false;
-  if (!isAuthenticated || user?.role !== 'SUPER_ADMIN' || !isClarbit) {
+
+  useEffect(() => {
+    // Don't redirect while session may still be restoring (SessionRestorer handles that)
+    if (!isAuthenticated) return;
+    if (user?.role !== 'SUPER_ADMIN' || !isClarbit) {
+      router.replace('/modules');
+    }
+  }, [user, isAuthenticated, isClarbit, router]);
+
+  // Wait for session to be established
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  // Block non-admin access
+  if (user?.role !== 'SUPER_ADMIN' || !isClarbit) {
     return null;
   }
 
