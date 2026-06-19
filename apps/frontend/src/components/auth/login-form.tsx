@@ -11,7 +11,6 @@ import { GoogleIcon } from '@/components/icons/google-icon';
 import { MicrosoftIcon } from '@/components/icons/microsoft-icon';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
-import { supabase } from '@/lib/supabase';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -28,8 +27,8 @@ export function LoginForm() {
   const devBypass = useAuthStore((s) => s.devBypass);
 
   const [showPassword, setShowPassword] = useState(false);
-  const [ssoLoading, setSsoLoading] = useState<'google' | 'microsoft' | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [ssoNotice, setSsoNotice] = useState(false);
 
   const {
     register,
@@ -42,25 +41,8 @@ export function LoginForm() {
     router.push('/modules');
   };
 
-  const handleSSO = async (provider: 'google' | 'microsoft') => {
-    setSsoLoading(provider);
-    setServerError(null);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: provider === 'microsoft' ? 'azure' : 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) {
-        setServerError(error.message);
-        setSsoLoading(null);
-      }
-      // On success: Supabase redirects the browser — no further action needed here
-    } catch {
-      setServerError('SSO failed. Please try again.');
-      setSsoLoading(null);
-    }
+  const handleSSO = () => {
+    setSsoNotice(true);
   };
 
   const onSubmit = async (data: LoginValues) => {
@@ -99,19 +81,27 @@ export function LoginForm() {
       {/* ── SSO Buttons ────────────────────────────────────────────────── */}
       <div className="space-y-3">
         <SSOButton
-          onClick={() => void handleSSO('google')}
-          loading={ssoLoading === 'google'}
-          disabled={ssoLoading !== null || isSubmitting}
+          onClick={handleSSO}
           icon={<GoogleIcon className="h-4 w-4" />}
           label="Continue with Google"
         />
         <SSOButton
-          onClick={() => void handleSSO('microsoft')}
-          loading={ssoLoading === 'microsoft'}
-          disabled={ssoLoading !== null || isSubmitting}
+          onClick={handleSSO}
           icon={<MicrosoftIcon className="h-4 w-4" />}
           label="Continue with Microsoft"
         />
+        {ssoNotice && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-400">
+            SSO is not available yet.{' '}
+            <a
+              href="/request-access"
+              className="font-semibold underline underline-offset-2 hover:opacity-80"
+            >
+              Request access
+            </a>{' '}
+            to get started with OneMDR.
+          </div>
+        )}
       </div>
 
       {/* ── Divider ────────────────────────────────────────────────────── */}
@@ -206,7 +196,7 @@ export function LoginForm() {
 
         <button
           type="submit"
-          disabled={isSubmitting || ssoLoading !== null}
+          disabled={isSubmitting}
           className={cn(
             'flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all',
             'bg-amber-600 hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600',
@@ -227,29 +217,30 @@ export function LoginForm() {
   );
 }
 
-interface SSOButtonProps {
+function SSOButton({
+  onClick,
+  icon,
+  label,
+}: {
   onClick: () => void;
-  loading: boolean;
-  disabled: boolean;
   icon: React.ReactNode;
   label: string;
-}
-
-function SSOButton({ onClick, loading, disabled, icon, label }: SSOButtonProps) {
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
       className={cn(
         'flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-background px-4 py-2.5',
-        'text-sm font-medium text-foreground shadow-sm transition-all',
-        'hover:bg-accent hover:text-accent-foreground',
-        'disabled:cursor-not-allowed disabled:opacity-50',
+        'text-sm font-medium text-muted-foreground shadow-sm transition-all',
+        'hover:bg-accent cursor-pointer opacity-60 hover:opacity-80',
       )}
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : icon}
+      <span className="opacity-60">{icon}</span>
       {label}
+      <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        Coming soon
+      </span>
     </button>
   );
 }
