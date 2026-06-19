@@ -74,8 +74,6 @@ async function bootstrap(): Promise<void> {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Request-Id'],
     exposedHeaders: ['X-Request-Id'],
     maxAge: 86400,
-    preflight: true,
-    strictPreflight: false,
   });
 
   // ── Global API prefix (/api/v1) ────────────────────────────────────────────
