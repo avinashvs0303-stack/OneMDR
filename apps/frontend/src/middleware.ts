@@ -40,12 +40,14 @@ export function middleware(request: NextRequest) {
   }
 
   // ── Production: session cookie check ─────────────────────────────────────
-  // onemdr_session is a non-httpOnly cookie set by the backend on login and
-  // cleared by BOTH the backend (logout response) AND client JS (clearSession).
-  // This makes logout reliable even when the backend call fails.
-  // The httpOnly refresh_token is used only for silent token rotation.
+  // Primary: onemdr_session — non-httpOnly, cleared by JS on logout immediately.
+  // Fallback: refresh_token — httpOnly, for sessions created before the onemdr_session
+  //   cookie was introduced (backward compat during Railway deployment transition).
+  // Once all sessions are refreshed, refresh_token becomes the silent-refresh
+  // mechanism only and onemdr_session is the sole routing signal.
   const sessionCookie = request.cookies.get('onemdr_session');
-  const isAuthenticated = Boolean(sessionCookie);
+  const legacyCookie = request.cookies.get('refresh_token');
+  const isAuthenticated = Boolean(sessionCookie) || Boolean(legacyCookie);
 
   if (isAuthenticated && isPublicPath) {
     return NextResponse.redirect(new URL('/modules', request.url));
