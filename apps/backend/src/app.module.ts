@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { LoggerModule } from 'nestjs-pino';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { validateEnv } from './config/env.config';
 import { DatabaseModule } from './database/database.module';
@@ -11,6 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { TenantRequestsModule } from './tenant-requests/tenant-requests.module';
 import { AdminModule } from './admin/admin.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
 
 @Module({
   imports: [
@@ -95,7 +96,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
   ],
   providers: [
     // Apply rate limiting globally (individual routes can override with @Throttle)
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: HttpThrottlerGuard },
     // Apply JWT auth globally — routes opt out with @Public()
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
