@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle } from '@nestjs/throttler';
 import { TenantRequestsService } from './tenant-requests.service';
 import { SubmitTenantRequestDto } from './dto/submit-tenant-request.dto';
 import { ApproveTenantRequestDto, RejectTenantRequestDto } from './dto/approve-tenant-request.dto';
@@ -33,8 +33,8 @@ export class TenantRequestsController {
   // ── Public: submit application ────────────────────────────────────────────
 
   @Public()
+  @SkipThrottle()
   @Post()
-  @Throttle({ default: { limit: 10, ttl: 3600000 } }) // 10 submissions per hour per IP
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Submit a new tenant access request (public)' })
   async submit(@Body() dto: SubmitTenantRequestDto, @Req() req: FastifyRequest) {
