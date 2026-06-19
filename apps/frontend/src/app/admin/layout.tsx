@@ -25,11 +25,13 @@ const NAV = [
     match: (p: string) => p === '/admin/overview' || p === '/admin',
   },
   {
-    label: 'Requests',
-    href: '/admin/requests',
+    label: 'Leads',
+    href: '/admin/leads',
     icon: Users,
-    match: (p: string) => p.startsWith('/admin/requests') || p.startsWith('/admin/tenant-requests'),
-    badge: 'pending' as const,
+    match: (p: string) =>
+      p.startsWith('/admin/leads') ||
+      p.startsWith('/admin/requests') ||
+      p.startsWith('/admin/tenant-requests'),
   },
   {
     label: 'Tenants',

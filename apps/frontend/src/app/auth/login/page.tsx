@@ -18,12 +18,12 @@ export default function LoginPage() {
       <LoginForm />
 
       <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{' '}
+        Interested in OneMDR?{' '}
         <Link
-          href="/auth/register"
+          href="/request-access"
           className="font-medium text-amber-600 underline-offset-4 hover:underline dark:text-amber-400"
         >
-          Create one free
+          Request access →
         </Link>
       </p>
     </div>

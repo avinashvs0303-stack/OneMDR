@@ -81,18 +81,18 @@ export default function AdminOverviewPage() {
       {/* KPI grid */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <KpiCard
-          label="Pending Requests"
+          label="New Leads"
           value={String(data.requests.pending)}
           sub={
             data.requests.overdue > 0
-              ? `${data.requests.overdue} overdue (>7 days)`
-              : 'All within SLA'
+              ? `${data.requests.overdue} unreviewed (>7 days)`
+              : 'All reviewed'
           }
-          subColor={data.requests.overdue > 0 ? 'text-red-400' : 'text-emerald-400'}
+          subColor={data.requests.overdue > 0 ? 'text-amber-400' : 'text-emerald-400'}
           icon={Clock}
           iconColor="text-amber-400"
           accent="border-amber-500/20 bg-amber-500/5"
-          href="/admin/requests"
+          href="/admin/leads"
         />
         <KpiCard
           label="Active Tenants"
@@ -135,9 +135,9 @@ export default function AdminOverviewPage() {
         {/* Pending requests */}
         <div className="rounded-xl border border-white/10 bg-slate-900/60 p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white">Pending Requests</h2>
+            <h2 className="text-sm font-semibold text-white">New Leads</h2>
             <Link
-              href="/admin/requests"
+              href="/admin/leads"
               className="flex items-center gap-1 text-xs text-amber-400 hover:underline"
             >
               View all <ArrowRight className="h-3 w-3" />
@@ -156,7 +156,7 @@ export default function AdminOverviewPage() {
                 return (
                   <li key={req.id}>
                     <Link
-                      href={`/admin/requests?id=${req.id}`}
+                      href={`/admin/leads?id=${req.id}`}
                       className="flex items-start justify-between rounded-lg border border-white/5 bg-white/5 px-3.5 py-2.5 hover:bg-white/10 transition-colors gap-3"
                     >
                       <div className="min-w-0">
@@ -229,10 +229,10 @@ export default function AdminOverviewPage() {
           <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
           <div className="flex-1 text-sm">
             <span className="font-semibold text-red-300">
-              {data.requests.overdue} request{data.requests.overdue > 1 ? 's' : ''} overdue
+              {data.requests.overdue} lead{data.requests.overdue > 1 ? 's' : ''} unreviewed
             </span>
-            <span className="text-red-400/80"> — pending more than 7 days. </span>
-            <Link href="/admin/requests" className="font-medium text-red-300 hover:underline">
+            <span className="text-red-400/80"> — waiting more than 7 days. </span>
+            <Link href="/admin/leads" className="font-medium text-red-300 hover:underline">
               Review now →
             </Link>
           </div>
