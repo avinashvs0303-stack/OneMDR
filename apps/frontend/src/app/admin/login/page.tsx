@@ -133,12 +133,21 @@ export default function AdminLoginPage() {
           </form>
         </div>
 
-        <p className="mt-5 text-center text-xs text-slate-600">
-          Customer login?{' '}
-          <a href="/auth/login" className="text-slate-500 hover:text-slate-300 transition-colors">
-            Go to app login →
+        <div className="mt-5 flex flex-col items-center gap-2">
+          <a
+            href="/auth/forgot-password"
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            Forgot password?
           </a>
-        </p>
+          <span className="text-slate-700 text-xs">·</span>
+          <a
+            href="/auth/login"
+            className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+          >
+            Customer login →
+          </a>
+        </div>
       </div>
     </div>
   );
