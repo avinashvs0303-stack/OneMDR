@@ -33,8 +33,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const reply = ctx.getResponse<FastifyReply>();
     const request = ctx.getRequest<FastifyRequest>();
 
-    const requestId =
-      (request.headers['x-request-id'] as string | undefined) ?? randomUUID();
+    const requestId = (request.headers['x-request-id'] as string | undefined) ?? randomUUID();
 
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'An unexpected error occurred';
@@ -52,22 +51,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
           : typeof rawMessage === 'string'
             ? rawMessage
             : exception.message;
-        code = typeof body['error'] === 'string' ? (body['error'] as string) : this.toErrorCode(statusCode);
+        code =
+          typeof body['error'] === 'string'
+            ? (body['error'] as string)
+            : this.toErrorCode(statusCode);
       } else if (typeof responseBody === 'string') {
         message = responseBody;
         code = this.toErrorCode(statusCode);
       }
     } else if (exception instanceof Error) {
       // Log full error server-side; return generic message to client
-      this.logger.error(
-        { err: exception, requestId, path: request.url },
-        'Unhandled exception',
-      );
+      this.logger.error({ err: exception, requestId, path: request.url }, 'Unhandled exception');
     }
 
-    // In production, NEVER expose internal error details
-    if (statusCode === HttpStatus.INTERNAL_SERVER_ERROR && process.env['NODE_ENV'] === 'production') {
-      message = 'An unexpected error occurred';
+    // In production, NEVER expose internal error details — unless DEBUG_ERRORS=true (temp troubleshooting)
+    if (
+      statusCode === HttpStatus.INTERNAL_SERVER_ERROR &&
+      process.env['NODE_ENV'] === 'production'
+    ) {
+      if (process.env['DEBUG_ERRORS'] !== 'true') {
+        message = 'An unexpected error occurred';
+      } else if (exception instanceof Error) {
+        message = `[DEBUG] ${exception.message}`;
+      }
     }
 
     const body: ErrorResponse = {
