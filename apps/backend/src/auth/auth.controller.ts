@@ -155,19 +155,19 @@ export class AuthController {
 
   // ── Logout ───────────────────────────────────────────────────────────────────
 
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Revoke refresh token and clear session cookie' })
-  async logout(
-    @CurrentUser() user: JwtPayload,
-    @Req() req: FastifyRequest,
-    @Res({ passthrough: true }) res: FastifyReply,
-  ) {
+  @ApiOperation({ summary: 'Revoke refresh token and clear session cookie (no auth required)' })
+  async logout(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
     const raw = (req.cookies as Record<string, string | undefined>)[this.tokenService.cookieName];
 
-    await this.authService.logout(user.sub, raw, this.extractMeta(req));
+    // Revoke best-effort — cookie is cleared regardless of token state
+    if (raw) {
+      await this.authService.logoutByRefreshToken(raw, this.extractMeta(req));
+    }
 
+    // ALWAYS clear the cookie so the middleware stops granting access
     void res.setCookie(this.tokenService.cookieName, '', this.tokenService.clearCookieOptions());
   }
 

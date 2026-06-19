@@ -252,6 +252,40 @@ export class AuthService {
     }
   }
 
+  /**
+   * Logout by refresh token only — no access token required.
+   * Used by the @Public logout endpoint so the cookie is ALWAYS cleared
+   * even when the access token has expired.
+   */
+  async logoutByRefreshToken(rawRefreshToken: string, meta: { ip?: string }): Promise<void> {
+    try {
+      const tokenHash = hashToken(rawRefreshToken);
+      const stored = await this.prisma.refreshToken.findUnique({
+        where: { tokenHash },
+        select: { id: true, userId: true, revokedAt: true, user: { select: { tenantId: true } } },
+      });
+
+      if (stored && !stored.revokedAt) {
+        await this.prisma.refreshToken.update({
+          where: { id: stored.id },
+          data: { revokedAt: new Date() },
+        });
+
+        if (stored.user) {
+          this.emitter.emit('audit.log', {
+            tenantId: stored.user.tenantId,
+            actorId: stored.userId,
+            action: AuditAction.AUTH_LOGOUT,
+            ipAddress: meta.ip,
+          });
+        }
+      }
+    } catch (err) {
+      // Log but don't throw — cookie must always be cleared
+      this.logger.warn({ err }, 'Failed to revoke refresh token during logout');
+    }
+  }
+
   // ── MFA: Setup (generate secret + QR code) ──────────────────────────────────
 
   async setupMfa(userId: string): Promise<{ qrDataUrl: string; backupCodes: string[] }> {

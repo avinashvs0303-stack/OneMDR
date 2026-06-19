@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { QueryProvider } from '@/providers/query-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
+import { SessionRestorer } from '@/components/session-restorer';
 import './globals.css';
 
 const inter = Inter({
@@ -27,7 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            <SessionRestorer />
+            {children}
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
