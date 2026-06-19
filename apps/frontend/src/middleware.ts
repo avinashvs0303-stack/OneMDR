@@ -11,6 +11,7 @@ const AUTH_PATHS = [
   '/auth/verify-email',
   '/auth/callback',
   '/request-access',
+  '/submit-lead',
 ];
 
 const ADMIN_PUBLIC_PATHS = ['/admin/login'];
