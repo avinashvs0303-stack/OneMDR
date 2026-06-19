@@ -48,6 +48,11 @@ const NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+
+  // Login page renders its own full-screen layout — skip the admin shell
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const logout = useAuthStore((s) => s.logout);
