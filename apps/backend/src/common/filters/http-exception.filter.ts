@@ -64,18 +64,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.error({ err: exception, requestId, path: request.url }, 'Unhandled exception');
     }
 
-    // TEMP DEBUG: always expose the real error so we can identify root cause in prod.
-    // TODO: revert this once login is working.
-    if (statusCode === HttpStatus.INTERNAL_SERVER_ERROR) {
-      if (exception instanceof Error) {
-        message = `[DEBUG] ${exception.constructor.name}: ${exception.message}`;
-      } else {
-        try {
-          message = `[DEBUG] non-Error: ${JSON.stringify(exception)}`;
-        } catch {
-          message = `[DEBUG] non-Error (unserializable): ${String(exception)}`;
-        }
-      }
+    // Never expose internal error details to clients in production (OWASP A09)
+    if (
+      statusCode === HttpStatus.INTERNAL_SERVER_ERROR &&
+      process.env['NODE_ENV'] === 'production'
+    ) {
+      message = 'An unexpected error occurred';
     }
 
     const body: ErrorResponse = {
