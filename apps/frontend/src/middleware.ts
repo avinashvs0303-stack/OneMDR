@@ -12,7 +12,7 @@ const AUTH_PATHS = [
   '/auth/callback',
 ];
 
-const ADMIN_DOMAIN = 'admin.clarbit.com';
+const ADMIN_PUBLIC_PATHS = ['/admin/login'];
 
 const DEV_BYPASS_ENABLED =
   process.env['NEXT_PUBLIC_DEV_BYPASS_AUTH'] === 'true' && process.env['NODE_ENV'] !== 'production';
@@ -48,18 +48,14 @@ export async function middleware(request: NextRequest) {
 
   const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
   const isAdminPath = pathname.startsWith('/admin');
-  const host = request.headers.get('host') ?? '';
-  const isAdminDomain = host === ADMIN_DOMAIN;
+  const isAdminPublic = ADMIN_PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 
   // ── Dev bypass ───────────────────────────────────────────────────────────────
   if (DEV_BYPASS_ENABLED) {
     const devSession = request.cookies.get('dev_session');
     const isAuthenticated = devSession?.value === 'true';
 
-    if (isAdminDomain || isAdminPath) {
-      // Dev: allow admin paths freely when bypass is on
-      return NextResponse.next();
-    }
+    if (isAdminPath) return NextResponse.next();
     if (isAuthenticated && isAuthPath) {
       return NextResponse.redirect(new URL('/modules', request.url));
     }
@@ -84,37 +80,27 @@ export async function middleware(request: NextRequest) {
   const email = session?.user.email ?? '';
   const isClarbitStaff = appRole === 'SUPER_ADMIN' && email.toLowerCase().endsWith('@clarbit.com');
 
-  // ── Admin domain routing ──────────────────────────────────────────────────────
-  if (isAdminDomain) {
-    // Auth pages always allowed on admin domain
-    if (isAuthPath) return holder.response;
+  // ── Admin routing ─────────────────────────────────────────────────────────────
 
-    // Must be Clarbit staff to access anything on admin domain
+  if (isAdminPath) {
+    // /admin/login is always public
+    if (isAdminPublic) {
+      // Already authenticated admin → skip login page
+      if (isAuthenticated && isClarbitStaff) {
+        return NextResponse.redirect(new URL('/admin/overview', request.url));
+      }
+      return holder.response;
+    }
+
+    // All other /admin/* require SUPER_ADMIN + @clarbit.com
     if (!isAuthenticated || !isClarbitStaff) {
-      const loginUrl = new URL('/auth/login', request.url);
-      if (!isAuthPath) loginUrl.searchParams.set('from', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    // Redirect root to overview
-    if (pathname === '/' || pathname === '') {
-      return NextResponse.redirect(new URL('/admin/overview', request.url));
-    }
-
-    // Non-admin paths on admin domain → redirect to admin overview
-    if (!isAdminPath) {
-      return NextResponse.redirect(new URL('/admin/overview', request.url));
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
 
     return holder.response;
   }
 
-  // ── Customer domain routing ───────────────────────────────────────────────────
-
-  // Block admin paths on customer domain entirely
-  if (isAdminPath) {
-    return NextResponse.redirect(new URL('/modules', request.url));
-  }
+  // ── Customer routing ──────────────────────────────────────────────────────────
 
   // Authenticated user hitting auth page → send to app
   if (isAuthenticated && isAuthPath) {

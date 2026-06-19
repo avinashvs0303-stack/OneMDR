@@ -56,13 +56,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isClarbit = user?.email?.toLowerCase().endsWith('@clarbit.com') ?? false;
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      router.replace('/admin/login');
+      return;
+    }
     if (user?.role !== 'SUPER_ADMIN' || !isClarbit) {
-      router.replace('/modules');
+      router.replace('/admin/login');
     }
   }, [user, isAuthenticated, isClarbit, router]);
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || user?.role !== 'SUPER_ADMIN' || !isClarbit) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
@@ -70,11 +73,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (user?.role !== 'SUPER_ADMIN' || !isClarbit) return null;
-
   const handleLogout = async () => {
     await logout();
-    router.push('/auth/login');
+    router.push('/admin/login');
   };
 
   return (
