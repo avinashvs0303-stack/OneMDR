@@ -215,7 +215,7 @@ export class AdminService {
     });
 
     this.emitter.emit('audit.log', {
-      tenantId: actor.tenantId,
+      tenantId: actor.tenantId ?? CLARBIT_TENANT_ID,
       actorId: actor.sub,
       action: 'TENANT_UPDATED',
       resource: 'tenant',
@@ -243,7 +243,7 @@ export class AdminService {
     await this.db.tenant.update({ where: { id }, data: { isActive: false } });
 
     this.emitter.emit('audit.log', {
-      tenantId: actor.tenantId,
+      tenantId: actor.tenantId ?? CLARBIT_TENANT_ID,
       actorId: actor.sub,
       action: 'TENANT_UPDATED',
       resource: 'tenant',
@@ -263,7 +263,7 @@ export class AdminService {
     await this.db.tenant.update({ where: { id }, data: { isActive: true } });
 
     this.emitter.emit('audit.log', {
-      tenantId: actor.tenantId,
+      tenantId: actor.tenantId ?? CLARBIT_TENANT_ID,
       actorId: actor.sub,
       action: 'TENANT_UPDATED',
       resource: 'tenant',
@@ -327,7 +327,7 @@ export class AdminService {
     await this.db.user.update({ where: { id: user.id }, data: { supabaseUid } });
 
     this.emitter.emit('audit.log', {
-      tenantId: actor.tenantId,
+      tenantId: actor.tenantId ?? CLARBIT_TENANT_ID,
       actorId: actor.sub,
       action: 'USER_INVITED',
       resource: 'user',
@@ -360,7 +360,7 @@ export class AdminService {
     }
 
     this.emitter.emit('audit.log', {
-      tenantId: actor.tenantId,
+      tenantId: actor.tenantId ?? CLARBIT_TENANT_ID,
       actorId: actor.sub,
       action: 'USER_REMOVED',
       resource: 'user',

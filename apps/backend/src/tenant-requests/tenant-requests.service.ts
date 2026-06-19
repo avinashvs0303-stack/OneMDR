@@ -16,6 +16,8 @@ import type {
 } from './dto/approve-tenant-request.dto';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
+const CLARBIT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
 @Injectable()
 export class TenantRequestsService {
   private readonly logger = new Logger(TenantRequestsService.name);
@@ -197,7 +199,7 @@ export class TenantRequestsService {
     });
 
     this.emitter.emit('audit.log', {
-      tenantId: reviewer.tenantId,
+      tenantId: reviewer.tenantId ?? CLARBIT_TENANT_ID,
       actorId: reviewer.sub,
       action: 'TENANT_REQUEST_APPROVED',
       resource: 'tenant_request',
@@ -238,7 +240,7 @@ export class TenantRequestsService {
     });
 
     this.emitter.emit('audit.log', {
-      tenantId: reviewer.tenantId,
+      tenantId: reviewer.tenantId ?? CLARBIT_TENANT_ID,
       actorId: reviewer.sub,
       action: 'TENANT_REQUEST_REJECTED',
       resource: 'tenant_request',

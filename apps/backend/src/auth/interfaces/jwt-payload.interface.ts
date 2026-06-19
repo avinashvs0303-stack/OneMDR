@@ -10,7 +10,7 @@ import type { UserRole } from '@onemdr/database';
 export interface JwtPayload {
   sub: string; // Our users.id (from app_metadata.user_id)
   supabaseId: string; // Supabase auth.users.id (the raw JWT `sub` claim)
-  tenantId: string; // From app_metadata.tenant_id
+  tenantId: string | undefined; // From app_metadata.tenant_id — undefined for SUPER_ADMIN
   role: UserRole; // From app_metadata.app_role
   email: string; // From Supabase JWT top-level email claim
   iat?: number;
