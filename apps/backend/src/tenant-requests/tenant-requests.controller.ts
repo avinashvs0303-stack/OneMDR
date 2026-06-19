@@ -18,6 +18,7 @@ import { ApproveTenantRequestDto, RejectTenantRequestDto } from './dto/approve-t
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { ClarbitEmailGuard } from '../common/guards/clarbit-email.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import type { FastifyRequest } from 'fastify';
@@ -25,7 +26,7 @@ import { Req } from '@nestjs/common';
 
 @ApiTags('tenant-requests')
 @Controller('tenant-requests')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, ClarbitEmailGuard)
 export class TenantRequestsController {
   constructor(private readonly svc: TenantRequestsService) {}
 
