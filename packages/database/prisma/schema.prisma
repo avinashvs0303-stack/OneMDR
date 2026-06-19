@@ -122,10 +122,15 @@ model User {
   timezone    String  @default("UTC")
   locale      String  @default("en")
 
-  // Auth (added in Step 1 — stubbed here so migrations are additive)
-  passwordHash     String?  @map("password_hash")
-  emailVerified    Boolean  @default(false) @map("email_verified")
-  emailVerifyToken String?  @map("email_verify_token")  // hashed
+  // Auth — identity linked to Supabase auth.users via supabase_uid.
+  // Password hashing, session management, and token rotation are handled by Supabase Auth.
+  // supabase_uid is set by Railway after inviteUserByEmail() returns the Supabase user ID.
+  supabaseUid  String?  @unique @map("supabase_uid") @db.Uuid
+  emailVerified Boolean @default(false) @map("email_verified")
+
+  // Legacy fields — kept for safe migration; no longer written by application code.
+  passwordHash     String?   @map("password_hash")
+  emailVerifyToken String?   @map("email_verify_token")
   emailVerifyExpires DateTime? @map("email_verify_expires")
 
   // MFA

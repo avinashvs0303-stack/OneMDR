@@ -1,91 +1,44 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/auth.store';
-import type { AuthUser } from '@/lib/auth.api';
-
-const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001/api/v1';
-
-const PUBLIC_PATHS = [
-  '/auth/login',
-  '/auth/register',
-  '/auth/forgot-password',
-  '/auth/reset-password',
-  '/auth/mfa',
-  '/auth/callback',
-];
+import { useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore, mapSupabaseSession } from '@/store/auth.store';
 
 /**
- * Restores a user session from the httpOnly refresh_token cookie when
- * sessionStorage is empty (e.g. after a hard refresh or new tab).
+ * Restores the Supabase session into Zustand on mount and keeps it in sync.
  *
- * This covers the gap between the Next.js middleware (which checks the cookie
- * and lets the user through) and the React app (which needs the access token
- * in memory to make authenticated API calls).
+ * On initial render (hard refresh, new tab): reads the existing Supabase cookie
+ * session and populates the auth store. After that, onAuthStateChange keeps
+ * the store current whenever tokens rotate or the user signs out in another tab.
+ *
+ * This replaces the old manual /auth/refresh polling approach. Supabase handles
+ * all token rotation automatically via @supabase/ssr middleware + this listener.
  */
 export function SessionRestorer() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const setSession = useAuthStore((s) => s.setSession);
   const clearSession = useAuthStore((s) => s.clearSession);
-  const pathname = usePathname();
-  const router = useRouter();
-  const attempted = useRef(false);
 
   useEffect(() => {
-    const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
-
-    // Nothing to do on public pages or when already authenticated
-    if (isPublic || isAuthenticated) return;
-
-    // Only one restoration attempt per component lifecycle
-    if (attempted.current) return;
-    attempted.current = true;
-
-    void (async () => {
-      try {
-        // Try to get a new access token from the httpOnly refresh_token cookie
-        const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!refreshRes.ok) {
-          // Cookie missing, expired, or revoked — send to login
-          clearSession();
-          router.replace('/auth/login');
-          return;
-        }
-
-        const refreshBody = (await refreshRes.json()) as { data: { accessToken: string } };
-        const accessToken = refreshBody.data?.accessToken;
-        if (!accessToken) {
-          clearSession();
-          router.replace('/auth/login');
-          return;
-        }
-
-        // Fetch the current user profile to rebuild the store
-        const meRes = await fetch(`${API_BASE}/auth/me`, {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-
-        if (!meRes.ok) {
-          clearSession();
-          router.replace('/auth/login');
-          return;
-        }
-
-        const meBody = (await meRes.json()) as { data: AuthUser };
-        setSession(meBody.data, accessToken);
-      } catch {
-        clearSession();
-        router.replace('/auth/login');
+    // Hydrate from the current session on mount (handles hard refresh / new tab)
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setSession(mapSupabaseSession(session.user, session), session.access_token);
       }
-    })();
-  }, [isAuthenticated, pathname, setSession, clearSession, router]);
+    });
+
+    // Keep store in sync with Supabase auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        setSession(mapSupabaseSession(session.user, session), session.access_token);
+      } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        clearSession();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [setSession, clearSession]);
 
   return null;
 }

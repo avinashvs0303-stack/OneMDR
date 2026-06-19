@@ -1,28 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
-const supabaseUrl      = process.env.NEXT_PUBLIC_SUPABASE_URL      ?? '';
-const supabaseAnonKey  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? '';
+const supabaseAnonKey = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? '';
 
 /**
- * Supabase browser client — shared singleton.
+ * Supabase browser client — singleton for use in client components and API calls.
  *
- * When NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY are not set
- * (e.g. local dev with DEV_BYPASS_AUTH=true), the client is created with empty
- * strings and actual requests will fail with a 400 — that's expected until real
- * auth is wired up.
+ * Uses @supabase/ssr createBrowserClient which:
+ * - Stores the session in cookies (not localStorage) — works with SSR + middleware
+ * - Automatically refreshes tokens before they expire
+ * - Fires onAuthStateChange events the SessionRestorer listens to
  *
- * Usage:
- *   import { supabase } from '@/lib/supabase';
- *   const { data, error } = await supabase.from('detections').select('*');
+ * The anon key is intentionally public — security is enforced by RLS policies.
  */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession:    true,
-    autoRefreshToken:  true,
-    detectSessionInUrl: true,
-  },
-});
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
-/** True only when both env vars are present and non-empty. */
-export const isSupabaseConfigured =
-  supabaseUrl.length > 0 && supabaseAnonKey.length > 0;
+export const isSupabaseConfigured = supabaseUrl.length > 0 && supabaseAnonKey.length > 0;
+
+export type { User as SupabaseUser, Session as SupabaseSession } from '@supabase/supabase-js';

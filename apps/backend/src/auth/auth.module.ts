@@ -4,34 +4,30 @@ import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { TokenService } from './token.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { LocalStrategy } from './strategies/local.strategy';
-import { GoogleStrategy } from './strategies/google.strategy';
-import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
 
+    // JwtModule is still used for MFA bridge tokens (short-lived, internal use only).
+    // All user-facing auth tokens are issued and managed by Supabase.
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.getOrThrow<string>('JWT_SECRET'),
+        // MFA bridge tokens use the same Supabase JWT secret for consistency
+        secret: config.getOrThrow<string>('SUPABASE_JWT_SECRET'),
         signOptions: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          expiresIn: config.get<string>('JWT_ACCESS_EXPIRES_IN', '15m') as any,
-          issuer: 'onemdr',
-          audience: 'onemdr-app',
+          expiresIn: '10m' as any,
+          issuer: 'onemdr-mfa',
         },
       }),
     }),
-
-    AuditModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, TokenService, JwtStrategy, LocalStrategy, GoogleStrategy],
-  exports: [AuthService, TokenService, JwtModule],
+  providers: [AuthService, JwtStrategy],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

@@ -1,10 +1,11 @@
 /**
  * Thin API client — wraps fetch with auth headers, base URL, and error handling.
- * Reads the access token from the auth store and attaches it as Bearer header.
- * On 401, attempts one silent token refresh before propagating the error.
+ * Reads the Supabase access token and attaches it as a Bearer header for Railway.
+ * On 401, attempts one silent refresh via Supabase before propagating the error.
  */
 
 import type { ApiError } from '@onemdr/shared';
+import { supabase } from './supabase';
 
 const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001/api/v1';
 
@@ -19,69 +20,17 @@ export class ApiRequestError extends Error {
   }
 }
 
-/** Read the stored access token without importing the full Zustand store (avoids circular deps). */
-function getStoredAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = sessionStorage.getItem('onemdr-auth');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { state?: { accessToken?: string } };
-    return parsed?.state?.accessToken ?? null;
-  } catch {
-    return null;
-  }
-}
-
-let isRefreshing = false;
-let refreshQueue: Array<(token: string | null) => void> = [];
-
-async function silentRefresh(): Promise<string | null> {
-  if (isRefreshing) {
-    return new Promise((resolve) => refreshQueue.push(resolve));
-  }
-  isRefreshing = true;
-  try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-      // Content-Type required — Fastify rejects POST without a media type even for empty body
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!res.ok) {
-      refreshQueue.forEach((cb) => cb(null));
-      refreshQueue = [];
-      return null;
-    }
-    const body = (await res.json()) as { data: { accessToken: string } };
-    const token = body.data.accessToken;
-    // Persist new token into session storage so store picks it up
-    try {
-      const raw = sessionStorage.getItem('onemdr-auth');
-      if (raw) {
-        const parsed = JSON.parse(raw) as { state?: Record<string, unknown> };
-        if (parsed.state) {
-          parsed.state['accessToken'] = token;
-          sessionStorage.setItem('onemdr-auth', JSON.stringify(parsed));
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-    refreshQueue.forEach((cb) => cb(token));
-    refreshQueue = [];
-    return token;
-  } catch {
-    refreshQueue.forEach((cb) => cb(null));
-    refreshQueue = [];
-    return null;
-  } finally {
-    isRefreshing = false;
-  }
+/** Get the current Supabase access token for Railway API calls. */
+async function getAccessToken(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
 }
 
 async function request<T>(path: string, options: RequestInit = {}, _retry = true): Promise<T> {
   const url = `${API_BASE}${path}`;
-  const token = getStoredAccessToken();
+  const token = await getAccessToken();
 
   const res = await fetch(url, {
     ...options,
@@ -90,18 +39,19 @@ async function request<T>(path: string, options: RequestInit = {}, _retry = true
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
-    // Include cookies (for refresh token httpOnly cookie)
     credentials: 'include',
   });
 
-  // Silent refresh on first 401 — but NOT for login/logout, where 401 means wrong credentials
-  const SKIP_SILENT_REFRESH = ['/auth/refresh', '/auth/login', '/auth/logout'];
-  if (res.status === 401 && _retry && !SKIP_SILENT_REFRESH.some((p) => path.endsWith(p))) {
-    const newToken = await silentRefresh();
-    if (newToken) return request<T>(path, options, false);
-    // Refresh failed — clear session and redirect to login
+  // On 401: try refreshing the Supabase session once, then retry
+  if (res.status === 401 && _retry) {
+    const {
+      data: { session },
+    } = await supabase.auth.refreshSession();
+    if (session?.access_token) {
+      return request<T>(path, options, false);
+    }
+    // Refresh failed — session is truly gone
     if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('onemdr-auth');
       window.location.href = '/auth/login';
     }
   }
@@ -116,7 +66,6 @@ async function request<T>(path: string, options: RequestInit = {}, _retry = true
     );
   }
 
-  // 204 No Content
   if (res.status === 204) return undefined as T;
 
   return res.json() as Promise<T>;

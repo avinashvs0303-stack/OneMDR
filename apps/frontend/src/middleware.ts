@@ -1,3 +1,4 @@
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -6,12 +7,15 @@ const PUBLIC_PATHS = [
   '/auth/register',
   '/auth/forgot-password',
   '/auth/reset-password',
+  '/auth/set-password',
+  '/auth/verify-email',
+  '/auth/callback',
 ];
 
 const DEV_BYPASS_ENABLED =
   process.env['NEXT_PUBLIC_DEV_BYPASS_AUTH'] === 'true' && process.env['NODE_ENV'] !== 'production';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Always pass through Next.js internals and static assets
@@ -21,16 +25,13 @@ export function middleware(request: NextRequest) {
 
   const isPublicPath = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 
-  // ── Dev bypass ───────────────────────────────────────────────────────────
+  // ── Dev bypass ───────────────────────────────────────────────────────────────
   if (DEV_BYPASS_ENABLED) {
     const devSession = request.cookies.get('dev_session');
     const isAuthenticated = devSession?.value === 'true';
-
-    // Authenticated users visiting auth pages → send to dashboard
     if (isAuthenticated && isPublicPath) {
       return NextResponse.redirect(new URL('/modules', request.url));
     }
-    // Unauthenticated users visiting protected pages → send to login
     if (!isAuthenticated && !isPublicPath) {
       const loginUrl = new URL('/auth/login', request.url);
       if (pathname !== '/') loginUrl.searchParams.set('from', pathname);
@@ -39,29 +40,53 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ── Production: session cookie check ─────────────────────────────────────
-  // Primary: onemdr_session — non-httpOnly, cleared by JS on logout immediately.
-  // Fallback: refresh_token — httpOnly, for sessions created before the onemdr_session
-  //   cookie was introduced (backward compat during Railway deployment transition).
-  // Once all sessions are refreshed, refresh_token becomes the silent-refresh
-  // mechanism only and onemdr_session is the sole routing signal.
-  const sessionCookie = request.cookies.get('onemdr_session');
-  const legacyCookie = request.cookies.get('refresh_token');
-  const isAuthenticated = Boolean(sessionCookie) || Boolean(legacyCookie);
+  // ── Production: Supabase session check ──────────────────────────────────────
+  // createServerClient reads the Supabase auth cookies and automatically rotates
+  // tokens before they expire, writing updated cookies back to the response.
+  // getSession() reads from cookies without a network call — fast and suitable
+  // for routing decisions. Actual security is enforced by Railway JWT verification.
+
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? '',
+    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? '',
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const isAuthenticated = Boolean(session);
 
   if (isAuthenticated && isPublicPath) {
     return NextResponse.redirect(new URL('/modules', request.url));
   }
+
   if (!isAuthenticated && !isPublicPath) {
     const loginUrl = new URL('/auth/login', request.url);
     if (pathname !== '/') loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  // Return the supabaseResponse so any rotated cookies are set on the response
+  return supabaseResponse;
 }
 
 export const config = {
-  // Run on all routes except Next.js internals and static files
   matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.svg$).*)'],
 };

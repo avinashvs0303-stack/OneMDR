@@ -15,30 +15,19 @@ const envSchema = z.object({
   // ── Database ────────────────────────────────────────────────────────────────
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 
-  // ── Redis ──────────────────────────────────────────────────────────────────
-  REDIS_URL: z.string().default('redis://localhost:6379'),
-
-  // ── Auth ───────────────────────────────────────────────────────────────────
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
-  JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
-  REFRESH_TOKEN_SECRET: z.string().min(32, 'REFRESH_TOKEN_SECRET must be at least 32 characters'),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+  // ── Supabase ───────────────────────────────────────────────────────────────
+  // URL and anon key: https://<project>.supabase.co (from Supabase dashboard → Settings → API)
+  SUPABASE_URL: z.string().url('SUPABASE_URL must be a valid URL'),
+  // Service role key — never expose to browser. Used for Admin API (invite users, set app_metadata).
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
+  // JWT secret — used to verify Supabase-issued JWTs without a network call.
+  // Found at: Supabase Dashboard → Settings → API → JWT Settings → JWT Secret
+  SUPABASE_JWT_SECRET: z.string().min(32, 'SUPABASE_JWT_SECRET must be at least 32 characters'),
 
   // ── Field Encryption ───────────────────────────────────────────────────────
   // AES-256-GCM requires exactly 32 bytes. Provide as 64 hex chars.
+  // Used for MFA secrets stored in the database.
   ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY must be at least 32 characters'),
-
-  // ── OAuth (optional) ───────────────────────────────────────────────────────
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
-  GOOGLE_CALLBACK_URL: z.string().url().optional(),
-
-  // ── Email (optional) ───────────────────────────────────────────────────────
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.coerce.number().int().positive().default(1025),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  SMTP_FROM: z.string().email().default('no-reply@clarbit.com'),
 
   // ── Frontend ───────────────────────────────────────────────────────────────
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
@@ -73,7 +62,6 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
     }
     if (warnFields.length > 0) {
       console.warn(`\n⚠️  Placeholder secrets detected in: ${warnFields.join(', ')}`);
-
       console.warn('   Run: openssl rand -hex 32  to generate real secrets.\n');
     }
   }

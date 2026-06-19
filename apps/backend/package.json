@@ -15,8 +15,6 @@
     "test:e2e": "jest --config test/jest-e2e.json --passWithNoTests"
   },
   "dependencies": {
-    "@onemdr/database": "workspace:*",
-    "@onemdr/shared": "workspace:*",
     "@fastify/cookie": "^9.4.0",
     "@fastify/cors": "^8.5.0",
     "@fastify/helmet": "^11.1.1",
@@ -30,6 +28,9 @@
     "@nestjs/swagger": "^7.4.2",
     "@nestjs/terminus": "^10.2.3",
     "@nestjs/throttler": "^6.5.0",
+    "@onemdr/database": "workspace:*",
+    "@onemdr/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.108.2",
     "argon2": "^0.44.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

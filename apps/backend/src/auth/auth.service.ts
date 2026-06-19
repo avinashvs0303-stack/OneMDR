@@ -2,15 +2,14 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
-  ForbiddenException,
   BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-// otplib v13 CJS declarations don't expose named exports — use require
 
+// otplib v13 CJS declarations don't expose named exports — use require
 const { authenticator } = require('otplib') as {
   authenticator: {
     generateSecret(): string;
@@ -20,23 +19,10 @@ const { authenticator } = require('otplib') as {
 };
 import * as QRCode from 'qrcode';
 import { PrismaService } from '../database/prisma.service';
-import { TokenService } from './token.service';
-import { AuditService } from '../audit/audit.service';
-import {
-  hashPassword,
-  verifyPassword,
-  encrypt,
-  decrypt,
-  hashToken,
-  generateBackupCodes,
-} from '../common/utils/crypto.util';
-import type { RegisterDto } from './dto/register.dto';
+import { encrypt, decrypt, hashToken, generateBackupCodes } from '../common/utils/crypto.util';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
-import { AuditAction, type User } from '@onemdr/database';
+import { AuditAction } from '@onemdr/database';
 
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_MINUTES = 15;
-// Short-lived JWT used to bridge the MFA challenge step
 const MFA_TOKEN_TTL = '10m';
 
 @Injectable()
@@ -47,8 +33,6 @@ export class AuthService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly tokens: TokenService,
-    private readonly audit: AuditService,
     private readonly emitter: EventEmitter2,
     private readonly config: ConfigService,
     private readonly jwt: JwtService,
@@ -57,236 +41,35 @@ export class AuthService {
     this.appName = config.get<string>('APP_NAME', 'OneMDR');
   }
 
-  // ── Registration ─────────────────────────────────────────────────────────────
+  // ── Current user ─────────────────────────────────────────────────────────────
 
-  async register(
-    dto: RegisterDto,
-    meta: { ip?: string; device?: string },
-  ): Promise<{ accessToken: string; rawRefreshToken: string; user: SafeUser }> {
-    // 1. Derive a URL-safe tenant slug
-    const slug = this.toSlug(dto.tenantName);
-
-    // 2. Ensure slug is unique
-    const existing = await this.prisma.tenant.findUnique({ where: { slug } });
-    if (existing) {
-      throw new ConflictException(`Organisation slug "${slug}" is already taken`);
-    }
-
-    // 3. Hash password with Argon2id
-    const passwordHash = await hashPassword(dto.password);
-
-    // 4. Create tenant + owner user atomically
-    const tenant = await this.prisma.tenant.create({
-      data: {
-        name: dto.tenantName,
-        slug,
-        users: {
-          create: {
-            email: dto.email.toLowerCase().trim(),
-            firstName: dto.firstName.trim(),
-            lastName: dto.lastName.trim(),
-            passwordHash,
-            role: 'OWNER',
-            emailVerified: false,
-            lastLoginAt: new Date(),
-            lastLoginIp: meta.ip,
-          },
-        },
-      },
-      include: { users: true },
-    });
-
-    const user = tenant.users[0];
-
-    // 5. Issue tokens
-    const payload = this.buildPayload(user);
-    const accessToken = this.tokens.generateAccessToken(payload);
-    const rawRefreshToken = await this.tokens.issueRefreshToken(user.id, meta);
-
-    // 6. Audit log (async, non-blocking)
-    this.emitter.emit('audit.log', {
-      tenantId: tenant.id,
-      actorId: user.id,
-      action: AuditAction.AUTH_REGISTER,
-      resource: 'user',
-      resourceId: user.id,
-      metadata: { email: user.email },
-      ipAddress: meta.ip,
-    });
-
-    return { accessToken, rawRefreshToken, user: this.sanitize(user) };
-  }
-
-  // ── Credential validation (called by LocalStrategy) ─────────────────────────
-
-  async validateCredentials(email: string, password: string): Promise<User> {
+  /**
+   * Returns the full user profile from our DB, looked up by supabase_uid.
+   * Called by GET /auth/me after JWT verification.
+   */
+  async getMe(payload: JwtPayload) {
     const user = await this.prisma.user.findFirst({
-      where: { email: email.toLowerCase().trim(), deletedAt: null },
+      where: {
+        OR: [{ id: payload.sub }, { supabaseUid: payload.supabaseId }],
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        tenantId: true,
+        avatarUrl: true,
+        mfaEnabled: true,
+        tenant: { select: { name: true, plan: true, slug: true } },
+      },
     });
-
-    // Generic error — never reveal whether email exists
-    const invalid = () => new UnauthorizedException('Invalid email or password');
-
-    if (!user || !user.passwordHash) throw invalid();
-
-    // Account lockout check
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
-      const mins = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
-      throw new ForbiddenException(`Account locked. Try again in ${mins} minute(s).`);
-    }
-
-    const valid = await verifyPassword(user.passwordHash, password);
-
-    if (!valid) {
-      const attempts = user.loginAttempts + 1;
-      const lockedUntil =
-        attempts >= MAX_LOGIN_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000) : null;
-
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { loginAttempts: attempts, lockedUntil },
-      });
-
-      throw invalid();
-    }
-
-    // Reset attempt counter on successful validation
-    if (user.loginAttempts > 0) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { loginAttempts: 0, lockedUntil: null },
-      });
-    }
 
     return user;
   }
 
-  // ── Login (called by AuthController after LocalStrategy succeeds) ────────────
-
-  async login(
-    user: User,
-    meta: { ip?: string; device?: string; rememberMe?: boolean },
-  ): Promise<
-    | { requiresMfa: true; mfaToken: string }
-    | { accessToken: string; rawRefreshToken: string; user: SafeUser }
-  > {
-    // If MFA is enabled → return a short-lived token for the challenge step
-    if (user.mfaEnabled) {
-      const mfaToken = this.jwt.sign(
-        { sub: user.id, mfaChallenge: true } as unknown as JwtPayload,
-        { expiresIn: MFA_TOKEN_TTL },
-      );
-      return { requiresMfa: true, mfaToken };
-    }
-
-    return this.issueSession(user, meta);
-  }
-
-  // ── Complete MFA login ───────────────────────────────────────────────────────
-
-  async loginWithMfa(
-    mfaToken: string,
-    totpCode: string,
-    meta: { ip?: string; device?: string; rememberMe?: boolean },
-  ): Promise<{ accessToken: string; rawRefreshToken: string; user: SafeUser }> {
-    let payload: { sub: string; mfaChallenge: boolean };
-    try {
-      payload = this.jwt.verify<{ sub: string; mfaChallenge: boolean }>(mfaToken);
-    } catch {
-      throw new UnauthorizedException('MFA session expired — please log in again');
-    }
-
-    if (!payload.mfaChallenge) {
-      throw new UnauthorizedException('Invalid MFA token');
-    }
-
-    const user = await this.prisma.user.findUniqueOrThrow({
-      where: { id: payload.sub },
-    });
-
-    await this.verifyTotpCode(user, totpCode);
-
-    return this.issueSession(user, meta);
-  }
-
-  // ── Refresh ──────────────────────────────────────────────────────────────────
-
-  async refresh(
-    rawRefreshToken: string,
-    meta: { ip?: string; device?: string },
-  ): Promise<{ accessToken: string; rawRefreshToken: string }> {
-    const { newRawToken, userId } = await this.tokens.rotateRefreshToken(rawRefreshToken, meta);
-
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    const accessToken = this.tokens.generateAccessToken(this.buildPayload(user));
-
-    this.emitter.emit('audit.log', {
-      tenantId: user.tenantId,
-      actorId: user.id,
-      action: AuditAction.AUTH_REFRESH_REVOKED,
-      ipAddress: meta.ip,
-    });
-
-    return { accessToken, rawRefreshToken: newRawToken };
-  }
-
-  // ── Logout ───────────────────────────────────────────────────────────────────
-
-  async logout(
-    userId: string,
-    rawRefreshToken: string | undefined,
-    meta: { ip?: string },
-  ): Promise<void> {
-    if (rawRefreshToken) {
-      await this.tokens.revokeRefreshToken(rawRefreshToken);
-    }
-
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user) {
-      this.emitter.emit('audit.log', {
-        tenantId: user.tenantId,
-        actorId: user.id,
-        action: AuditAction.AUTH_LOGOUT,
-        ipAddress: meta.ip,
-      });
-    }
-  }
-
-  /**
-   * Logout by refresh token only — no access token required.
-   * Used by the @Public logout endpoint so the cookie is ALWAYS cleared
-   * even when the access token has expired.
-   */
-  async logoutByRefreshToken(rawRefreshToken: string, meta: { ip?: string }): Promise<void> {
-    try {
-      const tokenHash = hashToken(rawRefreshToken);
-      const stored = await this.prisma.refreshToken.findUnique({
-        where: { tokenHash },
-        select: { id: true, userId: true, revokedAt: true, user: { select: { tenantId: true } } },
-      });
-
-      if (stored && !stored.revokedAt) {
-        await this.prisma.refreshToken.update({
-          where: { id: stored.id },
-          data: { revokedAt: new Date() },
-        });
-
-        if (stored.user) {
-          this.emitter.emit('audit.log', {
-            tenantId: stored.user.tenantId,
-            actorId: stored.userId,
-            action: AuditAction.AUTH_LOGOUT,
-            ipAddress: meta.ip,
-          });
-        }
-      }
-    } catch (err) {
-      // Log but don't throw — cookie must always be cleared
-      this.logger.warn({ err }, 'Failed to revoke refresh token during logout');
-    }
-  }
-
-  // ── MFA: Setup (generate secret + QR code) ──────────────────────────────────
+  // ── MFA: Setup ──────────────────────────────────────────────────────────────
 
   async setupMfa(userId: string): Promise<{ qrDataUrl: string; backupCodes: string[] }> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
@@ -299,13 +82,11 @@ export class AuthService {
     const otpAuthUrl = authenticator.keyuri(user.email, this.appName, secret);
     const qrDataUrl = await QRCode.toDataURL(otpAuthUrl);
 
-    // Store encrypted secret but don't enable yet — user must verify first
     await this.prisma.user.update({
       where: { id: userId },
       data: { mfaSecret: encSecret },
     });
 
-    // Generate 10 backup codes; hash them before storing
     const rawCodes = generateBackupCodes(10);
     const hashedCodes = rawCodes.map(hashToken);
     await this.prisma.user.update({
@@ -313,11 +94,10 @@ export class AuthService {
       data: { mfaBackupCodes: hashedCodes },
     });
 
-    // Return plain codes once — user must save them
     return { qrDataUrl, backupCodes: rawCodes };
   }
 
-  // ── MFA: Enable (confirm setup by verifying first TOTP) ─────────────────────
+  // ── MFA: Enable ─────────────────────────────────────────────────────────────
 
   async enableMfa(userId: string, totpCode: string): Promise<void> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
@@ -335,7 +115,7 @@ export class AuthService {
     });
   }
 
-  // ── MFA: Disable ─────────────────────────────────────────────────────────────
+  // ── MFA: Disable ────────────────────────────────────────────────────────────
 
   async disableMfa(userId: string, totpCode: string): Promise<void> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
@@ -353,84 +133,46 @@ export class AuthService {
     });
   }
 
-  // ── Google OAuth: find or create ─────────────────────────────────────────────
+  // ── MFA: Issue a short-lived bridge token for the MFA challenge step ─────────
 
-  async findOrCreateGoogleUser(profile: {
-    googleId: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    avatarUrl?: string;
-  }): Promise<User> {
-    // Try to find by googleId first
-    const byGoogleId = await this.prisma.user.findUnique({
-      where: { googleId: profile.googleId },
+  issueMfaBridgeToken(userId: string): string {
+    return this.jwt.sign({ sub: userId, mfaChallenge: true } as unknown as JwtPayload, {
+      expiresIn: MFA_TOKEN_TTL,
     });
-    if (byGoogleId) return byGoogleId;
-
-    // Try to find by email (link account)
-    const byEmail = await this.prisma.user.findFirst({
-      where: { email: profile.email.toLowerCase(), deletedAt: null },
-    });
-    if (byEmail) {
-      return this.prisma.user.update({
-        where: { id: byEmail.id },
-        data: { googleId: profile.googleId, avatarUrl: profile.avatarUrl },
-      });
-    }
-
-    // New user + new tenant
-    const slug = this.toSlug(profile.email.split('@')[1] ?? profile.firstName);
-    const unique = await this.uniqueSlug(slug);
-
-    const tenant = await this.prisma.tenant.create({
-      data: {
-        name: `${profile.firstName}'s Workspace`,
-        slug: unique,
-        users: {
-          create: {
-            email: profile.email.toLowerCase(),
-            firstName: profile.firstName,
-            lastName: profile.lastName,
-            avatarUrl: profile.avatarUrl,
-            googleId: profile.googleId,
-            role: 'OWNER',
-            emailVerified: true, // Google has verified the email
-          },
-        },
-      },
-      include: { users: true },
-    });
-
-    return tenant.users[0];
   }
 
-  // ── Private helpers ──────────────────────────────────────────────────────────
+  // ── MFA: Complete challenge ───────────────────────────────────────────────────
 
-  private async issueSession(
-    user: User,
-    meta: { ip?: string; device?: string; rememberMe?: boolean },
-  ): Promise<{ accessToken: string; rawRefreshToken: string; user: SafeUser }> {
-    const payload = this.buildPayload(user);
-    const accessToken = this.tokens.generateAccessToken(payload);
-    const rawRefreshToken = await this.tokens.issueRefreshToken(user.id, meta);
+  async completeMfaChallenge(mfaToken: string, totpCode: string): Promise<{ userId: string }> {
+    let payload: { sub: string; mfaChallenge: boolean };
+    try {
+      payload = this.jwt.verify<{ sub: string; mfaChallenge: boolean }>(mfaToken);
+    } catch {
+      throw new UnauthorizedException('MFA session expired — please log in again');
+    }
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date(), lastLoginIp: meta.ip },
-    });
+    if (!payload.mfaChallenge) {
+      throw new UnauthorizedException('Invalid MFA token');
+    }
+
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: payload.sub } });
+    await this.verifyTotpCode(user, totpCode);
 
     this.emitter.emit('audit.log', {
       tenantId: user.tenantId,
       actorId: user.id,
       action: AuditAction.AUTH_LOGIN,
-      ipAddress: meta.ip,
     });
 
-    return { accessToken, rawRefreshToken, user: this.sanitize(user) };
+    return { userId: user.id };
   }
 
-  private async verifyTotpCode(user: User, code: string): Promise<void> {
+  // ── Private helpers ──────────────────────────────────────────────────────────
+
+  private async verifyTotpCode(
+    user: { mfaSecret: string | null; id: string },
+    code: string,
+  ): Promise<void> {
     if (!user.mfaSecret) {
       throw new BadRequestException('MFA is not configured for this account');
     }
@@ -440,56 +182,4 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired TOTP code');
     }
   }
-
-  private buildPayload(user: User): JwtPayload {
-    return {
-      sub: user.id,
-      tenantId: user.tenantId,
-      role: user.role,
-      email: user.email,
-    };
-  }
-
-  private sanitize(user: User): SafeUser {
-    return {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      tenantId: user.tenantId,
-      avatarUrl: user.avatarUrl ?? undefined,
-      mfaEnabled: user.mfaEnabled,
-    };
-  }
-
-  private toSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .trim()
-      .replace(/\s+/g, '-')
-      .slice(0, 50);
-  }
-
-  private async uniqueSlug(base: string): Promise<string> {
-    let slug = base;
-    let i = 0;
-    while (await this.prisma.tenant.findUnique({ where: { slug } })) {
-      slug = `${base}-${++i}`;
-    }
-    return slug;
-  }
-}
-
-// ── Minimal safe user shape returned to clients ──────────────────────────────
-export interface SafeUser {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  tenantId: string;
-  avatarUrl?: string;
-  mfaEnabled: boolean;
 }

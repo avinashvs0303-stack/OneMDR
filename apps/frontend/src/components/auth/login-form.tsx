@@ -11,21 +11,20 @@ import { GoogleIcon } from '@/components/icons/google-icon';
 import { MicrosoftIcon } from '@/components/icons/microsoft-icon';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
+import { supabase } from '@/lib/supabase';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
-  rememberMe: z.boolean().optional(),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001/api/v1';
 const DEV_BYPASS = process.env['NEXT_PUBLIC_DEV_BYPASS_AUTH'] === 'true';
 
 export function LoginForm() {
   const router = useRouter();
-  const loginFn = useAuthStore((s) => s.login);
+  const login = useAuthStore((s) => s.login);
   const devBypass = useAuthStore((s) => s.devBypass);
 
   const [showPassword, setShowPassword] = useState(false);
@@ -43,22 +42,31 @@ export function LoginForm() {
     router.push('/modules');
   };
 
-  const handleSSO = (provider: 'google' | 'microsoft') => {
+  const handleSSO = async (provider: 'google' | 'microsoft') => {
     setSsoLoading(provider);
-    window.location.href = `${API_BASE}/auth/${provider}`;
+    setServerError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: provider === 'microsoft' ? 'azure' : 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        setServerError(error.message);
+        setSsoLoading(null);
+      }
+      // On success: Supabase redirects the browser — no further action needed here
+    } catch {
+      setServerError('SSO failed. Please try again.');
+      setSsoLoading(null);
+    }
   };
 
   const onSubmit = async (data: LoginValues) => {
     setServerError(null);
     try {
-      const result = await loginFn(data.email, data.password, data.rememberMe);
-
-      if (result.requiresMfa) {
-        // Redirect to MFA verification page with the short-lived challenge token
-        router.push(`/auth/mfa?token=${encodeURIComponent(result.mfaToken)}`);
-        return;
-      }
-
+      await login(data.email, data.password);
       router.push('/modules');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed. Please try again.';
@@ -91,14 +99,14 @@ export function LoginForm() {
       {/* ── SSO Buttons ────────────────────────────────────────────────── */}
       <div className="space-y-3">
         <SSOButton
-          onClick={() => handleSSO('google')}
+          onClick={() => void handleSSO('google')}
           loading={ssoLoading === 'google'}
           disabled={ssoLoading !== null || isSubmitting}
           icon={<GoogleIcon className="h-4 w-4" />}
           label="Continue with Google"
         />
         <SSOButton
-          onClick={() => handleSSO('microsoft')}
+          onClick={() => void handleSSO('microsoft')}
           loading={ssoLoading === 'microsoft'}
           disabled={ssoLoading !== null || isSubmitting}
           icon={<MicrosoftIcon className="h-4 w-4" />}
@@ -194,19 +202,6 @@ export function LoginForm() {
             </button>
           </div>
           {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
-        </div>
-
-        {/* Remember me */}
-        <div className="flex items-center gap-2.5">
-          <input
-            id="rememberMe"
-            type="checkbox"
-            {...register('rememberMe')}
-            className="h-4 w-4 rounded border-border accent-amber-600"
-          />
-          <label htmlFor="rememberMe" className="text-sm text-muted-foreground select-none">
-            Keep me signed in for 30 days
-          </label>
         </div>
 
         <button

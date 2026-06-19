@@ -1,204 +1,29 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Req,
-  Res,
-  UseGuards,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiOkResponse,
-  ApiCreatedResponse,
-  ApiBody,
-} from '@nestjs/swagger';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import { Controller, Post, Get, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { TokenService } from './token.service';
-import { LocalAuthGuard } from './guards/local-auth.guard';
-import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
 import { EnableMfaDto, DisableMfaDto, MfaChallengeDto } from './dto/mfa.dto';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
-import type { User } from '@onemdr/database';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly tokenService: TokenService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
-  // ── Register ────────────────────────────────────────────────────────────────
+  // ── Me (current user from JWT claims + DB lookup) ───────────────────────────
 
-  @Public()
-  @Post('register')
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @HttpCode(HttpStatus.CREATED)
-  @ApiCreatedResponse({
-    description: 'Account created. Access token returned; refresh token set in cookie.',
-  })
-  async register(
-    @Body() dto: RegisterDto,
-    @Req() req: FastifyRequest,
-    @Res({ passthrough: true }) res: FastifyReply,
-  ) {
-    const meta = this.extractMeta(req);
-    const { accessToken, rawRefreshToken, user } = await this.authService.register(dto, meta);
-
-    void res.setCookie(
-      this.tokenService.cookieName,
-      rawRefreshToken,
-      this.tokenService.buildCookieOptions(false),
-    );
-    void res.setCookie(
-      this.tokenService.sessionCookieName,
-      '1',
-      this.tokenService.buildSessionCookieOptions(false),
-    );
-
-    return { data: { accessToken, user } };
-  }
-
-  // ── Login ───────────────────────────────────────────────────────────────────
-
-  @Public()
-  @Post('login')
-  @UseGuards(LocalAuthGuard)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @HttpCode(HttpStatus.OK)
-  @ApiBody({ type: LoginDto })
-  @ApiOkResponse({ description: 'Authenticated. May return MFA challenge.' })
-  async login(
-    @Req() req: FastifyRequest & { user: User; body: LoginDto },
-    @Res({ passthrough: true }) res: FastifyReply,
-  ) {
-    const meta = { ...this.extractMeta(req), rememberMe: req.body.rememberMe };
-    const result = await this.authService.login(req.user, meta);
-
-    if ('requiresMfa' in result) {
-      return { data: { requiresMfa: true, mfaToken: result.mfaToken } };
-    }
-
-    const rememberMe = meta.rememberMe ?? false;
-    void res.setCookie(
-      this.tokenService.cookieName,
-      result.rawRefreshToken,
-      this.tokenService.buildCookieOptions(rememberMe),
-    );
-    void res.setCookie(
-      this.tokenService.sessionCookieName,
-      '1',
-      this.tokenService.buildSessionCookieOptions(rememberMe),
-    );
-
-    return { data: { accessToken: result.accessToken, user: result.user } };
-  }
-
-  // ── MFA challenge (complete login when MFA is enabled) ──────────────────────
-
-  @Public()
-  @Post('mfa/verify-login')
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ description: 'MFA verified. Full session issued.' })
-  async verifyMfaLogin(
-    @Body() dto: MfaChallengeDto,
-    @Req() req: FastifyRequest,
-    @Res({ passthrough: true }) res: FastifyReply,
-  ) {
-    const meta = this.extractMeta(req);
-    const { accessToken, rawRefreshToken, user } = await this.authService.loginWithMfa(
-      dto.mfaToken,
-      dto.code,
-      meta,
-    );
-
-    void res.setCookie(
-      this.tokenService.cookieName,
-      rawRefreshToken,
-      this.tokenService.buildCookieOptions(),
-    );
-    void res.setCookie(
-      this.tokenService.sessionCookieName,
-      '1',
-      this.tokenService.buildSessionCookieOptions(),
-    );
-
-    return { data: { accessToken, user } };
-  }
-
-  // ── Refresh ──────────────────────────────────────────────────────────────────
-
-  @Public()
-  @Post('refresh')
-  @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ description: 'New access token + rotated refresh token cookie.' })
-  async refresh(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
-    const rawRefreshToken = (req.cookies as Record<string, string | undefined>)[
-      this.tokenService.cookieName
-    ];
-    if (!rawRefreshToken) {
-      return res.status(HttpStatus.UNAUTHORIZED).send({
-        error: { code: 'NO_REFRESH_TOKEN', message: 'No refresh token', statusCode: 401 },
-      });
-    }
-
-    const meta = this.extractMeta(req);
-    const { accessToken, rawRefreshToken: newRaw } = await this.authService.refresh(
-      rawRefreshToken,
-      meta,
-    );
-
-    void res.setCookie(
-      this.tokenService.cookieName,
-      newRaw,
-      this.tokenService.buildCookieOptions(),
-    );
-    // Re-stamp session cookie so its TTL stays in sync with the rotated refresh token
-    void res.setCookie(
-      this.tokenService.sessionCookieName,
-      '1',
-      this.tokenService.buildSessionCookieOptions(),
-    );
-
-    return { data: { accessToken } };
-  }
-
-  // ── Logout ───────────────────────────────────────────────────────────────────
-
-  @Public()
-  @Post('logout')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Revoke refresh token and clear session cookie (no auth required)' })
-  async logout(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
-    const raw = (req.cookies as Record<string, string | undefined>)[this.tokenService.cookieName];
-
-    // Revoke best-effort — cookie is cleared regardless of token state
-    if (raw) {
-      await this.authService.logoutByRefreshToken(raw, this.extractMeta(req));
-    }
-
-    // ALWAYS clear both cookies — onemdr_session is the JS-clearable routing signal
-    void res.setCookie(this.tokenService.cookieName, '', this.tokenService.clearCookieOptions());
-    void res.setCookie(
-      this.tokenService.sessionCookieName,
-      '',
-      this.tokenService.clearSessionCookieOptions(),
-    );
+  @Get('me')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Return current user profile (verified JWT + DB lookup)' })
+  async me(@CurrentUser() user: JwtPayload) {
+    const profile = await this.authService.getMe(user);
+    return { data: profile ?? user };
   }
 
   // ── MFA: Setup + Enable + Disable ───────────────────────────────────────────
+  // Auth is handled by Supabase. MFA is an additional layer verified by Railway.
 
   @Post('mfa/setup')
   @ApiBearerAuth('access-token')
@@ -224,58 +49,25 @@ export class AuthController {
     await this.authService.disableMfa(user.sub, dto.code);
   }
 
-  // ── Google OAuth ─────────────────────────────────────────────────────────────
+  // ── MFA: Challenge + Verify (called after Supabase login when mfaEnabled=true) ──
 
   @Public()
-  @Get('google')
-  @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: 'Redirect to Google OAuth consent screen' })
-  async googleLogin() {
-    // GoogleAuthGuard handles the redirect
+  @Post('mfa/challenge')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Issue a short-lived MFA bridge token after Supabase login' })
+  async mfaChallenge(@Body() body: { userId: string }) {
+    const mfaToken = this.authService.issueMfaBridgeToken(body.userId);
+    return { data: { mfaToken } };
   }
 
   @Public()
-  @Get('google/callback')
-  @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: 'Google OAuth callback' })
-  async googleCallback(
-    @Req() req: FastifyRequest & { user: User },
-    @Res({ passthrough: true }) res: FastifyReply,
-  ) {
-    const meta = this.extractMeta(req);
-    const result = await this.authService.login(req.user, meta);
-
-    if ('requiresMfa' in result) {
-      // Google users with MFA enabled → redirect to MFA page with token
-      void res.redirect(`${process.env['FRONTEND_URL']}/auth/mfa?mfaToken=${result.mfaToken}`);
-      return;
-    }
-
-    void res.setCookie(
-      this.tokenService.cookieName,
-      result.rawRefreshToken,
-      this.tokenService.buildCookieOptions(),
-    );
-
-    // Pass access token via URL hash so frontend can pick it up
-    void res.redirect(`${process.env['FRONTEND_URL']}/auth/callback?token=${result.accessToken}`);
-  }
-
-  // ── Me (current user) ────────────────────────────────────────────────────────
-
-  @Get('me')
-  @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Return current authenticated user from JWT payload' })
-  async me(@CurrentUser() user: JwtPayload) {
-    return { data: user };
-  }
-
-  // ── Private helpers ──────────────────────────────────────────────────────────
-
-  private extractMeta(req: FastifyRequest) {
-    return {
-      ip: (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip,
-      device: req.headers['user-agent'],
-    };
+  @Post('mfa/verify')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify TOTP code and confirm MFA challenge' })
+  async mfaVerify(@Body() dto: MfaChallengeDto) {
+    const result = await this.authService.completeMfaChallenge(dto.mfaToken, dto.code);
+    return { data: result };
   }
 }

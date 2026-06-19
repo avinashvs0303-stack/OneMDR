@@ -6,8 +6,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
-import { hashPassword, generateSecureToken } from '../common/utils/crypto.util';
+import { SupabaseAdminService } from '../supabase/supabase-admin.service';
 import type { SubmitTenantRequestDto } from './dto/submit-tenant-request.dto';
 import type {
   ApproveTenantRequestDto,
@@ -22,9 +23,11 @@ export class TenantRequestsService {
   constructor(
     private readonly db: PrismaService,
     private readonly emitter: EventEmitter2,
+    private readonly config: ConfigService,
+    private readonly supabase: SupabaseAdminService,
   ) {}
 
-  // ── Public: anyone can submit a request ──────────────────────────────────────
+  // ── Public: anyone can submit a request ─────────────────────────────────────
 
   async submit(dto: SubmitTenantRequestDto, meta: { ip?: string; device?: string }) {
     const existing = await this.db.tenantRequest.findUnique({
@@ -58,7 +61,7 @@ export class TenantRequestsService {
     });
 
     this.emitter.emit('audit.log', {
-      tenantId: '00000000-0000-0000-0000-000000000000', // platform sentinel
+      tenantId: '00000000-0000-0000-0000-000000000000',
       action: 'TENANT_REQUEST_SUBMITTED',
       resource: 'tenant_request',
       resourceId: request.id,
@@ -116,28 +119,25 @@ export class TenantRequestsService {
       throw new BadRequestException(`Request is already ${req.status.toLowerCase()}`);
     }
 
-    // Derive slug from company name
-    const slug = req.companyName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 50);
+    const slug = await this.ensureUniqueSlug(
+      req.companyName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 50),
+    );
 
-    // Ensure slug is unique
-    const uniqueSlug = await this.ensureUniqueSlug(slug);
+    const firstName = req.contactName.split(' ')[0] ?? req.contactName;
+    const lastName = req.contactName.split(' ').slice(1).join(' ') || '-';
 
-    // Generate a temporary password for the owner (they'll reset it)
-    const tempPassword = generateSecureToken(12); // 24 hex chars
-    const passwordHash = await hashPassword(tempPassword);
-
-    // Atomically: create tenant + owner user + update request
-    const [, , updatedRequest] = await this.db.$transaction([
-      // 1. Create tenant
+    // Step 1: Atomically create tenant + users record in our DB.
+    // The user record has no passwordHash — auth is handled by Supabase.
+    const [, user, updatedRequest] = await this.db.$transaction([
       this.db.tenant.create({
         data: {
-          id: req.id, // reuse request ID for easy cross-referencing
+          id: req.id,
           name: req.companyName,
-          slug: uniqueSlug,
+          slug,
           plan: dto.planType,
           maxUsers: dto.maxUsers,
           licenseModules: dto.licenseModules,
@@ -145,19 +145,16 @@ export class TenantRequestsService {
           isActive: true,
         },
       }),
-      // 2. Create OWNER user
       this.db.user.create({
         data: {
           tenantId: req.id,
           email: req.contactEmail,
-          firstName: req.contactName.split(' ')[0] ?? req.contactName,
-          lastName: req.contactName.split(' ').slice(1).join(' ') || '-',
+          firstName,
+          lastName,
           role: 'OWNER',
-          passwordHash,
-          emailVerified: false,
+          emailVerified: false, // Supabase will set this when the user accepts the invite
         },
       }),
-      // 3. Update request status
       this.db.tenantRequest.update({
         where: { id },
         data: {
@@ -174,6 +171,31 @@ export class TenantRequestsService {
       }),
     ]);
 
+    // Step 2: Invite user via Supabase — sends invite email automatically.
+    // On invite acceptance, Supabase creates auth.users and the user sets their password.
+    // The invite link is set to /auth/set-password so we can handle the password setup flow.
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+
+    const supabaseUid = await this.supabase.inviteUser({
+      email: req.contactEmail,
+      redirectTo: `${frontendUrl}/auth/set-password`,
+      userMetadata: {
+        first_name: firstName,
+        last_name: lastName,
+      },
+      appMetadata: {
+        user_id: user.id,
+        tenant_id: req.id,
+        app_role: 'OWNER',
+      },
+    });
+
+    // Step 3: Store the Supabase auth user ID in our users record for future lookups.
+    await this.db.user.update({
+      where: { id: user.id },
+      data: { supabaseUid, emailVerified: false },
+    });
+
     this.emitter.emit('audit.log', {
       tenantId: reviewer.tenantId,
       actorId: reviewer.sub,
@@ -184,17 +206,15 @@ export class TenantRequestsService {
         company: req.companyName,
         plan: dto.planType,
         modules: dto.licenseModules,
+        inviteEmail: req.contactEmail,
       },
     });
 
     this.logger.log(
-      `Tenant request APPROVED: ${req.contactEmail} → tenant ${uniqueSlug} (${dto.planType})`,
+      `Tenant request APPROVED: ${req.contactEmail} → tenant ${slug} (${dto.planType}). Invite sent via Supabase.`,
     );
 
-    return {
-      request: updatedRequest,
-      tempPassword, // returned ONCE — super admin must securely share with the contact
-    };
+    return { request: updatedRequest };
   }
 
   // ── Super Admin: reject ──────────────────────────────────────────────────────
