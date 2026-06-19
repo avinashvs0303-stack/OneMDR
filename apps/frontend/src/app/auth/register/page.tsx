@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
+import { createBrowserClient } from '@supabase/ssr';
 
 const schema = z.object({
   companyName: z.string().min(2, 'Required').max(100),
@@ -33,10 +33,25 @@ export default function RequestAccessPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
+  const supabase = createBrowserClient(
+    process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? '',
+    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? '',
+  );
+
   const onSubmit = async (data: FormValues) => {
     setServerError(null);
     try {
-      await api.post('/tenant-requests', data);
+      const { error } = await supabase.from('tenant_requests').insert({
+        company_name: data.companyName,
+        company_size: data.companySize,
+        industry: data.industry,
+        contact_name: data.contactName,
+        contact_email: data.contactEmail,
+        contact_phone: data.contactPhone ?? null,
+        use_case: data.useCase,
+        status: 'PENDING',
+      });
+      if (error) throw new Error(error.message);
       setSubmitted(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Submission failed. Please try again.';
