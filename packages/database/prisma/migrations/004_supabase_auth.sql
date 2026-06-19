@@ -18,14 +18,16 @@ CREATE INDEX IF NOT EXISTS idx_users_supabase_uid
 --    This complements the deny-all restrictive policy from 002_rls_policies.sql.
 --    The backend still uses service_role (bypasses RLS), so this is a safety net
 --    for any future direct Supabase client usage.
-CREATE POLICY IF NOT EXISTS "users_own_read"
+DROP POLICY IF EXISTS "users_own_read" ON public.users;
+CREATE POLICY "users_own_read"
   ON public.users
   AS PERMISSIVE
   FOR SELECT
   USING (supabase_uid = auth.uid());
 
 -- 4. Allow a user to update their own non-sensitive profile fields.
-CREATE POLICY IF NOT EXISTS "users_own_update"
+DROP POLICY IF EXISTS "users_own_update" ON public.users;
+CREATE POLICY "users_own_update"
   ON public.users
   AS PERMISSIVE
   FOR UPDATE

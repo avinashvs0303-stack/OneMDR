@@ -1,50 +1,10 @@
 -- ============================================================
---  Migration 003 — Super Admin seed (run ONCE manually)
---  Run this in: Supabase → SQL Editor  (after 001 + 002)
+-- 003_super_admin_seed.sql  [SUPERSEDED]
 --
---  BEFORE running:
---    Generate an argon2id hash for the admin password.
---    From the repo root, run:
---      node -e "
---        const argon2 = require('argon2');
---        argon2.hash('YourStrongPassword!1').then(h => console.log(h));
---      "
---    Paste the output as the password_hash value below.
+-- This file created the super admin with a bcrypt password_hash
+-- for the legacy custom-JWT auth stack.
 --
---  OR use the /api/v1/auth/hash-dev endpoint if enabled in dev mode.
+-- Since migrating to Supabase Auth (2026-06-19), passwords are
+-- managed entirely by Supabase. This file is kept for git history
+-- only. Use 005_cleanup_and_super_admin.sql instead.
 -- ============================================================
-
--- ── 1. Platform tenant (Clarbit internal) ────────────────────
-
-INSERT INTO tenants (id, name, slug, plan, is_active, max_users, license_modules)
-VALUES (
-  '00000000-0000-0000-0000-000000000001',
-  'Clarbit Platform',
-  'clarbit-platform',
-  'ENTERPRISE',
-  true,
-  9999,
-  ARRAY['SIEM','HUNT','COVERAGE','DETECTIONS','REPORTS','AUTOMATIONS']
-)
-ON CONFLICT (id) DO NOTHING;
-
--- ── 2. Super admin user ───────────────────────────────────────
---
---  Replace <ARGON2ID_HASH> with the output of the hash command above.
---  Replace admin@clarbit.com / Admin / User with real values.
-
-INSERT INTO users (
-  tenant_id, email, first_name, last_name,
-  role, password_hash, email_verified, is_active
-)
-VALUES (
-  '00000000-0000-0000-0000-000000000001',
-  'admin@clarbit.com',
-  'Admin',
-  'User',
-  'SUPER_ADMIN',
-  '<ARGON2ID_HASH>',   -- ← replace this
-  true,
-  true
-)
-ON CONFLICT (email, tenant_id) DO NOTHING;
