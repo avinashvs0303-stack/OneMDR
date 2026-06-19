@@ -84,7 +84,7 @@ export default function DashboardPage() {
               {greeting}, {user?.firstName ?? 'Analyst'}
             </h2>
             <p className="mt-0.5 text-sm text-slate-500 dark:text-zinc-400">
-              {user?.tenantName} · Real-time defensive posture audit and active threat responder.
+              Real-time defensive posture audit and active threat responder.
             </p>
           </div>
           <Link

@@ -7,8 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/store/auth.store';
-import { verifyMfaLogin } from '@/lib/auth.api';
+import { verifyMfaChallenge } from '@/lib/auth.api';
 
 const schema = z.object({
   code: z
@@ -21,7 +20,6 @@ type FormValues = z.infer<typeof schema>;
 function MfaForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const setSession = useAuthStore((s) => s.setSession);
 
   const mfaToken = searchParams.get('token') ?? '';
   const [serverError, setServerError] = useState<string | null>(null);
@@ -39,8 +37,8 @@ function MfaForm() {
   const onSubmit = async (data: FormValues) => {
     setServerError(null);
     try {
-      const session = await verifyMfaLogin({ mfaToken, code: data.code });
-      setSession(session.user, session.accessToken);
+      await verifyMfaChallenge({ mfaToken, code: data.code });
+      // Supabase session is already active; MFA verification just unblocks routing
       router.push('/modules');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Invalid code. Please try again.';
