@@ -44,6 +44,8 @@ async function silentRefresh(): Promise<string | null> {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
+      // Content-Type required — Fastify rejects POST without a media type even for empty body
+      headers: { 'Content-Type': 'application/json' },
     });
     if (!res.ok) {
       refreshQueue.forEach((cb) => cb(null));

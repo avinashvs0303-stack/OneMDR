@@ -62,6 +62,10 @@ export const useAuthStore = create<AuthStore>()(
       clearSession: () => {
         if (typeof document !== 'undefined') {
           document.cookie = 'dev_session=; path=/; max-age=0';
+          // Clear the non-httpOnly session routing cookie immediately — this is what
+          // the middleware checks, so clearing it here guarantees logout works even
+          // if the backend Set-Cookie response never arrives (network failure, etc.)
+          document.cookie = 'onemdr_session=; path=/; max-age=0; samesite=lax';
         }
         set({ user: null, accessToken: null, isAuthenticated: false });
       },

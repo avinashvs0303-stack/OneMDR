@@ -7,6 +7,9 @@ import { generateSecureToken, hashToken } from '../common/utils/crypto.util';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 
 const COOKIE_NAME = 'refresh_token';
+// Non-httpOnly session cookie used as middleware routing signal.
+// JavaScript can clear this immediately on logout regardless of network state.
+const SESSION_COOKIE_NAME = 'onemdr_session';
 const TOKEN_BYTES = 48;
 const DEFAULT_TTL_S = 7 * 24 * 3600; // 7 days
 const REMEMBER_TTL_S = 30 * 24 * 3600; // 30 days
@@ -103,6 +106,7 @@ export class TokenService {
 
   // ── Cookie helpers ───────────────────────────────────────────────────────────
 
+  /** httpOnly cookie that holds the actual refresh token (secure, not readable by JS) */
   buildCookieOptions(rememberMe = false): Record<string, unknown> {
     const maxAge = rememberMe ? REMEMBER_TTL_S : DEFAULT_TTL_S;
     return {
@@ -124,8 +128,35 @@ export class TokenService {
     };
   }
 
+  /** Non-httpOnly cookie used by Next.js middleware as the auth routing signal.
+   *  JavaScript can clear this immediately on logout, even if the backend call fails. */
+  buildSessionCookieOptions(rememberMe = false): Record<string, unknown> {
+    const maxAge = rememberMe ? REMEMBER_TTL_S : DEFAULT_TTL_S;
+    return {
+      httpOnly: false,
+      secure: this.isProd,
+      sameSite: 'lax' as const,
+      maxAge,
+      path: '/',
+    };
+  }
+
+  clearSessionCookieOptions(): Record<string, unknown> {
+    return {
+      httpOnly: false,
+      secure: this.isProd,
+      sameSite: 'lax' as const,
+      maxAge: 0,
+      path: '/',
+    };
+  }
+
   get cookieName(): string {
     return COOKIE_NAME;
+  }
+
+  get sessionCookieName(): string {
+    return SESSION_COOKIE_NAME;
   }
 
   // ── Private ─────────────────────────────────────────────────────────────────

@@ -39,11 +39,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ── Production: JWT required ──────────────────────────────────────────────
-  // The backend sets refresh_token as an httpOnly cookie on login — use that
-  // as the auth signal since access_token lives in sessionStorage (no Edge access)
-  const refreshToken = request.cookies.get('refresh_token');
-  const isAuthenticated = Boolean(refreshToken);
+  // ── Production: session cookie check ─────────────────────────────────────
+  // onemdr_session is a non-httpOnly cookie set by the backend on login and
+  // cleared by BOTH the backend (logout response) AND client JS (clearSession).
+  // This makes logout reliable even when the backend call fails.
+  // The httpOnly refresh_token is used only for silent token rotation.
+  const sessionCookie = request.cookies.get('onemdr_session');
+  const isAuthenticated = Boolean(sessionCookie);
 
   if (isAuthenticated && isPublicPath) {
     return NextResponse.redirect(new URL('/modules', request.url));

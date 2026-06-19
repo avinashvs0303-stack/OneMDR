@@ -61,6 +61,11 @@ export class AuthController {
       rawRefreshToken,
       this.tokenService.buildCookieOptions(false),
     );
+    void res.setCookie(
+      this.tokenService.sessionCookieName,
+      '1',
+      this.tokenService.buildSessionCookieOptions(false),
+    );
 
     return { data: { accessToken, user } };
   }
@@ -85,10 +90,16 @@ export class AuthController {
       return { data: { requiresMfa: true, mfaToken: result.mfaToken } };
     }
 
+    const rememberMe = meta.rememberMe ?? false;
     void res.setCookie(
       this.tokenService.cookieName,
       result.rawRefreshToken,
-      this.tokenService.buildCookieOptions(meta.rememberMe),
+      this.tokenService.buildCookieOptions(rememberMe),
+    );
+    void res.setCookie(
+      this.tokenService.sessionCookieName,
+      '1',
+      this.tokenService.buildSessionCookieOptions(rememberMe),
     );
 
     return { data: { accessToken: result.accessToken, user: result.user } };
@@ -117,6 +128,11 @@ export class AuthController {
       this.tokenService.cookieName,
       rawRefreshToken,
       this.tokenService.buildCookieOptions(),
+    );
+    void res.setCookie(
+      this.tokenService.sessionCookieName,
+      '1',
+      this.tokenService.buildSessionCookieOptions(),
     );
 
     return { data: { accessToken, user } };
@@ -149,6 +165,12 @@ export class AuthController {
       newRaw,
       this.tokenService.buildCookieOptions(),
     );
+    // Re-stamp session cookie so its TTL stays in sync with the rotated refresh token
+    void res.setCookie(
+      this.tokenService.sessionCookieName,
+      '1',
+      this.tokenService.buildSessionCookieOptions(),
+    );
 
     return { data: { accessToken } };
   }
@@ -167,8 +189,13 @@ export class AuthController {
       await this.authService.logoutByRefreshToken(raw, this.extractMeta(req));
     }
 
-    // ALWAYS clear the cookie so the middleware stops granting access
+    // ALWAYS clear both cookies — onemdr_session is the JS-clearable routing signal
     void res.setCookie(this.tokenService.cookieName, '', this.tokenService.clearCookieOptions());
+    void res.setCookie(
+      this.tokenService.sessionCookieName,
+      '',
+      this.tokenService.clearSessionCookieOptions(),
+    );
   }
 
   // ── MFA: Setup + Enable + Disable ───────────────────────────────────────────

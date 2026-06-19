@@ -48,6 +48,7 @@ export function SessionRestorer() {
         const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
         });
 
         if (!refreshRes.ok) {
