@@ -2,19 +2,27 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { passportJwtSecret } from 'jwks-rsa';
 import type { JwtPayload, SupabaseJwtPayload } from '../interfaces/jwt-payload.interface';
 import type { UserRole } from '@onemdr/database';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(config: ConfigService) {
+    const supabaseUrl = config.getOrThrow<string>('SUPABASE_URL');
+    // Supabase now signs JWTs with ES256 (asymmetric). Verify against the public JWKS
+    // rather than the legacy symmetric secret.
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      // Supabase JWT secret — found at: Dashboard → Settings → API → JWT Settings
-      secretOrKey: config.getOrThrow<string>('SUPABASE_JWT_SECRET'),
-      // Supabase JWTs always have aud: 'authenticated'
+      secretOrKeyProvider: passportJwtSecret({
+        cache: true,
+        rateLimit: true,
+        jwksRequestsPerMinute: 10,
+        jwksUri: `${supabaseUrl}/auth/v1/.well-known/jwks.json`,
+      }),
       audience: 'authenticated',
+      algorithms: ['ES256', 'RS256'],
     });
   }
 

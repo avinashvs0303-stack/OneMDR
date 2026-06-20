@@ -20,9 +20,9 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().url('SUPABASE_URL must be a valid URL'),
   // Service role key — never expose to browser. Used for Admin API (invite users, set app_metadata).
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
-  // JWT secret — used to verify Supabase-issued JWTs without a network call.
-  // Found at: Supabase Dashboard → Settings → API → JWT Settings → JWT Secret
-  SUPABASE_JWT_SECRET: z.string().min(32, 'SUPABASE_JWT_SECRET must be at least 32 characters'),
+  // JWT secret — kept for backwards compatibility but no longer used for verification.
+  // Supabase now signs JWTs with ES256; we verify via the public JWKS endpoint instead.
+  SUPABASE_JWT_SECRET: z.string().min(1).optional(),
 
   // ── Field Encryption ───────────────────────────────────────────────────────
   // AES-256-GCM requires exactly 32 bytes. Provide as 64 hex chars.
