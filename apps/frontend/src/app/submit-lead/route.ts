@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as unknown;
 
-    const upstream = await fetch(`${BACKEND_URL}/api/v1/tenant-requests`, {
+    const upstream = await fetch(`${BACKEND_URL}/api/v1/access`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
