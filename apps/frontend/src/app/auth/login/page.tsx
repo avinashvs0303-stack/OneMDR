@@ -11,12 +11,13 @@ const ERROR_MESSAGES: Record<string, string> = {
     'Your account has not been provisioned with a workspace. Please use the invite link from your welcome email, or contact your administrator.',
 };
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const errorKey = typeof searchParams['error'] === 'string' ? searchParams['error'] : null;
+  const params = await searchParams;
+  const errorKey = typeof params['error'] === 'string' ? params['error'] : null;
   const errorMsg = errorKey ? (ERROR_MESSAGES[errorKey] ?? null) : null;
 
   return (
