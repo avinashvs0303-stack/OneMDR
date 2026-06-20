@@ -98,3 +98,52 @@ html.dark, html.dark body {
 .admin-input {
   @apply w-full rounded-lg border border-white/10 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/20;
 }
+
+/* ── Admin light theme ───────────────────────────────────── */
+.admin-light { color-scheme: light; }
+
+/* Backgrounds */
+.admin-light .bg-slate-950 { background-color: #f1f5f9 !important; }
+.admin-light .bg-slate-900 { background-color: #ffffff !important; }
+.admin-light .bg-slate-800 { background-color: #f8fafc !important; }
+.admin-light .bg-slate-900\/60 { background-color: rgba(255,255,255,.9) !important; }
+.admin-light .bg-slate-800\/40 { background-color: rgba(248,250,252,.8) !important; }
+.admin-light .bg-white\/5  { background-color: rgba(15,23,42,.03) !important; }
+.admin-light .bg-white\/10 { background-color: rgba(15,23,42,.06) !important; }
+.admin-light .bg-white\/20 { background-color: rgba(15,23,42,.12) !important; }
+.admin-light .bg-black\/60 { background-color: rgba(15,23,42,.4) !important; }
+.admin-light .bg-black\/70 { background-color: rgba(15,23,42,.5) !important; }
+
+/* Hover backgrounds */
+.admin-light .hover\:bg-white\/5:hover  { background-color: rgba(15,23,42,.03) !important; }
+.admin-light .hover\:bg-white\/10:hover { background-color: rgba(15,23,42,.07) !important; }
+.admin-light .hover\:bg-white\/20:hover { background-color: rgba(15,23,42,.1) !important; }
+
+/* Text */
+.admin-light .text-white      { color: #0f172a !important; }
+.admin-light .text-slate-100  { color: #0f172a !important; }
+.admin-light .text-slate-200  { color: #1e293b !important; }
+.admin-light .text-slate-300  { color: #334155 !important; }
+.admin-light .text-slate-400  { color: #475569 !important; }
+.admin-light .text-slate-500  { color: #64748b !important; }
+.admin-light .text-slate-600  { color: #94a3b8 !important; }
+
+/* Hover text */
+.admin-light .hover\:text-white:hover      { color: #0f172a !important; }
+.admin-light .hover\:text-slate-100:hover  { color: #0f172a !important; }
+.admin-light .hover\:text-slate-200:hover  { color: #1e293b !important; }
+.admin-light .hover\:text-slate-300:hover  { color: #334155 !important; }
+
+/* Borders */
+.admin-light .border-white\/10 { border-color: #e2e8f0 !important; }
+.admin-light .border-white\/5  { border-color: #f1f5f9 !important; }
+
+/* Admin input override */
+.admin-light .admin-input {
+  border-color: #e2e8f0 !important;
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+.admin-light .admin-input::placeholder { color: #94a3b8 !important; }
+.admin-light select.admin-input option  { background: #fff; color: #0f172a; }
+

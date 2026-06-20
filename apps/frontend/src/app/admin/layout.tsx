@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   ChevronRight,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { cn } from '@/lib/utils';
@@ -66,8 +68,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const logout = useAuthStore((s) => s.logout);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   const isClarbit = user?.email?.toLowerCase().endsWith('@clarbit.com') ?? false;
+
+  useEffect(() => {
+    const saved = localStorage.getItem('admin-theme') as 'dark' | 'light' | null;
+    if (saved) setTheme(saved);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -78,6 +86,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace('/admin/login');
     }
   }, [user, isAuthenticated, isClarbit, router]);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('admin-theme', next);
+  };
 
   if (!isAuthenticated || user?.role !== 'SUPER_ADMIN' || !isClarbit) {
     return (
@@ -93,7 +107,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden">
+    <div
+      className={cn(
+        'flex h-screen bg-slate-950 text-slate-100 overflow-hidden',
+        theme === 'light' && 'admin-light',
+      )}
+    >
       {/* ── Mobile overlay ─────────────────────────────────────────────────── */}
       {sidebarOpen && (
         <div
@@ -169,6 +188,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </p>
               <p className="truncate text-[10px] text-slate-500">{user?.email}</p>
             </div>
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="shrink-0 rounded p-1 text-slate-500 hover:bg-white/10 hover:text-slate-200 transition-colors"
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-3.5 w-3.5" />
+              ) : (
+                <Moon className="h-3.5 w-3.5" />
+              )}
+            </button>
             <button
               onClick={() => void handleLogout()}
               title="Sign out"

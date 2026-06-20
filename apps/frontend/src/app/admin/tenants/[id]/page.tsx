@@ -500,7 +500,7 @@ export default function TenantDetailPage() {
                   )}
                 >
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-xs font-medium text-white truncate">
                         {u.firstName} {u.lastName}
                       </p>
@@ -514,6 +514,11 @@ export default function TenantDetailPage() {
                       </span>
                       {u.mfaEnabled && (
                         <ShieldCheck className="h-3 w-3 text-emerald-400 shrink-0" />
+                      )}
+                      {!u.lastLoginAt && u.supabaseUid && (
+                        <span className="rounded-full bg-yellow-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-yellow-400">
+                          Invite pending
+                        </span>
                       )}
                     </div>
                     <p className="text-[10px] text-slate-500 truncate">{u.email}</p>
