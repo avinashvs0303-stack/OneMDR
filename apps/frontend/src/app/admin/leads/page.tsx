@@ -95,9 +95,9 @@ function LeadsContent() {
 
   const FILTERS: { value: FilterStatus; label: string }[] = [
     { value: 'ALL', label: 'All' },
-    { value: 'PENDING', label: `New Â· ${counts.PENDING}` },
-    { value: 'APPROVED', label: `Provisioned Â· ${counts.APPROVED}` },
-    { value: 'REJECTED', label: `Declined Â· ${counts.REJECTED}` },
+    { value: 'PENDING', label: `New - ${counts.PENDING}` },
+    { value: 'APPROVED', label: `Provisioned - ${counts.APPROVED}` },
+    { value: 'REJECTED', label: `Declined - ${counts.REJECTED}` },
   ];
 
   return (
@@ -144,7 +144,7 @@ function LeadsContent() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search company, emailâ€¦"
+            placeholder="Search company, email..."
             className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-600/40 focus:outline-none focus:ring-1 focus:ring-blue-600/20 sm:w-64"
           />
         </div>
@@ -188,7 +188,7 @@ export default function LeadsPage() {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ---------------------------------------------------------------------------
 
 function LeadCard({
   lead,
@@ -275,13 +275,13 @@ function LeadCard({
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-white truncate">{lead.companyName}</h3>
-            {lead.industry && <span className="text-xs text-slate-500">Â· {lead.industry}</span>}
+            {lead.industry && <span className="text-xs text-slate-500">· {lead.industry}</span>}
             {lead.companySize && (
-              <span className="text-xs text-slate-500">Â· {lead.companySize}</span>
+              <span className="text-xs text-slate-500">· {lead.companySize}</span>
             )}
           </div>
           <p className="text-sm text-slate-400">
-            {lead.contactName} Â·{' '}
+            {lead.contactName} ·{' '}
             <a
               href={`mailto:${lead.contactEmail}`}
               className="hover:text-blue-400 hover:underline transition-colors"
@@ -291,7 +291,7 @@ function LeadCard({
             {lead.website && (
               <>
                 {' '}
-                Â·{' '}
+                ·{' '}
                 <a
                   href={lead.website}
                   target="_blank"
@@ -364,7 +364,7 @@ function LeadCard({
             </div>
           )}
 
-          {/* Action panels â€” new leads only */}
+          {/* Action panels - new leads only */}
           {lead.status === 'PENDING' && !provisioned && (
             <div className="grid gap-4 md:grid-cols-2">
               {/* Provision panel */}
@@ -520,7 +520,7 @@ function LeadCard({
                     rows={5}
                     value={declineReason}
                     onChange={(e) => setDeclineReason(e.target.value)}
-                    placeholder="Thank you for your interest in OneMDR. We're not able to onboard your organisation at this timeâ€¦"
+                    placeholder="Thank you for your interest in OneMDR. We're not able to onboard your organisation at this time..."
                     className="admin-input resize-none"
                   />
                 </Field>
@@ -547,7 +547,7 @@ function LeadCard({
               <Stat label="Plan" value={lead.planType} />
               <Stat label="Type" value={lead.tenantType ?? 'STANDARD'} />
               <Stat label="Seat limit" value={String(lead.maxUsers)} />
-              <Stat label="Modules" value={lead.licenseModules.join(', ') || 'â€”'} />
+              <Stat label="Modules" value={lead.licenseModules.join(', ') || '-'} />
               <Stat
                 label="License expires"
                 value={

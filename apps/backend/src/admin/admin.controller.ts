@@ -14,6 +14,7 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { UpdateLicenseDto } from './dto/update-license.dto';
+import { CreateTenantDto } from './dto/create-tenant.dto';
 import { InviteTenantUserDto } from './dto/invite-tenant-user.dto';
 import { UpdateSupportCaseDto, CreateSupportCaseDto } from './dto/update-support-case.dto';
 import {
@@ -57,6 +58,16 @@ export class AdminController {
     @Query('status') status?: string,
   ) {
     const data = await this.svc.listTenants({ search, plan, status });
+    return { data };
+  }
+
+  // ── Manual tenant creation ────────────────────────────────────────────────────
+
+  @Post('tenants')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Manually create a tenant and send invite to the owner' })
+  async createTenant(@Body() dto: CreateTenantDto, @CurrentUser() user: JwtPayload) {
+    const data = await this.svc.createTenant(dto, user);
     return { data };
   }
 

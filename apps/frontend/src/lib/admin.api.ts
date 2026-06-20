@@ -92,6 +92,19 @@ export interface UpdateLicensePayload {
   adminNotes?: string;
 }
 
+export interface CreateTenantPayload {
+  companyName: string;
+  contactName: string;
+  contactEmail: string;
+  planType: TenantPlan;
+  tenantType?: TenantType;
+  maxUsers: number;
+  maxSubTenants?: number;
+  licenseModules: string[];
+  licenseExpiresAt?: string;
+  adminNotes?: string;
+}
+
 export interface InviteUserPayload {
   email: string;
   name: string;
@@ -202,6 +215,16 @@ export const adminApi = {
     if (params?.status) q.set('status', params.status);
     const res = await api.get<{ data: TenantSummary[] }>(
       `${BASE}/tenants${q.toString() ? `?${q.toString()}` : ''}`,
+    );
+    return res.data;
+  },
+
+  createTenant: async (
+    payload: CreateTenantPayload,
+  ): Promise<{ tenantId: string; slug: string; message: string }> => {
+    const res = await api.post<{ data: { tenantId: string; slug: string; message: string } }>(
+      `${BASE}/tenants`,
+      payload,
     );
     return res.data;
   },

@@ -11,6 +11,7 @@ import { PrismaService } from '../database/prisma.service';
 import { SupabaseAdminService } from '../supabase/supabase-admin.service';
 import { TenantRequestsService } from '../tenant-requests/tenant-requests.service';
 import type { UpdateLicenseDto } from './dto/update-license.dto';
+import type { CreateTenantDto } from './dto/create-tenant.dto';
 import type { InviteTenantUserDto } from './dto/invite-tenant-user.dto';
 import type { UpdateSupportCaseDto, CreateSupportCaseDto } from './dto/update-support-case.dto';
 import type {
@@ -437,6 +438,90 @@ export class AdminService {
         _count: { select: { users: { where: { isActive: true, deletedAt: null } } } },
       },
     });
+  }
+
+  // ── Manual tenant creation ────────────────────────────────────────────────────
+
+  async createTenant(dto: CreateTenantDto, actor: JwtPayload) {
+    const existingUser = await this.db.user.findFirst({ where: { email: dto.contactEmail } });
+    if (existingUser) throw new ConflictException('A user with this email already exists');
+
+    const baseSlug = dto.companyName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 50);
+
+    let slug = baseSlug;
+    let counter = 1;
+    while (await this.db.tenant.findUnique({ where: { slug } })) {
+      slug = `${baseSlug}-${counter++}`;
+    }
+
+    const firstName = dto.contactName.split(' ')[0] ?? dto.contactName;
+    const lastName = dto.contactName.split(' ').slice(1).join(' ') || '-';
+    const tenantId = crypto.randomUUID();
+
+    const [, user] = await this.db.$transaction([
+      this.db.tenant.create({
+        data: {
+          id: tenantId,
+          name: dto.companyName,
+          slug,
+          plan: dto.planType,
+          tenantType: dto.tenantType ?? 'STANDARD',
+          maxUsers: dto.maxUsers,
+          maxSubTenants: dto.maxSubTenants ?? null,
+          licenseModules: dto.licenseModules,
+          licenseExpiresAt: dto.licenseExpiresAt ? new Date(dto.licenseExpiresAt) : null,
+          isActive: true,
+        },
+      }),
+      this.db.user.create({
+        data: {
+          tenantId,
+          email: dto.contactEmail,
+          firstName,
+          lastName,
+          role: 'OWNER',
+          emailVerified: false,
+        },
+      }),
+    ]);
+
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    const supabaseUid = await this.supabase.inviteUser({
+      email: dto.contactEmail,
+      redirectTo: `${frontendUrl}/auth/set-password`,
+      userMetadata: { first_name: firstName, last_name: lastName },
+      appMetadata: {
+        user_id: user.id,
+        tenant_id: tenantId,
+        app_role: 'OWNER',
+        tenant_type: dto.tenantType ?? 'STANDARD',
+      },
+    });
+
+    if (supabaseUid) {
+      await this.db.user.update({ where: { id: user.id }, data: { supabaseUid } });
+    }
+
+    this.emitter.emit('audit.log', {
+      tenantId: actor.tenantId ?? CLARBIT_TENANT_ID,
+      actorId: actor.sub,
+      action: 'TENANT_CREATED',
+      resource: 'tenant',
+      resourceId: tenantId,
+      metadata: {
+        company: dto.companyName,
+        email: dto.contactEmail,
+        type: dto.tenantType ?? 'STANDARD',
+        plan: dto.planType,
+      },
+    });
+
+    this.logger.log(`Tenant "${dto.companyName}" manually created by ${actor.email}`);
+    return { tenantId, slug, message: `Tenant created. Invite sent to ${dto.contactEmail}` };
   }
 
   // ── Leads (tenant requests) ───────────────────────────────────────────────────
