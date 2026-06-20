@@ -28,6 +28,8 @@ export interface DetectionRow {
   mitreTechnique: string | null;
   nistControls: string[];
   dataSources: string[];
+  logSources: string[];
+  deviceTypes: string[];
   query: string;
   queryLanguage: QueryLanguage;
   tags: string[];
@@ -40,6 +42,36 @@ export interface DetectionRow {
   stats: { triggerCount: number; truePositives: number; falsePositives: number };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TenantLogSource {
+  id: string;
+  tenantId: string;
+  logSource: string;
+  deviceType: string | null;
+  vendor: string | null;
+  createdAt: string;
+}
+
+export interface DetectionProposal {
+  id: string;
+  ruleId: string;
+  name: string;
+  description: string;
+  severity: DetectionSeverity;
+  platform: DetectionPlatform;
+  mitreAttackId: string | null;
+  mitreTactic: string | null;
+  logSources: string[];
+  deviceTypes: string[];
+  matchedSources: string[];
+}
+
+export interface ProposalsResponse {
+  proposals: DetectionProposal[];
+  totalLogSources: number;
+  registeredSources?: string[];
+  message?: string;
 }
 
 export interface DetectionStat {
@@ -165,6 +197,29 @@ export const detectionsApi = {
 
   summary: async (): Promise<DashboardSummary> => {
     const res = await api.get<{ data: DashboardSummary }>(`${BASE}/summary`);
+    return res.data;
+  },
+
+  listLogSources: async (): Promise<TenantLogSource[]> => {
+    const res = await api.get<{ data: TenantLogSource[] }>(`${BASE}/log-sources`);
+    return res.data;
+  },
+
+  addLogSource: async (payload: {
+    logSource: string;
+    deviceType?: string;
+    vendor?: string;
+  }): Promise<TenantLogSource> => {
+    const res = await api.post<{ data: TenantLogSource }>(`${BASE}/log-sources`, payload);
+    return res.data;
+  },
+
+  removeLogSource: async (id: string): Promise<void> => {
+    await api.delete(`${BASE}/log-sources/${id}`);
+  },
+
+  proposals: async (): Promise<ProposalsResponse> => {
+    const res = await api.get<{ data: ProposalsResponse }>(`${BASE}/proposals`);
     return res.data;
   },
 };

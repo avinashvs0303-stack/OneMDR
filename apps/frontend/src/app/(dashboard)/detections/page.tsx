@@ -17,11 +17,17 @@ import {
   AlertCircle,
   FileSpreadsheet,
   CheckCircle2,
+  Lightbulb,
+  Database,
+  Trash2,
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   detectionsApi,
   type DetectionRow,
+  type TenantLogSource,
+  type DetectionProposal,
   type CreateDetectionPayload,
   type DetectionSeverity,
   type DetectionPlatform,
@@ -32,6 +38,63 @@ import {
   PLATFORM_COLORS,
   QUERY_LANG_LABEL,
 } from '@/lib/detections.api';
+
+// ── Log source catalog ────────────────────────────────────────────────────────
+
+const LOG_SOURCE_CATALOG = [
+  {
+    logSource: 'Windows Security',
+    label: 'Windows Security',
+    desc: 'Windows Event Logs, AD security events',
+  },
+  {
+    logSource: 'Network Communication',
+    label: 'Firewall / Network',
+    desc: 'Firewall policies, perimeter traffic, NAT',
+  },
+  { logSource: 'Authentication', label: 'Authentication', desc: 'Login events, MFA, LDAP, SSO' },
+  { logSource: 'DNS', label: 'DNS', desc: 'Query/response logs, recursive resolvers' },
+  {
+    logSource: 'Email',
+    label: 'Email Gateway',
+    desc: 'Email delivery, anti-spam, phishing detection',
+  },
+  {
+    logSource: 'Endpoint Detection and Response',
+    label: 'EDR / Endpoint',
+    desc: 'Process, file, registry, network events',
+  },
+  {
+    logSource: 'Anti-Virus / Anti-Malware',
+    label: 'Antivirus / AV',
+    desc: 'Malware detections, quarantine events',
+  },
+  {
+    logSource: 'Web Proxy / NGFW',
+    label: 'Web Proxy / NGFW',
+    desc: 'HTTP/S proxy, URL filtering, SSL inspection',
+  },
+  { logSource: 'IDS / IPS', label: 'IDS / IPS', desc: 'Intrusion detection and prevention alerts' },
+  {
+    logSource: 'Active Directory',
+    label: 'Active Directory',
+    desc: 'Directory service events, Group Policy',
+  },
+  { logSource: 'DLP', label: 'DLP', desc: 'Data loss prevention, file transfer events' },
+  { logSource: 'AWS', label: 'AWS / Cloud', desc: 'CloudTrail, Config, GuardDuty logs' },
+  { logSource: 'Linux Syslog', label: 'Linux / Syslog', desc: 'Syslog, auth.log, auditd events' },
+  {
+    logSource: 'Database Audit',
+    label: 'Database Audit',
+    desc: 'SQL queries, database access control',
+  },
+  { logSource: 'Web Server Logs', label: 'Web Server', desc: 'Apache/Nginx access and error logs' },
+  {
+    logSource: 'Application Audit',
+    label: 'Application Audit',
+    desc: 'ERP, SAP, CITRIX application logs',
+  },
+];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -127,7 +190,84 @@ export default function DetectionsPage() {
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // View mode: library or proposals
+  const [viewMode, setViewMode] = useState<'library' | 'proposals'>('library');
+
+  // Log sources
+  const [logSources, setLogSources] = useState<TenantLogSource[]>([]);
+  const [showLogSources, setShowLogSources] = useState(false);
+  const [addingSource, setAddingSource] = useState<string | null>(null);
+
+  // Proposals
+  const [proposals, setProposals] = useState<DetectionProposal[]>([]);
+  const [proposalLoading, setProposalLoading] = useState(false);
+  const [enablingProposal, setEnablingProposal] = useState<Record<string, boolean>>({});
+
   // ── Data fetch ──────────────────────────────────────────────────────────────
+
+  const fetchLogSources = useCallback(async () => {
+    try {
+      const data = await detectionsApi.listLogSources();
+      setLogSources(data);
+    } catch {
+      // non-critical — silently fail
+    }
+  }, []);
+
+  const fetchProposals = useCallback(async () => {
+    setProposalLoading(true);
+    try {
+      const res = await detectionsApi.proposals();
+      setProposals(res.proposals);
+    } catch {
+      setProposals([]);
+    } finally {
+      setProposalLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchLogSources();
+  }, [fetchLogSources]);
+
+  useEffect(() => {
+    if (viewMode === 'proposals') void fetchProposals();
+  }, [viewMode, fetchProposals]);
+
+  const handleAddLogSource = async (logSource: string) => {
+    if (logSources.some((ls) => ls.logSource === logSource)) return;
+    setAddingSource(logSource);
+    try {
+      const added = await detectionsApi.addLogSource({ logSource });
+      setLogSources((prev) => [...prev, added]);
+    } catch {
+      // ignore duplicate
+    } finally {
+      setAddingSource(null);
+    }
+  };
+
+  const handleRemoveLogSource = async (id: string) => {
+    try {
+      await detectionsApi.removeLogSource(id);
+      setLogSources((prev) => prev.filter((ls) => ls.id !== id));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleEnableProposal = async (proposal: DetectionProposal) => {
+    if (enablingProposal[proposal.id]) return;
+    setEnablingProposal((prev) => ({ ...prev, [proposal.id]: true }));
+    try {
+      await detectionsApi.toggle(proposal.id, true);
+      setProposals((prev) => prev.filter((p) => p.id !== proposal.id));
+    } catch {
+      // silently fail
+    } finally {
+      setEnablingProposal((prev) => ({ ...prev, [proposal.id]: false }));
+    }
+  };
 
   const fetchDetections = useCallback(async () => {
     setLoading(true);
@@ -272,248 +412,422 @@ export default function DetectionsPage() {
         >
           {/* Toolbar */}
           <div className="border-b border-black/10 dark:border-white/10 bg-black/5 dark:bg-black/20 px-4 py-3 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 flex-1 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-md px-3 py-2">
-                <Search className="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 shrink-0" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search detections, technique IDs, descriptions..."
-                  className="flex-1 bg-transparent text-sm text-slate-800 dark:text-zinc-200 placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none"
-                />
+            {/* View tabs */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode('library');
+                  setSelected(null);
+                }}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
+                  viewMode === 'library'
+                    ? 'bg-amber-600 text-white'
+                    : 'text-slate-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/5',
+                )}
+              >
+                <Shield className="h-3.5 w-3.5" /> Detection Library
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode('proposals');
+                  setSelected(null);
+                }}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
+                  viewMode === 'proposals'
+                    ? 'bg-amber-600 text-white'
+                    : 'text-slate-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/5',
+                )}
+              >
+                <Lightbulb className="h-3.5 w-3.5" /> Proposed
+                {proposals.length > 0 && (
+                  <span className="rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-bold">
+                    {proposals.length}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLogSources(true)}
+                className="ml-auto flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-zinc-300 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+              >
+                <Database className="h-3.5 w-3.5" />
+                Log Sources
+                {logSources.length > 0 && (
+                  <span className="rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 text-[10px] font-bold">
+                    {logSources.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {viewMode === 'library' && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-md px-3 py-2">
+                  <Search className="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 shrink-0" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search detections, technique IDs, descriptions..."
+                    className="flex-1 bg-transparent text-sm text-slate-800 dark:text-zinc-200 placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowImport(true)}
+                  className="flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-zinc-300 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                >
+                  <Upload className="h-3.5 w-3.5" /> Import
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewModal(true)}
+                  className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-500 transition-colors shadow-sm shadow-amber-500/20"
+                >
+                  <Plus className="h-3.5 w-3.5" /> New Detection
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowImport(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-zinc-300 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-              >
-                <Upload className="h-3.5 w-3.5" /> Import
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowNewModal(true)}
-                className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-500 transition-colors shadow-sm shadow-amber-500/20"
-              >
-                <Plus className="h-3.5 w-3.5" /> New Detection
-              </button>
-            </div>
+            )}
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <FilterSelect
-                label="Platform"
-                value={platform}
-                options={ALL_PLATFORMS as unknown as string[]}
-                display={(v) =>
-                  v === 'All' ? 'Platform: All' : (PLATFORM_LABEL[v as DetectionPlatform] ?? v)
-                }
-                onChange={setPlatform}
-              />
-              <FilterSelect
-                label="Severity"
-                value={severity}
-                options={ALL_SEVERITIES as unknown as string[]}
-                display={(v) =>
-                  v === 'All' ? 'Severity: All' : (SEVERITY_LABEL[v as DetectionSeverity] ?? v)
-                }
-                onChange={setSeverity}
-              />
-              <FilterSelect
-                label="Tactic"
-                value={tactic}
-                options={allTactics}
-                display={(v) => (v === 'All' ? 'Tactic: All' : v)}
-                onChange={setTactic}
-              />
-              <FilterSelect
-                label="Status"
-                value={showEnabled}
-                options={['all', 'enabled', 'disabled']}
-                display={(v) =>
-                  ({ all: 'Status: All', enabled: 'Enabled', disabled: 'Disabled' })[v] ?? v
-                }
-                onChange={(v) => setShowEnabled(v as 'all' | 'enabled' | 'disabled')}
-              />
-              <button
-                type="button"
-                onClick={() => void fetchDetections()}
-                className="ml-auto p-1.5 rounded text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300 transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-              </button>
-              <span className="text-xs text-slate-400 dark:text-zinc-500">
-                {loading ? '...' : `${detections.length} rules`}
-              </span>
-            </div>
-          </div>
-
-          {/* List content */}
-          <div className="flex-1 overflow-y-auto">
-            {error ? (
-              <div className="flex flex-col items-center justify-center h-48 gap-3 text-sm text-slate-500 dark:text-zinc-400">
-                <AlertCircle className="h-8 w-8 text-red-400" />
-                <p>{error}</p>
+            {viewMode === 'library' && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <FilterSelect
+                  label="Platform"
+                  value={platform}
+                  options={ALL_PLATFORMS as unknown as string[]}
+                  display={(v) =>
+                    v === 'All' ? 'Platform: All' : (PLATFORM_LABEL[v as DetectionPlatform] ?? v)
+                  }
+                  onChange={setPlatform}
+                />
+                <FilterSelect
+                  label="Severity"
+                  value={severity}
+                  options={ALL_SEVERITIES as unknown as string[]}
+                  display={(v) =>
+                    v === 'All' ? 'Severity: All' : (SEVERITY_LABEL[v as DetectionSeverity] ?? v)
+                  }
+                  onChange={setSeverity}
+                />
+                <FilterSelect
+                  label="Tactic"
+                  value={tactic}
+                  options={allTactics}
+                  display={(v) => (v === 'All' ? 'Tactic: All' : v)}
+                  onChange={setTactic}
+                />
+                <FilterSelect
+                  label="Status"
+                  value={showEnabled}
+                  options={['all', 'enabled', 'disabled']}
+                  display={(v) =>
+                    ({ all: 'Status: All', enabled: 'Enabled', disabled: 'Disabled' })[v] ?? v
+                  }
+                  onChange={(v) => setShowEnabled(v as 'all' | 'enabled' | 'disabled')}
+                />
                 <button
                   type="button"
                   onClick={() => void fetchDetections()}
-                  className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-1.5 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="ml-auto p-1.5 rounded text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300 transition-colors"
+                  title="Refresh"
                 >
-                  Retry
+                  <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
                 </button>
+                <span className="text-xs text-slate-400 dark:text-zinc-500">
+                  {loading ? '...' : `${detections.length} rules`}
+                </span>
               </div>
-            ) : loading && detections.length === 0 ? (
-              <div className="flex flex-col gap-1 p-4">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-10 rounded-lg bg-black/5 dark:bg-white/5 animate-pulse"
-                  />
-                ))}
-              </div>
-            ) : detections.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 gap-2 text-sm text-slate-500 dark:text-zinc-400">
-                <Shield className="h-8 w-8 opacity-30" />
-                <p>No detections found</p>
-                <p className="text-xs">Try adjusting your filters or create a custom rule</p>
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-white/90 dark:bg-black/40 backdrop-blur-md border-b border-black/10 dark:border-white/10">
-                  <tr>
-                    {['', 'On', 'Detection', 'Platform', 'Severity', 'FP%', 'Alerts/d'].map((h) => (
-                      <th
-                        key={h}
-                        className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase text-slate-400 dark:text-zinc-500"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                  {detections.map((det) => (
-                    <tr
-                      key={det.id}
-                      onClick={() => setSelected(det.id === selected?.id ? null : det)}
-                      className={cn(
-                        'cursor-pointer transition-colors',
-                        selected?.id === det.id
-                          ? 'bg-amber-50 dark:bg-amber-500/10 border-l-2 border-l-amber-500'
-                          : 'hover:bg-black/5 dark:hover:bg-white/5',
-                      )}
-                    >
-                      <td className="px-3 py-3">
-                        <ChevronRight
-                          className={cn(
-                            'h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 transition-transform',
-                            selected?.id === det.id &&
-                              'rotate-90 text-amber-500 dark:text-amber-400',
-                          )}
-                        />
-                      </td>
-
-                      {/* Enable / disable toggle */}
-                      <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={(e) => void handleToggle(det, e)}
-                          disabled={toggling[det.id]}
-                          title={det.isEnabled ? 'Disable detection' : 'Enable detection'}
-                          className={cn(
-                            'transition-colors rounded',
-                            toggling[det.id] && 'opacity-50 cursor-wait',
-                          )}
-                        >
-                          {det.isEnabled ? (
-                            <ToggleRight className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
-                          ) : (
-                            <ToggleLeft className="h-5 w-5 text-slate-300 dark:text-zinc-600" />
-                          )}
-                        </button>
-                      </td>
-
-                      <td className="px-3 py-3 max-w-[200px]">
-                        <p className="font-medium text-slate-900 dark:text-white text-xs truncate">
-                          {det.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 dark:text-zinc-500 flex items-center gap-1">
-                          {det.ruleId}
-                          {det.isCustom && (
-                            <span className="rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1 text-[9px] font-bold">
-                              CUSTOM
-                            </span>
-                          )}
-                        </p>
-                      </td>
-
-                      <td className="px-3 py-3">
-                        <span
-                          className={cn(
-                            'inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold',
-                            PLATFORM_COLORS[det.platform],
-                          )}
-                        >
-                          {PLATFORM_LABEL[det.platform]}
-                        </span>
-                        {det.mitreAttackId && (
-                          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
-                            {det.mitreAttackId}
-                          </p>
-                        )}
-                      </td>
-
-                      <td className="px-3 py-3">
-                        <span
-                          className={cn(
-                            'inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold',
-                            SEVERITY_COLORS[det.severity],
-                          )}
-                        >
-                          {SEVERITY_LABEL[det.severity]}
-                        </span>
-                      </td>
-
-                      <td className="px-3 py-3 text-xs font-medium">
-                        {det.stats.triggerCount > 0 ? (
-                          <span
-                            className={cn(
-                              det.stats.falsePositives / (det.stats.triggerCount || 1) > 0.2
-                                ? 'text-red-500 dark:text-red-400'
-                                : det.stats.falsePositives / (det.stats.triggerCount || 1) > 0.1
-                                  ? 'text-amber-500 dark:text-amber-400'
-                                  : 'text-emerald-600 dark:text-emerald-400',
-                            )}
-                          >
-                            {det.stats.triggerCount > 0
-                              ? `${Math.round((det.stats.falsePositives / det.stats.triggerCount) * 100)}%`
-                              : det.expectedFpRate != null
-                                ? `${det.expectedFpRate}%`
-                                : '-'}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300 dark:text-zinc-600">
-                            {det.expectedFpRate != null ? `~${det.expectedFpRate}%` : '-'}
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-3 py-3 text-xs text-slate-700 dark:text-zinc-300">
-                        {det.stats.triggerCount > 0 ? (
-                          det.stats.triggerCount
-                        ) : (
-                          <span className="text-slate-300 dark:text-zinc-600">
-                            {det.expectedAlertsPerDay != null
-                              ? `~${det.expectedAlertsPerDay}`
-                              : '-'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             )}
           </div>
+
+          {/* ── Proposals view ──────────────────────────────────────────── */}
+          {viewMode === 'proposals' && (
+            <div className="flex-1 overflow-y-auto">
+              {logSources.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4 px-8 text-center">
+                  <Database className="h-10 w-10 text-slate-200 dark:text-zinc-700" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-zinc-300">
+                      No log sources registered
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-zinc-500 mt-1">
+                      Register your log sources to get smart detection proposals based on what data
+                      you send to your SIEM.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowLogSources(true)}
+                    className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-500 transition-colors"
+                  >
+                    <Database className="h-3.5 w-3.5" /> Register Log Sources
+                  </button>
+                </div>
+              ) : proposalLoading ? (
+                <div className="flex flex-col gap-1 p-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-14 rounded-lg bg-black/5 dark:bg-white/5 animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : proposals.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+                  <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+                  <p className="text-sm font-semibold text-slate-700 dark:text-zinc-300">
+                    All detections are enabled
+                  </p>
+                  <p className="text-xs text-slate-400 dark:text-zinc-500">
+                    No new proposals for your {logSources.length} registered log source
+                    {logSources.length !== 1 ? 's' : ''}.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-black/5 dark:divide-white/5">
+                  <div className="px-4 py-2.5 bg-amber-50 dark:bg-amber-500/10 border-b border-amber-200/50 dark:border-amber-500/20">
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5" />
+                      {proposals.length} detection{proposals.length !== 1 ? 's' : ''} proposed based
+                      on your {logSources.length} log source{logSources.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  {proposals.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-start gap-3 px-4 py-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={cn(
+                              'inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold',
+                              SEVERITY_COLORS[p.severity],
+                            )}
+                          >
+                            {SEVERITY_LABEL[p.severity]}
+                          </span>
+                          <span
+                            className={cn(
+                              'inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold',
+                              PLATFORM_COLORS[p.platform],
+                            )}
+                          >
+                            {PLATFORM_LABEL[p.platform]}
+                          </span>
+                          {p.mitreAttackId && (
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono">
+                              {p.mitreAttackId}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs font-semibold text-slate-900 dark:text-white truncate">
+                          {p.name}
+                        </p>
+                        <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-0.5 line-clamp-1">
+                          {p.description}
+                        </p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {p.matchedSources.map((s) => (
+                            <span
+                              key={s}
+                              className="rounded bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/50 px-1.5 py-0.5 text-[10px] font-medium"
+                            >
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleEnableProposal(p)}
+                        disabled={enablingProposal[p.id]}
+                        className="shrink-0 flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors disabled:opacity-50"
+                      >
+                        <Zap className="h-3 w-3" />
+                        {enablingProposal[p.id] ? '...' : 'Enable'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Library list content ─────────────────────────────────────── */}
+          {viewMode === 'library' && (
+            <div className="flex-1 overflow-y-auto">
+              {error ? (
+                <div className="flex flex-col items-center justify-center h-48 gap-3 text-sm text-slate-500 dark:text-zinc-400">
+                  <AlertCircle className="h-8 w-8 text-red-400" />
+                  <p>{error}</p>
+                  <button
+                    type="button"
+                    onClick={() => void fetchDetections()}
+                    className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-1.5 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : loading && detections.length === 0 ? (
+                <div className="flex flex-col gap-1 p-4">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-10 rounded-lg bg-black/5 dark:bg-white/5 animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : detections.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 gap-2 text-sm text-slate-500 dark:text-zinc-400">
+                  <Shield className="h-8 w-8 opacity-30" />
+                  <p>No detections found</p>
+                  <p className="text-xs">Try adjusting your filters or create a custom rule</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 z-10 bg-white/90 dark:bg-black/40 backdrop-blur-md border-b border-black/10 dark:border-white/10">
+                    <tr>
+                      {['', 'On', 'Detection', 'Platform', 'Severity', 'FP%', 'Alerts/d'].map(
+                        (h) => (
+                          <th
+                            key={h}
+                            className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase text-slate-400 dark:text-zinc-500"
+                          >
+                            {h}
+                          </th>
+                        ),
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                    {detections.map((det) => (
+                      <tr
+                        key={det.id}
+                        onClick={() => setSelected(det.id === selected?.id ? null : det)}
+                        className={cn(
+                          'cursor-pointer transition-colors',
+                          selected?.id === det.id
+                            ? 'bg-amber-50 dark:bg-amber-500/10 border-l-2 border-l-amber-500'
+                            : 'hover:bg-black/5 dark:hover:bg-white/5',
+                        )}
+                      >
+                        <td className="px-3 py-3">
+                          <ChevronRight
+                            className={cn(
+                              'h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 transition-transform',
+                              selected?.id === det.id &&
+                                'rotate-90 text-amber-500 dark:text-amber-400',
+                            )}
+                          />
+                        </td>
+
+                        {/* Enable / disable toggle */}
+                        <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={(e) => void handleToggle(det, e)}
+                            disabled={toggling[det.id]}
+                            title={det.isEnabled ? 'Disable detection' : 'Enable detection'}
+                            className={cn(
+                              'transition-colors rounded',
+                              toggling[det.id] && 'opacity-50 cursor-wait',
+                            )}
+                          >
+                            {det.isEnabled ? (
+                              <ToggleRight className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
+                            ) : (
+                              <ToggleLeft className="h-5 w-5 text-slate-300 dark:text-zinc-600" />
+                            )}
+                          </button>
+                        </td>
+
+                        <td className="px-3 py-3 max-w-[200px]">
+                          <p className="font-medium text-slate-900 dark:text-white text-xs truncate">
+                            {det.name}
+                          </p>
+                          <p className="text-[10px] text-slate-400 dark:text-zinc-500 flex items-center gap-1">
+                            {det.ruleId}
+                            {det.isCustom && (
+                              <span className="rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1 text-[9px] font-bold">
+                                CUSTOM
+                              </span>
+                            )}
+                          </p>
+                        </td>
+
+                        <td className="px-3 py-3">
+                          <span
+                            className={cn(
+                              'inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold',
+                              PLATFORM_COLORS[det.platform],
+                            )}
+                          >
+                            {PLATFORM_LABEL[det.platform]}
+                          </span>
+                          {det.mitreAttackId && (
+                            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                              {det.mitreAttackId}
+                            </p>
+                          )}
+                        </td>
+
+                        <td className="px-3 py-3">
+                          <span
+                            className={cn(
+                              'inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold',
+                              SEVERITY_COLORS[det.severity],
+                            )}
+                          >
+                            {SEVERITY_LABEL[det.severity]}
+                          </span>
+                        </td>
+
+                        <td className="px-3 py-3 text-xs font-medium">
+                          {det.stats.triggerCount > 0 ? (
+                            <span
+                              className={cn(
+                                det.stats.falsePositives / (det.stats.triggerCount || 1) > 0.2
+                                  ? 'text-red-500 dark:text-red-400'
+                                  : det.stats.falsePositives / (det.stats.triggerCount || 1) > 0.1
+                                    ? 'text-amber-500 dark:text-amber-400'
+                                    : 'text-emerald-600 dark:text-emerald-400',
+                              )}
+                            >
+                              {det.stats.triggerCount > 0
+                                ? `${Math.round((det.stats.falsePositives / det.stats.triggerCount) * 100)}%`
+                                : det.expectedFpRate != null
+                                  ? `${det.expectedFpRate}%`
+                                  : '-'}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-zinc-600">
+                              {det.expectedFpRate != null ? `~${det.expectedFpRate}%` : '-'}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-3 py-3 text-xs text-slate-700 dark:text-zinc-300">
+                          {det.stats.triggerCount > 0 ? (
+                            det.stats.triggerCount
+                          ) : (
+                            <span className="text-slate-300 dark:text-zinc-600">
+                              {det.expectedAlertsPerDay != null
+                                ? `~${det.expectedAlertsPerDay}`
+                                : '-'}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Right: detail panel ──────────────────────────────────────── */}
@@ -730,6 +1044,25 @@ export default function DetectionsPage() {
                 </div>
               )}
 
+              {/* Log Sources */}
+              {selected.logSources && selected.logSources.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase text-slate-400 dark:text-zinc-500">
+                    Log Sources
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {selected.logSources.map((ls) => (
+                      <span
+                        key={ls}
+                        className="rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200/50 dark:border-blue-800/50 px-2 py-0.5 text-[11px] text-blue-700 dark:text-blue-400 font-medium"
+                      >
+                        {ls}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Query */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -772,6 +1105,131 @@ export default function DetectionsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Log Sources Modal ─────────────────────────────────────────────── */}
+      {showLogSources && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl border border-black/10 dark:border-white/10 flex flex-col">
+            <div className="border-b border-black/10 dark:border-white/10 px-6 py-4 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  Log Source Registry
+                </h2>
+                <p className="text-xs text-slate-400 dark:text-zinc-500 mt-0.5">
+                  Register which log sources you send to your SIEM to get smart detection proposals
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLogSources(false)}
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+              {/* Currently registered */}
+              {logSources.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-2">
+                    Registered ({logSources.length})
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {logSources.map((ls) => (
+                      <div
+                        key={ls.id}
+                        className="flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 pl-3 pr-1.5 py-1"
+                      >
+                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                          {ls.logSource}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveLogSource(ls.id)}
+                          className="rounded-full p-0.5 text-emerald-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Catalog grid */}
+              <div>
+                <p className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-3">
+                  Available Log Sources — click to add
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {LOG_SOURCE_CATALOG.map((cat) => {
+                    const isAdded = logSources.some((ls) => ls.logSource === cat.logSource);
+                    const isAdding = addingSource === cat.logSource;
+                    return (
+                      <button
+                        key={cat.logSource}
+                        type="button"
+                        onClick={() => void handleAddLogSource(cat.logSource)}
+                        disabled={isAdded || isAdding}
+                        className={cn(
+                          'flex items-start gap-3 rounded-xl border p-3 text-left transition-all',
+                          isAdded
+                            ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 cursor-default'
+                            : 'border-black/10 dark:border-white/10 hover:border-amber-400/50 dark:hover:border-amber-500/50 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 cursor-pointer',
+                        )}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p
+                              className={cn(
+                                'text-xs font-semibold',
+                                isAdded
+                                  ? 'text-emerald-700 dark:text-emerald-400'
+                                  : 'text-slate-800 dark:text-zinc-200',
+                              )}
+                            >
+                              {cat.label}
+                            </p>
+                            {isAdded && (
+                              <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                            )}
+                            {isAdding && (
+                              <RefreshCw className="h-3 w-3 text-amber-500 animate-spin shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-0.5 leading-tight">
+                            {cat.desc}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-black/10 dark:border-white/10 px-6 py-4 flex items-center justify-between shrink-0">
+              <p className="text-xs text-slate-400 dark:text-zinc-500">
+                {logSources.length} source{logSources.length !== 1 ? 's' : ''} registered
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogSources(false);
+                  if (logSources.length > 0) {
+                    setViewMode('proposals');
+                    void fetchProposals();
+                  }
+                }}
+                className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition-colors"
+              >
+                {logSources.length > 0 ? 'View Proposals' : 'Done'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── New Detection Modal ───────────────────────────────────────────── */}
       {showNewModal && (

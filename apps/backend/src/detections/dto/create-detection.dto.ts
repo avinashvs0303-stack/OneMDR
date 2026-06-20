@@ -103,3 +103,17 @@ export class ListDetectionsQueryDto {
   @IsString()
   enabled?: string; // 'true' | 'false'
 }
+
+export class AddLogSourceDto {
+  @IsString()
+  @MinLength(2)
+  logSource!: string; // e.g. "Windows Security", "Firewall Logs"
+
+  @IsOptional()
+  @IsString()
+  deviceType?: string; // e.g. "Palo Alto PA-5000"
+
+  @IsOptional()
+  @IsString()
+  vendor?: string; // e.g. "Palo Alto"
+}

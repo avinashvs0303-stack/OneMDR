@@ -1,10 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import * as XLSX from 'xlsx';
 import { PrismaService } from '../database/prisma.service';
 import type {
   CreateDetectionDto,
   ImportDetectionsDto,
   ListDetectionsQueryDto,
+  AddLogSourceDto,
 } from './dto/create-detection.dto';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import type { DetectionPlatform, DetectionSeverity, QueryLanguage } from '@onemdr/database';
@@ -80,6 +87,8 @@ export class DetectionsService {
           mitreTechnique: d.mitreTechnique,
           nistControls: d.nistControls,
           dataSources: d.dataSources,
+          logSources: d.logSources,
+          deviceTypes: d.deviceTypes,
           query: d.query,
           queryLanguage: d.queryLanguage,
           tags: d.tags,
@@ -123,6 +132,8 @@ export class DetectionsService {
       mitreTechnique: d.mitreTechnique,
       nistControls: d.nistControls,
       dataSources: d.dataSources,
+      logSources: d.logSources,
+      deviceTypes: d.deviceTypes,
       query: d.query,
       queryLanguage: d.queryLanguage,
       tags: d.tags,
@@ -407,5 +418,94 @@ export class DetectionsService {
       falsePositives: s.falsePositives,
       mttdMinutes: s.mttdMinutes ? Number(s.mttdMinutes) : null,
     }));
+  }
+
+  // ── Log source management ─────────────────────────────────────────────────────
+
+  async listLogSources(actor: JwtPayload) {
+    const tenantId = actor.tenantId!;
+    return this.db.tenantLogSource.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async addLogSource(dto: AddLogSourceDto, actor: JwtPayload) {
+    const tenantId = actor.tenantId!;
+    try {
+      return await this.db.tenantLogSource.create({
+        data: {
+          tenantId,
+          logSource: dto.logSource,
+          deviceType: dto.deviceType ?? null,
+          vendor: dto.vendor ?? null,
+        },
+      });
+    } catch (err: unknown) {
+      const isUniqueViolation =
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code: string }).code === 'P2002';
+      if (isUniqueViolation) {
+        throw new ConflictException(`Log source "${dto.logSource}" is already registered`);
+      }
+      throw err;
+    }
+  }
+
+  async removeLogSource(id: string, actor: JwtPayload) {
+    const tenantId = actor.tenantId!;
+    const existing = await this.db.tenantLogSource.findFirst({ where: { id, tenantId } });
+    if (!existing) throw new NotFoundException('Log source not found');
+    await this.db.tenantLogSource.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  // ── Smart detection proposals ─────────────────────────────────────────────────
+
+  async getProposals(actor: JwtPayload) {
+    const tenantId = actor.tenantId!;
+
+    const tenantLogSources = await this.db.tenantLogSource.findMany({ where: { tenantId } });
+    if (!tenantLogSources.length) {
+      return { proposals: [], totalLogSources: 0, message: 'No log sources registered' };
+    }
+
+    const registeredSources = tenantLogSources.map((ls) => ls.logSource);
+
+    // Fetch detections whose logSources array overlaps with the tenant's registered sources
+    const candidates = await this.db.detection.findMany({
+      where: {
+        OR: [{ isGlobal: true }, { tenantId, isGlobal: false }],
+        logSources: { hasSome: registeredSources },
+      },
+      include: { tenantDetections: { where: { tenantId } } },
+      orderBy: [{ severity: 'asc' }, { ruleId: 'asc' }],
+      take: 200,
+    });
+
+    // Filter out already-enabled detections
+    const proposals = candidates
+      .filter((d) => !(d.tenantDetections[0]?.isEnabled ?? false))
+      .map((d) => ({
+        id: d.id,
+        ruleId: d.ruleId,
+        name: d.name,
+        description: d.description,
+        severity: d.severity,
+        platform: d.platform,
+        mitreAttackId: d.mitreAttackId,
+        mitreTactic: d.mitreTactic,
+        logSources: d.logSources,
+        deviceTypes: d.deviceTypes,
+        matchedSources: d.logSources.filter((ls) => registeredSources.includes(ls)),
+      }));
+
+    return {
+      proposals,
+      totalLogSources: tenantLogSources.length,
+      registeredSources,
+    };
   }
 }

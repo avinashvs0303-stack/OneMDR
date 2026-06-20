@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -17,6 +18,7 @@ import {
   ToggleDetectionDto,
   ImportDetectionsDto,
   ListDetectionsQueryDto,
+  AddLogSourceDto,
 } from './dto/create-detection.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -55,6 +57,44 @@ export class DetectionsController {
   @ApiOperation({ summary: 'Get dashboard KPI summary for the authenticated tenant' })
   async summary(@CurrentUser() user: JwtPayload) {
     const data = await this.svc.getSummary(user);
+    return { data };
+  }
+
+  // ── Smart proposals ───────────────────────────────────────────────────────────
+
+  @Get('proposals')
+  @ApiOperation({
+    summary: 'Get detection proposals matching the tenant registered log sources',
+  })
+  async proposals(@CurrentUser() user: JwtPayload) {
+    const data = await this.svc.getProposals(user);
+    return { data };
+  }
+
+  // ── Log source management ─────────────────────────────────────────────────────
+
+  @Get('log-sources')
+  @ApiOperation({ summary: 'List all log sources registered for this tenant' })
+  async listLogSources(@CurrentUser() user: JwtPayload) {
+    const data = await this.svc.listLogSources(user);
+    return { data };
+  }
+
+  @Post('log-sources')
+  @HttpCode(HttpStatus.CREATED)
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Register a log source for this tenant (used for smart proposals)' })
+  async addLogSource(@Body() dto: AddLogSourceDto, @CurrentUser() user: JwtPayload) {
+    const data = await this.svc.addLogSource(dto, user);
+    return { data };
+  }
+
+  @Delete('log-sources/:id')
+  @HttpCode(HttpStatus.OK)
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Remove a registered log source' })
+  async removeLogSource(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    const data = await this.svc.removeLogSource(id, user);
     return { data };
   }
 

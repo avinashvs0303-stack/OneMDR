@@ -16,6 +16,8 @@ export default [
       'eslint.config.mjs',
       // Prisma compiled output — auto-generated, not source
       'packages/database/src/**',
+      // Utility scripts — not part of the app build, have their own tsconfig context
+      'apps/backend/scripts/**',
     ],
   },
   {

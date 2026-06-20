@@ -118,6 +118,7 @@ model Tenant {
   detections       Detection[]
   tenantDetections TenantDetection[]
   detectionStats   DetectionStat[]
+  tenantLogSources TenantLogSource[]
   parent           Tenant?        @relation("TenantHierarchy", fields: [parentTenantId], references: [id])
   children         Tenant[]       @relation("TenantHierarchy")
 
@@ -354,6 +355,10 @@ model Detection {
   expectedFpRate       Decimal?  @map("expected_fp_rate")        @db.Decimal(5, 2)  // 0-100 %
   expectedMttdHours    Decimal?  @map("expected_mttd_hours")     @db.Decimal(8, 2)
 
+  // Log source / device type classification (used for proposal matching)
+  logSources  String[] @default([]) @map("log_sources")   // e.g. ["Windows Security","Authentication"]
+  deviceTypes String[] @default([]) @map("device_types")  // e.g. ["Windows AD","Firewall"]
+
   // Ownership — null tenantId = global seeded rule; set = custom rule for that tenant
   isGlobal  Boolean @default(false) @map("is_global")
   tenantId  String? @map("tenant_id") @db.Uuid
@@ -371,6 +376,21 @@ model Detection {
   @@index([tenantId])
   @@index([isGlobal])
   @@map("detections")
+}
+
+model TenantLogSource {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  logSource  String   @map("log_source")   // e.g. "Windows Security", "Firewall Logs"
+  deviceType String?  @map("device_type")  // optional free-text, e.g. "Palo Alto PA-5000"
+  vendor     String?                       // e.g. "Palo Alto", "Microsoft"
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, logSource])
+  @@index([tenantId])
+  @@map("tenant_log_sources")
 }
 
 model TenantDetection {
