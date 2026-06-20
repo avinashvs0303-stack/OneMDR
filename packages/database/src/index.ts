@@ -19,6 +19,9 @@ export type {
   PasswordResetToken,
   TenantRequest,
   SupportCase,
+  Detection,
+  TenantDetection,
+  DetectionStat,
 } from '@prisma/client';
 
 // Re-export enums
@@ -30,4 +33,7 @@ export {
   TenantRequestStatus,
   SupportCaseStatus,
   SupportCasePriority,
+  DetectionSeverity,
+  DetectionPlatform,
+  QueryLanguage,
 } from '@prisma/client';

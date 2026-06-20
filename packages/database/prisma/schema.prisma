@@ -111,12 +111,15 @@ model Tenant {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  users         User[]
-  auditLogs     AuditLog[]
-  tenantRequest TenantRequest?
-  supportCases  SupportCase[]
-  parent        Tenant?        @relation("TenantHierarchy", fields: [parentTenantId], references: [id])
-  children      Tenant[]       @relation("TenantHierarchy")
+  users            User[]
+  auditLogs        AuditLog[]
+  tenantRequest    TenantRequest?
+  supportCases     SupportCase[]
+  detections       Detection[]
+  tenantDetections TenantDetection[]
+  detectionStats   DetectionStat[]
+  parent           Tenant?        @relation("TenantHierarchy", fields: [parentTenantId], references: [id])
+  children         Tenant[]       @relation("TenantHierarchy")
 
   @@index([slug])
   @@map("tenants")
@@ -286,6 +289,125 @@ model TenantRequest {
 }
 
 // ── Support Cases ─────────────────────────────────────────────────────────────
+
+// ── Detection Library ─────────────────────────────────────────────────────────
+
+enum DetectionSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+
+  @@map("detection_severity")
+}
+
+enum DetectionPlatform {
+  SPLUNK
+  SENTINEL
+  CHRONICLE
+  ELASTIC
+  QRADAR
+  DEFENDER
+  SIGMA
+  CUSTOM
+
+  @@map("detection_platform")
+}
+
+enum QueryLanguage {
+  SPL      // Splunk Processing Language
+  KQL      // Kusto Query Language (Sentinel)
+  YARA_L   // Chronicle YARA-L 2.0
+  EQL      // Event Query Language (Elastic)
+  AQL      // Ariel Query Language (QRadar)
+  SIGMA    // SIGMA generic format
+  CUSTOM
+
+  @@map("query_language")
+}
+
+model Detection {
+  id          String            @id @default(uuid()) @db.Uuid
+  ruleId      String            @unique @map("rule_id")  // DET-0001 format
+  name        String
+  description String
+  severity    DetectionSeverity
+  platform    DetectionPlatform
+
+  // MITRE ATT&CK
+  mitreAttackId   String? @map("mitre_attack_id")   // e.g. T1059.001
+  mitreTactic     String? @map("mitre_tactic")       // e.g. Execution
+  mitreTechnique  String? @map("mitre_technique")    // e.g. Command and Scripting Interpreter: PowerShell
+
+  // Compliance
+  nistControls String[] @default([]) @map("nist_controls")   // ["SI-3","SI-4"]
+  dataSources  String[] @default([]) @map("data_sources")    // ["Windows Event Logs (4688)"]
+
+  // Query
+  query         String
+  queryLanguage QueryLanguage @map("query_language")
+
+  // Metadata
+  tags                 String[]  @default([])
+  expectedAlertsPerDay Decimal?  @map("expected_alerts_per_day") @db.Decimal(8, 2)
+  expectedFpRate       Decimal?  @map("expected_fp_rate")        @db.Decimal(5, 2)  // 0-100 %
+  expectedMttdHours    Decimal?  @map("expected_mttd_hours")     @db.Decimal(8, 2)
+
+  // Ownership — null tenantId = global seeded rule; set = custom rule for that tenant
+  isGlobal  Boolean @default(false) @map("is_global")
+  tenantId  String? @map("tenant_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  tenant           Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantDetections TenantDetection[]
+  stats            DetectionStat[]
+
+  @@index([platform])
+  @@index([severity])
+  @@index([mitreAttackId])
+  @@index([tenantId])
+  @@index([isGlobal])
+  @@map("detections")
+}
+
+model TenantDetection {
+  id          String  @id @default(uuid()) @db.Uuid
+  tenantId    String  @map("tenant_id")    @db.Uuid
+  detectionId String  @map("detection_id") @db.Uuid
+  isEnabled   Boolean @default(true)       @map("is_enabled")
+  enabledAt   DateTime @default(now())     @map("enabled_at")
+  enabledById String?  @map("enabled_by_id") @db.Uuid
+
+  tenant    Tenant    @relation(fields: [tenantId],    references: [id], onDelete: Cascade)
+  detection Detection @relation(fields: [detectionId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, detectionId])
+  @@index([tenantId, isEnabled])
+  @@map("tenant_detections")
+}
+
+model DetectionStat {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id")    @db.Uuid
+  detectionId String   @map("detection_id") @db.Uuid
+  date        DateTime @map("date")         @db.Date
+
+  triggerCount   Int     @default(0) @map("trigger_count")
+  truePositives  Int     @default(0) @map("true_positives")
+  falsePositives Int     @default(0) @map("false_positives")
+  mttdMinutes    Decimal? @map("mttd_minutes") @db.Decimal(10, 2)
+
+  tenant    Tenant    @relation(fields: [tenantId],    references: [id], onDelete: Cascade)
+  detection Detection @relation(fields: [detectionId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, detectionId, date])
+  @@index([tenantId, detectionId])
+  @@index([tenantId, date])
+  @@map("detection_stats")
+}
 
 enum SupportCaseStatus {
   OPEN
