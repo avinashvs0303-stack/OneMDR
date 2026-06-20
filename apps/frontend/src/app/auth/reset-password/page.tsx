@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import type { EmailOtpType } from '@supabase/supabase-js';
 
 const schema = z
   .object({
@@ -25,10 +26,18 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
+/**
+ * /auth/reset-password — landed from the Supabase forgot-password email.
+ *
+ * Supabase (PKCE flow) appends ?token_hash=xxx&type=recovery to the redirectTo URL.
+ * We must call verifyOtp() to exchange that token for a session before allowing
+ * the user to set a new password.
+ */
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   const {
@@ -38,14 +47,41 @@ export default function ResetPasswordPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
-    // Supabase sets the session from the URL hash on RECOVERY event
+    // Subscribe to auth events first so we don't miss them
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         setReady(true);
       }
     });
+
+    const params = new URLSearchParams(window.location.search);
+    const tokenHash = params.get('token_hash');
+    const type = params.get('type') as EmailOtpType | null;
+
+    if (tokenHash && type) {
+      // PKCE: exchange the one-time recovery token for a session
+      void supabase.auth.verifyOtp({ token_hash: tokenHash, type }).then(({ error }) => {
+        if (error) {
+          setLinkError(
+            'This reset link has expired or has already been used. Please request a new one.',
+          );
+        }
+        // On success, onAuthStateChange fires PASSWORD_RECOVERY → setReady(true)
+      });
+    } else {
+      // No token in URL — check for an existing session (user revisited after already verifying)
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setReady(true);
+        else {
+          setLinkError(
+            'Invalid or missing reset link. Please use the link from your password reset email.',
+          );
+        }
+      });
+    }
+
     return () => subscription.unsubscribe();
   }, []);
 
@@ -59,11 +95,31 @@ export default function ResetPasswordPage() {
     router.push('/auth/login?reset=true');
   };
 
+  if (linkError) {
+    return (
+      <div className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+          <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Link expired</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{linkError}</p>
+        </div>
+        <a
+          href="/auth/forgot-password"
+          className="inline-block text-sm text-amber-600 hover:underline dark:text-amber-400"
+        >
+          Request a new reset link
+        </a>
+      </div>
+    );
+  }
+
   if (!ready) {
     return (
       <div className="space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">Verifying reset link…</p>
         <Loader2 className="mx-auto h-5 w-5 animate-spin text-amber-600" />
+        <p className="text-sm text-muted-foreground">Verifying reset link…</p>
       </div>
     );
   }

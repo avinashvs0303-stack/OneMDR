@@ -104,16 +104,37 @@ export async function middleware(request: NextRequest) {
 
   // ── Customer routing ──────────────────────────────────────────────────────────
 
-  // Authenticated user hitting auth page → send to app
+  // SUPER_ADMIN must ONLY use /admin — never the customer app.
+  // This prevents cross-session contamination when the admin is logged in
+  // and opens the customer URL in the same browser.
+  if (isClarbitStaff) {
+    return NextResponse.redirect(new URL('/admin/overview', request.url));
+  }
+
+  // Authenticated customer user hitting an auth page → send to module hub
   if (isAuthenticated && isAuthPath) {
     return NextResponse.redirect(new URL('/modules', request.url));
   }
 
-  // Unauthenticated user hitting protected page → login
+  // Unauthenticated on a protected page → login
   if (!isAuthenticated && !isAuthPath) {
     const loginUrl = new URL('/auth/login', request.url);
     if (pathname !== '/') loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Authenticated but no tenantId — account was never provisioned (or session is corrupted).
+  // Clear the Supabase cookies so the redirect to login doesn't bounce back.
+  const tenantId = session?.user.app_metadata?.['tenant_id'] as string | undefined;
+  if (isAuthenticated && !isAuthPath && !tenantId) {
+    const loginUrl = new URL('/auth/login', request.url);
+    loginUrl.searchParams.set('error', 'not_provisioned');
+    const response = NextResponse.redirect(loginUrl);
+    // Delete all Supabase session cookies to force a clean sign-out
+    request.cookies.getAll().forEach(({ name }) => {
+      if (name.startsWith('sb-')) response.cookies.delete(name);
+    });
+    return response;
   }
 
   return holder.response;

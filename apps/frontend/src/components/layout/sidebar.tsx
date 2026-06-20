@@ -174,22 +174,8 @@ export function Sidebar() {
         </div>
       </nav>
 
-      {/* ── Bottom: admin + settings + profile ──────────────────────── */}
+      {/* ── Bottom: settings + profile ──────────────────────────────── */}
       <div className="border-t border-black/10 dark:border-white/10 px-3 py-3 space-y-0.5">
-        {user?.role === 'SUPER_ADMIN' && (
-          <Link
-            href="/admin/tenant-requests"
-            className={cn(
-              'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
-              pathname.startsWith('/admin')
-                ? 'bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-300'
-                : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
-            )}
-          >
-            <Building2 className="h-4 w-4 shrink-0 text-amber-400" />
-            Tenant Requests
-          </Link>
-        )}
         {(user?.role === 'OWNER' || user?.role === 'ADMIN') && (
           <Link
             href="/tenants"

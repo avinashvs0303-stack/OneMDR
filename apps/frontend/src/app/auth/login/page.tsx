@@ -6,7 +6,19 @@ export const metadata: Metadata = {
   title: 'Sign in',
 };
 
-export default function LoginPage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  not_provisioned:
+    'Your account has not been provisioned with a workspace. Please use the invite link from your welcome email, or contact your administrator.',
+};
+
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
+  const errorKey = typeof searchParams['error'] === 'string' ? searchParams['error'] : null;
+  const errorMsg = errorKey ? (ERROR_MESSAGES[errorKey] ?? null) : null;
+
   return (
     <div className="w-full max-w-sm space-y-8">
       {/* Heading */}
@@ -14,6 +26,15 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
         <p className="text-sm text-muted-foreground">Sign in to your OneMDR workspace</p>
       </div>
+
+      {errorMsg && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-950/30 dark:text-red-400"
+        >
+          {errorMsg}
+        </div>
+      )}
 
       <LoginForm />
 

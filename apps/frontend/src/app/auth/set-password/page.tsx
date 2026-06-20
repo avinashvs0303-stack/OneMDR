@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import type { EmailOtpType } from '@supabase/supabase-js';
 
 const schema = z
   .object({
@@ -27,14 +28,16 @@ type FormValues = z.infer<typeof schema>;
 
 /**
  * /auth/set-password — landed from the Supabase invite email.
- * Supabase sends the user here with an OTP in the URL hash.
- * We wait for the INITIAL_SESSION or SIGNED_IN event (Supabase exchanges
- * the OTP automatically), then let the user set their permanent password.
+ *
+ * Supabase (PKCE flow) appends ?token_hash=xxx&type=invite to the redirectTo URL.
+ * We must call verifyOtp() to exchange that token for a real session before
+ * letting the user set their password.
  */
 export default function SetPasswordPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   const {
@@ -44,8 +47,7 @@ export default function SetPasswordPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
-    // Supabase exchanges the invite OTP from the URL hash automatically.
-    // Once the session is established (SIGNED_IN or INITIAL_SESSION), show the form.
+    // Subscribe to auth events first so we don't miss them
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
@@ -54,10 +56,32 @@ export default function SetPasswordPage() {
       }
     });
 
-    // Also check if a session is already active (user revisited the link)
-    void supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
-    });
+    const params = new URLSearchParams(window.location.search);
+    const tokenHash = params.get('token_hash');
+    const type = params.get('type') as EmailOtpType | null;
+
+    if (tokenHash && type) {
+      // PKCE: exchange the one-time token for a real session
+      void supabase.auth.verifyOtp({ token_hash: tokenHash, type }).then(({ error }) => {
+        if (error) {
+          setLinkError(
+            'This invite link has expired or has already been used. Please ask your administrator to resend the invite.',
+          );
+        }
+        // On success, onAuthStateChange fires SIGNED_IN → setReady(true)
+      });
+    } else {
+      // No token in URL — check for an existing valid session
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setReady(true);
+        // If there's no session and no token, the link is broken
+        else {
+          setLinkError(
+            'Invalid or missing invite link. Please use the link from your invitation email.',
+          );
+        }
+      });
+    }
 
     return () => subscription.unsubscribe();
   }, []);
@@ -69,9 +93,28 @@ export default function SetPasswordPage() {
       setServerError(error.message);
       return;
     }
-    // Password set — session is live, redirect to the app
     router.push('/modules');
   };
+
+  if (linkError) {
+    return (
+      <div className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+          <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Link expired</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{linkError}</p>
+        </div>
+        <a
+          href="/auth/login"
+          className="inline-block text-sm text-amber-600 hover:underline dark:text-amber-400"
+        >
+          Back to sign in
+        </a>
+      </div>
+    );
+  }
 
   if (!ready) {
     return (
