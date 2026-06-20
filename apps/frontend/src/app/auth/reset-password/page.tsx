@@ -47,13 +47,20 @@ export default function ResetPasswordPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
-    // Subscribe to auth events first so we don't miss them
+    let settled = false;
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        settled = true;
+        setReady(true);
+      } else if (event === 'INITIAL_SESSION' && session) {
+        // User revisiting after already verifying — existing valid session
+        settled = true;
         setReady(true);
       }
+      // INITIAL_SESSION with null session: don't mark settled, let timeout handle it
     });
 
     const params = new URLSearchParams(window.location.search);
@@ -61,28 +68,34 @@ export default function ResetPasswordPage() {
     const type = params.get('type') as EmailOtpType | null;
 
     if (tokenHash && type) {
-      // PKCE: exchange the one-time recovery token for a session
+      // PKCE flow: token_hash in query string — exchange for a session
       void supabase.auth.verifyOtp({ token_hash: tokenHash, type }).then(({ error }) => {
+        settled = true;
         if (error) {
           setLinkError(
             'This reset link has expired or has already been used. Please request a new one.',
           );
         }
-        // On success, onAuthStateChange fires PASSWORD_RECOVERY → setReady(true)
-      });
-    } else {
-      // No token in URL — check for an existing session (user revisited after already verifying)
-      void supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) setReady(true);
-        else {
-          setLinkError(
-            'Invalid or missing reset link. Please use the link from your password reset email.',
-          );
-        }
+        // On success: onAuthStateChange fires PASSWORD_RECOVERY → setReady(true)
       });
     }
+    // Implicit flow (Supabase sends access_token in URL hash): onAuthStateChange fires
+    // PASSWORD_RECOVERY automatically. Don't call getSession() here — it can resolve
+    // before the hash is processed and erroneously show "link expired".
 
-    return () => subscription.unsubscribe();
+    // Fallback: if nothing resolves within 3 s, show the error
+    const timer = setTimeout(() => {
+      if (!settled) {
+        setLinkError(
+          'Invalid or missing reset link. Please use the link from your password reset email.',
+        );
+      }
+    }, 3000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
   }, []);
 
   const onSubmit = async (data: FormValues) => {
