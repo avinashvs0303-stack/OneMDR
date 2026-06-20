@@ -119,7 +119,7 @@ export function Sidebar() {
                     className={cn(
                       'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
                       active
-                        ? 'bg-amber-50 border-amber-200 text-amber-900 font-semibold dark:bg-white/10 dark:border-white/15 dark:text-white dark:shadow-md dark:shadow-amber-500/5'
+                        ? 'bg-blue-50 border-blue-200 text-blue-900 font-semibold dark:bg-blue-600/10 dark:border-blue-600/20 dark:text-blue-300'
                         : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
                     )}
                   >
@@ -153,7 +153,7 @@ export function Sidebar() {
                     className={cn(
                       'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
                       active
-                        ? 'bg-amber-50 border-amber-200 text-amber-900 dark:bg-white/10 dark:border-white/15 dark:text-white'
+                        ? 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-600/10 dark:border-blue-600/20 dark:text-blue-300'
                         : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
                     )}
                   >
@@ -198,7 +198,7 @@ export function Sidebar() {
           Settings
         </Link>
         <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 mt-1">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-600 text-xs font-bold text-white">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
             {user ? getInitials(user.firstName, user.lastName) : 'U'}
           </div>
           <div className="min-w-0 flex-1">

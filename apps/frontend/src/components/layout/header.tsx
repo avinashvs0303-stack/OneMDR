@@ -14,7 +14,7 @@ interface HeaderProps {
 export function Header({ title }: HeaderProps) {
   const router = useRouter();
   const user = useCurrentUser();
-  const clearSession = useAuthStore((s) => s.clearSession);
+  const logout = useAuthStore((s) => s.logout);
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -22,8 +22,8 @@ export function Header({ title }: HeaderProps) {
 
   useEffect(() => setMounted(true), []);
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await logout();
     router.push('/auth/login');
   };
 
@@ -37,7 +37,7 @@ export function Header({ title }: HeaderProps) {
         className={cn(
           'flex items-center gap-2 rounded-lg border bg-black/5 dark:bg-white/5 px-3 py-1.5 transition-all backdrop-blur-md',
           searchFocused
-            ? 'border-amber-500/60 ring-1 ring-amber-500/20'
+            ? 'border-blue-600/60 ring-1 ring-blue-600/20'
             : 'border-black/10 dark:border-white/10',
           !title && 'mx-auto w-full max-w-sm',
           title && 'flex-1 mx-6 max-w-md',
@@ -72,7 +72,7 @@ export function Header({ title }: HeaderProps) {
         {/* New item */}
         <button
           type="button"
-          className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-amber-500/20 transition-all hover:bg-amber-500 active:scale-95"
+          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-blue-500 active:scale-95"
         >
           <Plus className="h-3.5 w-3.5" />
           New
@@ -128,7 +128,7 @@ export function Header({ title }: HeaderProps) {
                 <div className="border-t border-black/10 dark:border-white/10 p-1.5">
                   <button
                     type="button"
-                    onClick={handleLogout}
+                    onClick={() => void handleLogout()}
                     className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
                   >
                     <LogOut className="h-4 w-4" />
