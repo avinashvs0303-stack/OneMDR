@@ -109,8 +109,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div
       className={cn(
-        'flex h-screen bg-slate-950 text-slate-100 overflow-hidden',
-        theme === 'light' && 'admin-light',
+        'flex h-screen overflow-hidden',
+        theme === 'dark'
+          ? 'bg-slate-950 text-slate-100'
+          : 'bg-slate-100 text-slate-900 admin-light',
       )}
     >
       {/* ── Mobile overlay ─────────────────────────────────────────────────── */}

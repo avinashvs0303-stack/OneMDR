@@ -138,6 +138,15 @@ html.dark, html.dark body {
 .admin-light .border-white\/10 { border-color: #e2e8f0 !important; }
 .admin-light .border-white\/5  { border-color: #f1f5f9 !important; }
 
+/* Missing backgrounds */
+.admin-light .bg-slate-900\/80 { background-color: rgba(248,250,252,.97) !important; }
+
+/* Dividers — target the children set by Tailwind's divide utility */
+.admin-light .divide-white\/5 > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0 !important; }
+
+/* Group-hover icon color in sidebar nav */
+.admin-light .group:hover .group-hover\:text-slate-300 { color: #475569 !important; }
+
 /* Admin input override */
 .admin-light .admin-input {
   border-color: #e2e8f0 !important;
