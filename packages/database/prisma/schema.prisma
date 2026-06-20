@@ -101,6 +101,7 @@ model Tenant {
   users         User[]
   auditLogs     AuditLog[]
   tenantRequest TenantRequest?
+  supportCases  SupportCase[]
 
   @@index([slug])
   @@map("tenants")
@@ -265,4 +266,53 @@ model TenantRequest {
   @@index([status, createdAt(sort: Desc)])
   @@index([contactEmail])
   @@map("tenant_requests")
+}
+
+// ── Support Cases ─────────────────────────────────────────────────────────────
+
+enum SupportCaseStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+
+  @@map("support_case_status")
+}
+
+enum SupportCasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+
+  @@map("support_case_priority")
+}
+
+model SupportCase {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  title       String
+  description String
+
+  priority SupportCasePriority @default(MEDIUM)
+  status   SupportCaseStatus   @default(OPEN)
+
+  submittedByEmail String  @map("submitted_by_email")
+  submittedByName  String  @map("submitted_by_name")
+  assignedToEmail  String? @map("assigned_to_email")
+
+  internalNotes   String? @map("internal_notes")
+  resolutionNotes String? @map("resolution_notes")
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt      @map("updated_at")
+  resolvedAt DateTime? @map("resolved_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([priority])
+  @@map("support_cases")
 }

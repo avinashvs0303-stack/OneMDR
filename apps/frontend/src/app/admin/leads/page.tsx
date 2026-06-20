@@ -16,11 +16,7 @@ import {
   Mail,
   Inbox,
 } from 'lucide-react';
-import {
-  tenantRequestsApi,
-  type TenantRequest,
-  type ApprovePayload,
-} from '@/lib/tenant-requests.api';
+import { adminApi, type Lead, type ProvisionLeadPayload } from '@/lib/admin.api';
 import { cn } from '@/lib/utils';
 
 const LICENSE_MODULES = ['SIEM', 'HUNT', 'COVERAGE', 'DETECTIONS', 'REPORTS', 'AUTOMATIONS'];
@@ -55,7 +51,7 @@ function LeadsContent() {
   const searchParams = useSearchParams();
   const focusId = searchParams.get('id');
 
-  const [leads, setLeads] = useState<TenantRequest[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [filter, setFilter] = useState<FilterStatus>('PENDING');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -65,8 +61,8 @@ function LeadsContent() {
     setLoading(true);
     setError(null);
     try {
-      const res = await tenantRequestsApi.list(status === 'ALL' ? undefined : status);
-      setLeads(res.data);
+      const data = await adminApi.listLeads(status === 'ALL' ? undefined : status);
+      setLeads(data);
     } catch {
       setError('Failed to load leads');
     } finally {
@@ -198,7 +194,7 @@ function LeadCard({
   autoExpand,
   onRefresh,
 }: {
-  lead: TenantRequest;
+  lead: Lead;
   autoExpand: boolean;
   onRefresh: () => void;
 }) {
@@ -211,7 +207,7 @@ function LeadCard({
   const days = daysOld(lead.createdAt);
   const stale = lead.status === 'PENDING' && days > 7;
 
-  const [provisionForm, setProvisionForm] = useState<ApprovePayload>({
+  const [provisionForm, setProvisionForm] = useState<ProvisionLeadPayload>({
     planType: 'PRO',
     maxUsers: 25,
     licenseModules: ['DETECTIONS', 'COVERAGE'],
@@ -224,7 +220,7 @@ function LeadCard({
     setProvisioning(true);
     setActionError(null);
     try {
-      await tenantRequestsApi.approve(lead.id, {
+      await adminApi.provisionLead(lead.id, {
         ...provisionForm,
         licenseExpiresAt: provisionForm.licenseExpiresAt || undefined,
         adminNotes: provisionForm.adminNotes || undefined,
@@ -246,7 +242,7 @@ function LeadCard({
     setDeclining(true);
     setActionError(null);
     try {
-      await tenantRequestsApi.reject(lead.id, { rejectionReason: declineReason });
+      await adminApi.declineLead(lead.id, { rejectionReason: declineReason });
       onRefresh();
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : 'Failed to decline');
@@ -382,7 +378,7 @@ function LeadCard({
                       onChange={(e) =>
                         setProvisionForm((p) => ({
                           ...p,
-                          planType: e.target.value as ApprovePayload['planType'],
+                          planType: e.target.value as ProvisionLeadPayload['planType'],
                         }))
                       }
                       className="admin-input"

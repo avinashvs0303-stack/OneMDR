@@ -52,7 +52,8 @@ async function request<T>(path: string, options: RequestInit = {}, _retry = true
     }
     // Refresh failed — session is truly gone
     if (typeof window !== 'undefined') {
-      window.location.href = '/auth/login';
+      const isAdminRoute = window.location.pathname.startsWith('/admin');
+      window.location.href = isAdminRoute ? '/admin/login' : '/auth/login';
     }
   }
 

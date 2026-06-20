@@ -11,7 +11,22 @@
 export { PrismaClient, Prisma } from '@prisma/client';
 
 // Re-export all generated types
-export type { Tenant, User, RefreshToken, AuditLog, PasswordResetToken } from '@prisma/client';
+export type {
+  Tenant,
+  User,
+  RefreshToken,
+  AuditLog,
+  PasswordResetToken,
+  TenantRequest,
+  SupportCase,
+} from '@prisma/client';
 
 // Re-export enums
-export { TenantPlan, UserRole, AuditAction } from '@prisma/client';
+export {
+  TenantPlan,
+  UserRole,
+  AuditAction,
+  TenantRequestStatus,
+  SupportCaseStatus,
+  SupportCasePriority,
+} from '@prisma/client';

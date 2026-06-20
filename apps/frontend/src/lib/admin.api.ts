@@ -93,6 +93,85 @@ export interface InviteUserPayload {
   role?: 'ADMIN' | 'MEMBER' | 'GUEST';
 }
 
+// ── Lead types ────────────────────────────────────────────────────────────────
+
+export type LeadStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface Lead {
+  id: string;
+  companyName: string;
+  companySize: string | null;
+  industry: string | null;
+  website: string | null;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string | null;
+  useCase: string | null;
+  status: LeadStatus;
+  planType: TenantPlan;
+  maxUsers: number;
+  licenseModules: string[];
+  licenseExpiresAt: string | null;
+  adminNotes: string | null;
+  rejectionReason: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  tenantId: string | null;
+}
+
+export interface ProvisionLeadPayload {
+  planType: TenantPlan;
+  maxUsers: number;
+  licenseModules: string[];
+  licenseExpiresAt?: string;
+  adminNotes?: string;
+}
+
+export interface DeclineLeadPayload {
+  rejectionReason: string;
+  adminNotes?: string;
+}
+
+// ── Support case types ────────────────────────────────────────────────────────
+
+export type SupportCaseStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+export type SupportCasePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface SupportCase {
+  id: string;
+  tenantId: string;
+  title: string;
+  description: string;
+  priority: SupportCasePriority;
+  status: SupportCaseStatus;
+  submittedByEmail: string;
+  submittedByName: string;
+  assignedToEmail: string | null;
+  internalNotes: string | null;
+  resolutionNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+  tenant: { id: string; name: string; slug: string };
+}
+
+export interface UpdateSupportCasePayload {
+  status?: SupportCaseStatus;
+  priority?: SupportCasePriority;
+  assignedToEmail?: string;
+  internalNotes?: string;
+  resolutionNotes?: string;
+}
+
+export interface CreateSupportCasePayload {
+  tenantId: string;
+  title: string;
+  description: string;
+  priority?: SupportCasePriority;
+  submittedByEmail: string;
+  submittedByName: string;
+}
+
 // ── API calls ─────────────────────────────────────────────────────────────────
 
 export const adminApi = {
@@ -155,6 +234,64 @@ export const adminApi = {
     const res = await api.get<{ data: ExpiringLicense[] }>(
       `${BASE}/licenses/expiring?days=${days}`,
     );
+    return res.data;
+  },
+
+  // Leads
+  listLeads: async (status?: LeadStatus): Promise<Lead[]> => {
+    const q = status ? `?status=${status}` : '';
+    const res = await api.get<{ data: Lead[] }>(`${BASE}/leads${q}`);
+    return res.data;
+  },
+
+  getLead: async (id: string): Promise<Lead> => {
+    const res = await api.get<{ data: Lead }>(`${BASE}/leads/${id}`);
+    return res.data;
+  },
+
+  provisionLead: async (
+    id: string,
+    payload: ProvisionLeadPayload,
+  ): Promise<{ request: Lead; tempPassword: string }> => {
+    const res = await api.patch<{ data: { request: Lead; tempPassword: string } }>(
+      `${BASE}/leads/${id}/provision`,
+      payload,
+    );
+    return res.data;
+  },
+
+  declineLead: async (id: string, payload: DeclineLeadPayload): Promise<Lead> => {
+    const res = await api.patch<{ data: Lead }>(`${BASE}/leads/${id}/decline`, payload);
+    return res.data;
+  },
+
+  // Support Cases
+  listSupportCases: async (params?: {
+    status?: SupportCaseStatus;
+    priority?: SupportCasePriority;
+    tenantId?: string;
+  }): Promise<SupportCase[]> => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set('status', params.status);
+    if (params?.priority) q.set('priority', params.priority);
+    if (params?.tenantId) q.set('tenantId', params.tenantId);
+    const qs = q.toString();
+    const res = await api.get<{ data: SupportCase[] }>(
+      `${BASE}/support-cases${qs ? `?${qs}` : ''}`,
+    );
+    return res.data;
+  },
+
+  createSupportCase: async (payload: CreateSupportCasePayload): Promise<SupportCase> => {
+    const res = await api.post<{ data: SupportCase }>(`${BASE}/support-cases`, payload);
+    return res.data;
+  },
+
+  updateSupportCase: async (
+    id: string,
+    payload: UpdateSupportCasePayload,
+  ): Promise<SupportCase> => {
+    const res = await api.patch<{ data: SupportCase }>(`${BASE}/support-cases/${id}`, payload);
     return res.data;
   },
 };

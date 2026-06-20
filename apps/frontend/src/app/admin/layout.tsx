@@ -9,6 +9,7 @@ import {
   Users,
   Building2,
   Key,
+  LifeBuoy,
   LogOut,
   Menu,
   X,
@@ -44,6 +45,12 @@ const NAV = [
     href: '/admin/licenses',
     icon: Key,
     match: (p: string) => p.startsWith('/admin/licenses'),
+  },
+  {
+    label: 'Support',
+    href: '/admin/support-cases',
+    icon: LifeBuoy,
+    match: (p: string) => p.startsWith('/admin/support-cases'),
   },
 ];
 

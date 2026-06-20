@@ -15,11 +15,17 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { AdminService } from './admin.service';
 import { UpdateLicenseDto } from './dto/update-license.dto';
 import { InviteTenantUserDto } from './dto/invite-tenant-user.dto';
+import { UpdateSupportCaseDto, CreateSupportCaseDto } from './dto/update-support-case.dto';
+import {
+  ApproveTenantRequestDto,
+  RejectTenantRequestDto,
+} from '../tenant-requests/dto/approve-tenant-request.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ClarbitEmailGuard } from '../common/guards/clarbit-email.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import type { SupportCaseStatus, SupportCasePriority } from '@onemdr/database';
 
 @ApiTags('admin')
 @ApiBearerAuth('access-token')
@@ -127,6 +133,87 @@ export class AdminController {
   @ApiQuery({ name: 'days', required: false, description: 'Default 90' })
   async getExpiringLicenses(@Query('days') days?: string) {
     const data = await this.svc.getExpiringLicenses(Number(days ?? 90));
+    return { data };
+  }
+
+  // ── Leads (tenant requests) ───────────────────────────────────────────────────
+
+  @Get('leads')
+  @ApiOperation({ summary: 'List all inbound access requests' })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'APPROVED', 'REJECTED'] })
+  async listLeads(@Query('status') status?: string) {
+    const data = await this.svc.listLeads(status);
+    return { data };
+  }
+
+  @Get('leads/:id')
+  @ApiOperation({ summary: 'Get single access request detail' })
+  async getLead(@Param('id') id: string) {
+    const data = await this.svc.getLead(id);
+    return { data };
+  }
+
+  @Patch('leads/:id/provision')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approve and provision a tenant from a lead' })
+  async provisionLead(
+    @Param('id') id: string,
+    @Body() dto: ApproveTenantRequestDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const data = await this.svc.provisionLead(id, dto, user);
+    return { data };
+  }
+
+  @Patch('leads/:id/decline')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Decline an access request' })
+  async declineLead(
+    @Param('id') id: string,
+    @Body() dto: RejectTenantRequestDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const data = await this.svc.declineLead(id, dto, user);
+    return { data };
+  }
+
+  // ── Support Cases ─────────────────────────────────────────────────────────────
+
+  @Get('support-cases')
+  @ApiOperation({ summary: 'List all support cases' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'],
+  })
+  @ApiQuery({ name: 'priority', required: false, enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] })
+  @ApiQuery({ name: 'tenantId', required: false })
+  async listSupportCases(
+    @Query('status') status?: SupportCaseStatus,
+    @Query('priority') priority?: SupportCasePriority,
+    @Query('tenantId') tenantId?: string,
+  ) {
+    const data = await this.svc.listSupportCases({ status, priority, tenantId });
+    return { data };
+  }
+
+  @Post('support-cases')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a support case on behalf of a tenant' })
+  async createSupportCase(@Body() dto: CreateSupportCaseDto, @CurrentUser() user: JwtPayload) {
+    const data = await this.svc.createSupportCase(dto, user);
+    return { data };
+  }
+
+  @Patch('support-cases/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update support case status, assignment, or notes' })
+  async updateSupportCase(
+    @Param('id') id: string,
+    @Body() dto: UpdateSupportCaseDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const data = await this.svc.updateSupportCase(id, dto, user);
     return { data };
   }
 }

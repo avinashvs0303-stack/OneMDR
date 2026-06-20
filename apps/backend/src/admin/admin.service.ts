@@ -9,10 +9,16 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { SupabaseAdminService } from '../supabase/supabase-admin.service';
+import { TenantRequestsService } from '../tenant-requests/tenant-requests.service';
 import type { UpdateLicenseDto } from './dto/update-license.dto';
 import type { InviteTenantUserDto } from './dto/invite-tenant-user.dto';
+import type { UpdateSupportCaseDto, CreateSupportCaseDto } from './dto/update-support-case.dto';
+import type {
+  ApproveTenantRequestDto,
+  RejectTenantRequestDto,
+} from '../tenant-requests/dto/approve-tenant-request.dto';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
-import type { TenantPlan, Prisma } from '@onemdr/database';
+import type { TenantPlan, Prisma, SupportCaseStatus, SupportCasePriority } from '@onemdr/database';
 
 const CLARBIT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -25,6 +31,7 @@ export class AdminService {
     private readonly emitter: EventEmitter2,
     private readonly config: ConfigService,
     private readonly supabase: SupabaseAdminService,
+    private readonly tenantRequestsSvc: TenantRequestsService,
   ) {}
 
   // ── Overview / KPIs ─────────────────────────────────────────────────────────
@@ -393,5 +400,108 @@ export class AdminService {
         _count: { select: { users: { where: { isActive: true, deletedAt: null } } } },
       },
     });
+  }
+
+  // ── Leads (tenant requests) ───────────────────────────────────────────────────
+
+  async listLeads(status?: string) {
+    return this.tenantRequestsSvc.findAll(status);
+  }
+
+  async getLead(id: string) {
+    return this.tenantRequestsSvc.findOne(id);
+  }
+
+  async provisionLead(id: string, dto: ApproveTenantRequestDto, actor: JwtPayload) {
+    return this.tenantRequestsSvc.approve(id, dto, actor);
+  }
+
+  async declineLead(id: string, dto: RejectTenantRequestDto, actor: JwtPayload) {
+    return this.tenantRequestsSvc.reject(id, dto, actor);
+  }
+
+  // ── Support Cases ─────────────────────────────────────────────────────────────
+
+  async listSupportCases(filters: {
+    status?: SupportCaseStatus;
+    priority?: SupportCasePriority;
+    tenantId?: string;
+  }) {
+    const where: Prisma.SupportCaseWhereInput = {
+      ...(filters.status && { status: filters.status }),
+      ...(filters.priority && { priority: filters.priority }),
+      ...(filters.tenantId && { tenantId: filters.tenantId }),
+    };
+
+    return this.db.supportCase.findMany({
+      where,
+      orderBy: [{ status: 'asc' }, { priority: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        tenant: { select: { id: true, name: true, slug: true } },
+      },
+    });
+  }
+
+  async createSupportCase(dto: CreateSupportCaseDto, actor: JwtPayload) {
+    const tenant = await this.db.tenant.findUnique({ where: { id: dto.tenantId } });
+    if (!tenant) throw new NotFoundException('Tenant not found');
+
+    const sc = await this.db.supportCase.create({
+      data: {
+        tenantId: dto.tenantId,
+        title: dto.title,
+        description: dto.description,
+        priority: dto.priority ?? 'MEDIUM',
+        submittedByEmail: dto.submittedByEmail,
+        submittedByName: dto.submittedByName,
+      },
+      include: { tenant: { select: { id: true, name: true, slug: true } } },
+    });
+
+    this.emitter.emit('audit.log', {
+      tenantId: actor.tenantId ?? CLARBIT_TENANT_ID,
+      actorId: actor.sub,
+      action: 'RESOURCE_CREATED',
+      resource: 'support_case',
+      resourceId: sc.id,
+      metadata: { tenantId: dto.tenantId, title: dto.title },
+    });
+
+    return sc;
+  }
+
+  async updateSupportCase(id: string, dto: UpdateSupportCaseDto, actor: JwtPayload) {
+    const sc = await this.db.supportCase.findUnique({ where: { id } });
+    if (!sc) throw new NotFoundException('Support case not found');
+
+    const resolvedAt =
+      dto.status === 'RESOLVED' || dto.status === 'CLOSED'
+        ? (sc.resolvedAt ?? new Date())
+        : sc.resolvedAt;
+
+    const updated = await this.db.supportCase.update({
+      where: { id },
+      data: {
+        ...(dto.status && { status: dto.status }),
+        ...(dto.priority && { priority: dto.priority }),
+        ...(dto.assignedToEmail !== undefined && { assignedToEmail: dto.assignedToEmail }),
+        ...(dto.internalNotes !== undefined && { internalNotes: dto.internalNotes }),
+        ...(dto.resolutionNotes !== undefined && { resolutionNotes: dto.resolutionNotes }),
+        resolvedAt,
+      },
+      include: { tenant: { select: { id: true, name: true, slug: true } } },
+    });
+
+    this.emitter.emit('audit.log', {
+      tenantId: actor.tenantId ?? CLARBIT_TENANT_ID,
+      actorId: actor.sub,
+      action: 'RESOURCE_UPDATED',
+      resource: 'support_case',
+      resourceId: id,
+      metadata: { changes: dto },
+    });
+
+    this.logger.log(`Support case ${id} updated by ${actor.email}`);
+    return updated;
   }
 }
