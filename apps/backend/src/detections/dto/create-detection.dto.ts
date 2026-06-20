@@ -1,0 +1,105 @@
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsArray,
+  IsNumber,
+  IsBoolean,
+  MinLength,
+} from 'class-validator';
+import { DetectionSeverity, DetectionPlatform, QueryLanguage } from '@onemdr/database';
+
+export class CreateDetectionDto {
+  @IsString()
+  @MinLength(3)
+  name!: string;
+
+  @IsString()
+  description!: string;
+
+  @IsEnum(DetectionSeverity)
+  severity!: DetectionSeverity;
+
+  @IsEnum(DetectionPlatform)
+  platform!: DetectionPlatform;
+
+  @IsString()
+  query!: string;
+
+  @IsEnum(QueryLanguage)
+  queryLanguage!: QueryLanguage;
+
+  @IsOptional()
+  @IsString()
+  mitreAttackId?: string;
+
+  @IsOptional()
+  @IsString()
+  mitreTactic?: string;
+
+  @IsOptional()
+  @IsString()
+  mitreTechnique?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  nistControls?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  dataSources?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsNumber()
+  expectedAlertsPerDay?: number;
+
+  @IsOptional()
+  @IsNumber()
+  expectedFpRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  expectedMttdHours?: number;
+}
+
+export class ToggleDetectionDto {
+  @IsBoolean()
+  enable!: boolean;
+}
+
+export class ImportDetectionsDto {
+  @IsString()
+  filename!: string;
+
+  @IsString()
+  data!: string; // base64-encoded Excel (.xlsx) file
+}
+
+export class ListDetectionsQueryDto {
+  @IsOptional()
+  @IsString()
+  platform?: string;
+
+  @IsOptional()
+  @IsString()
+  severity?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsString()
+  tactic?: string;
+
+  @IsOptional()
+  @IsString()
+  enabled?: string; // 'true' | 'false'
+}
