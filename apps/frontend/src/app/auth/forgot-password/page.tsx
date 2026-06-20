@@ -111,7 +111,7 @@ export default function ForgotPasswordPage() {
               'shadow-sm outline-none transition-all focus:ring-2',
               errors.email
                 ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
-                : 'border-border focus:border-amber-500 focus:ring-amber-500/20',
+                : 'border-border focus:border-blue-600 focus:ring-blue-600/20',
             )}
           />
           {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}

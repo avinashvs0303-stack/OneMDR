@@ -49,6 +49,17 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     let settled = false;
 
+    const params = new URLSearchParams(window.location.search);
+
+    // Supabase redirects here with ?error= when it processed the link server-side and
+    // the token was already expired or invalid. Show the error immediately.
+    if (params.get('error')) {
+      setLinkError(
+        'This reset link has expired or has already been used. Please request a new one.',
+      );
+      return;
+    }
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -63,7 +74,6 @@ export default function ResetPasswordPage() {
       // INITIAL_SESSION with null session: don't mark settled, let timeout handle it
     });
 
-    const params = new URLSearchParams(window.location.search);
     const tokenHash = params.get('token_hash');
     const type = params.get('type') as EmailOtpType | null;
 
@@ -232,7 +242,7 @@ function PasswordField({
             'shadow-sm outline-none transition-all focus:ring-2',
             error
               ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
-              : 'border-border focus:border-amber-500 focus:ring-amber-500/20',
+              : 'border-border focus:border-blue-600 focus:ring-blue-600/20',
           )}
         />
         <button
