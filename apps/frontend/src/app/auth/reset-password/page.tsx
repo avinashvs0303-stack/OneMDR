@@ -120,7 +120,7 @@ export default function ResetPasswordPage() {
         </div>
         <a
           href="/auth/forgot-password"
-          className="inline-block text-sm text-amber-600 hover:underline dark:text-amber-400"
+          className="inline-block text-sm text-blue-600 hover:underline dark:text-blue-400"
         >
           Request a new reset link
         </a>
@@ -131,7 +131,7 @@ export default function ResetPasswordPage() {
   if (!ready) {
     return (
       <div className="space-y-4 text-center">
-        <Loader2 className="mx-auto h-5 w-5 animate-spin text-amber-600" />
+        <Loader2 className="mx-auto h-5 w-5 animate-spin text-blue-600" />
         <p className="text-sm text-muted-foreground">Verifying reset link…</p>
       </div>
     );
@@ -185,7 +185,7 @@ export default function ResetPasswordPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Update password

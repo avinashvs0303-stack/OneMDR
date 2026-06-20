@@ -5,25 +5,25 @@
 @tailwind utilities;
 
 @layer base {
-  /* ── Light mode CSS variables (default) ─────────────────── */
+  /* ── Light mode CSS variables ────────────────────────────── */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
+    --background: 210 40% 98%;       /* #F8FAFC — soft ultra-light slate */
+    --foreground: 222 47% 11%;       /* #0F172A — deep navy */
+    --card: 0 0% 100%;               /* #FFFFFF — pure white cards */
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 221 83% 53%;          /* #2563EB — vibrant accessible blue */
+    --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
     --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 19% 35%; /* #475569 — secondary text */
     --accent: 210 40% 96%;
     --accent-foreground: 222 47% 11%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214 32% 91%;
+    --destructive: 0 72% 51%;        /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;           /* #E2E8F0 — crisp dividers */
     --input: 214 32% 91%;
     --ring: 221 83% 53%;
     --radius: 0.5rem;
@@ -31,46 +31,41 @@
 
   /* ── Dark mode CSS variables ─────────────────────────────── */
   .dark {
-    --background: 222 47% 5%;
-    --foreground: 210 40% 92%;
-    --card: 222 47% 5%;
-    --card-foreground: 210 40% 92%;
-    --popover: 220 40% 6%;
-    --popover-foreground: 210 40% 92%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 14%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 12%;
-    --muted-foreground: 215 20% 52%;
-    --accent: 217 33% 14%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 14%;
-    --input: 217 33% 14%;
-    --ring: 224 76% 48%;
+    --background: 240 6% 4%;         /* #09090B — ultra-dark charcoal */
+    --foreground: 0 0% 98%;          /* #FAFAFA — off-white */
+    --card: 240 5% 10%;              /* #18181B — slightly lighter zinc */
+    --card-foreground: 0 0% 98%;
+    --popover: 240 5% 10%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 221 83% 53%;          /* #2563EB — same across both modes */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 4% 65%;  /* #A1A1AA — smooth readable gray */
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 72% 51%;        /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 4% 16%;            /* #27272A — subtle dark border */
+    --input: 240 4% 16%;
+    --ring: 221 83% 53%;
   }
 }
 
-/* ── Light mode canvas — plain white ─────────────────────── */
+/* ── Light mode canvas ───────────────────────────────────── */
 html, body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background-color: #ffffff;
-  background-image: none;
-  background-attachment: fixed;
-  color: #0f172a;
+  background-color: #F8FAFC;
+  color: #0F172A;
 }
 
-/* ── Dark mode canvas — deep slate gradient ──────────────── */
+/* ── Dark mode canvas ────────────────────────────────────── */
 html.dark, html.dark body {
-  background-color: #050506;
-  background-image:
-    radial-gradient(circle at 0% 0%, #1c1544 0%, transparent 50%),
-    radial-gradient(circle at 100% 100%, #0f2d6e 0%, transparent 50%);
-  color: #e2e8f0;
+  background-color: #09090B;
+  color: #FAFAFA;
 }
 
 @layer base {
@@ -89,30 +84,66 @@ html.dark, html.dark body {
 ::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.25); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.45); }
 
-/* ── Neon glow helpers ───────────────────────────────────── */
-.glow-red    { box-shadow: 0 0 8px rgba(239, 68, 68, 0.25); }
+/* ── Glow helpers ────────────────────────────────────────── */
+.glow-blue   { box-shadow: 0 0 8px rgba(37, 99, 235, 0.25); }
+.glow-green  { box-shadow: 0 0 8px rgba(22, 163, 74, 0.2); }
+.glow-red    { box-shadow: 0 0 8px rgba(220, 38, 38, 0.25); }
 .glow-amber  { box-shadow: 0 0 8px rgba(245, 158, 11, 0.2); }
 .glow-emerald{ box-shadow: 0 0 8px rgba(16, 185, 129, 0.2); }
 
 /* ── Admin panel shared input ────────────────────────────── */
 .admin-input {
-  @apply w-full rounded-lg border border-white/10 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/20;
+  @apply w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-blue-600/40 focus:outline-none focus:ring-1 focus:ring-blue-600/20;
 }
 
-/* ── Admin light theme ───────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   Admin dark theme — zinc palette overrides
+   Applied when .admin-dark is on the layout root div.
+   ══════════════════════════════════════════════════════════ */
+.admin-dark .bg-slate-950  { background-color: #09090B !important; }
+.admin-dark .bg-slate-900  { background-color: #18181B !important; }
+.admin-dark .bg-slate-800  { background-color: #27272A !important; }
+.admin-dark .bg-slate-900\/60 { background-color: rgba(24,24,27,.6) !important; }
+.admin-dark .bg-slate-900\/80 { background-color: rgba(24,24,27,.8) !important; }
+.admin-dark .bg-white\/5   { background-color: rgba(250,250,250,.05) !important; }
+.admin-dark .bg-white\/10  { background-color: rgba(250,250,250,.10) !important; }
+.admin-dark .bg-white\/20  { background-color: rgba(250,250,250,.15) !important; }
+.admin-dark .hover\:bg-white\/5:hover  { background-color: rgba(250,250,250,.05) !important; }
+.admin-dark .hover\:bg-white\/10:hover { background-color: rgba(250,250,250,.10) !important; }
+.admin-dark .border-white\/10 { border-color: #27272A !important; }
+.admin-dark .border-white\/5  { border-color: #1f1f23 !important; }
+.admin-dark .divide-white\/5 > :not([hidden]) ~ :not([hidden]) { border-color: #27272A !important; }
+.admin-dark .text-white      { color: #FAFAFA !important; }
+.admin-dark .text-slate-100  { color: #F4F4F5 !important; }
+.admin-dark .text-slate-200  { color: #E4E4E7 !important; }
+.admin-dark .text-slate-300  { color: #D4D4D8 !important; }
+.admin-dark .text-slate-400  { color: #A1A1AA !important; }
+.admin-dark .text-slate-500  { color: #71717A !important; }
+.admin-dark .text-slate-600  { color: #52525B !important; }
+.admin-dark .hover\:text-white:hover     { color: #FAFAFA !important; }
+.admin-dark .hover\:text-slate-100:hover { color: #F4F4F5 !important; }
+.admin-dark .hover\:text-slate-200:hover { color: #E4E4E7 !important; }
+.admin-dark .hover\:text-slate-300:hover { color: #D4D4D8 !important; }
+.admin-dark .group:hover .group-hover\:text-slate-300 { color: #A1A1AA !important; }
+
+/* ══════════════════════════════════════════════════════════
+   Admin light theme overrides
+   Applied when .admin-light is on the layout root div.
+   ══════════════════════════════════════════════════════════ */
 .admin-light { color-scheme: light; }
 
 /* Backgrounds */
-.admin-light .bg-slate-950 { background-color: #f1f5f9 !important; }
-.admin-light .bg-slate-900 { background-color: #ffffff !important; }
-.admin-light .bg-slate-800 { background-color: #f8fafc !important; }
+.admin-light .bg-slate-950  { background-color: #F8FAFC !important; }
+.admin-light .bg-slate-900  { background-color: #FFFFFF !important; }
+.admin-light .bg-slate-800  { background-color: #F8FAFC !important; }
 .admin-light .bg-slate-900\/60 { background-color: rgba(255,255,255,.9) !important; }
+.admin-light .bg-slate-900\/80 { background-color: rgba(248,250,252,.97) !important; }
 .admin-light .bg-slate-800\/40 { background-color: rgba(248,250,252,.8) !important; }
-.admin-light .bg-white\/5  { background-color: rgba(15,23,42,.03) !important; }
-.admin-light .bg-white\/10 { background-color: rgba(15,23,42,.06) !important; }
-.admin-light .bg-white\/20 { background-color: rgba(15,23,42,.12) !important; }
-.admin-light .bg-black\/60 { background-color: rgba(15,23,42,.4) !important; }
-.admin-light .bg-black\/70 { background-color: rgba(15,23,42,.5) !important; }
+.admin-light .bg-white\/5   { background-color: rgba(15,23,42,.03) !important; }
+.admin-light .bg-white\/10  { background-color: rgba(15,23,42,.06) !important; }
+.admin-light .bg-white\/20  { background-color: rgba(15,23,42,.12) !important; }
+.admin-light .bg-black\/60  { background-color: rgba(15,23,42,.4) !important; }
+.admin-light .bg-black\/70  { background-color: rgba(15,23,42,.5) !important; }
 
 /* Hover backgrounds */
 .admin-light .hover\:bg-white\/5:hover  { background-color: rgba(15,23,42,.03) !important; }
@@ -120,39 +151,35 @@ html.dark, html.dark body {
 .admin-light .hover\:bg-white\/20:hover { background-color: rgba(15,23,42,.1) !important; }
 
 /* Text */
-.admin-light .text-white      { color: #0f172a !important; }
-.admin-light .text-slate-100  { color: #0f172a !important; }
-.admin-light .text-slate-200  { color: #1e293b !important; }
+.admin-light .text-white      { color: #0F172A !important; }
+.admin-light .text-slate-100  { color: #0F172A !important; }
+.admin-light .text-slate-200  { color: #1E293B !important; }
 .admin-light .text-slate-300  { color: #334155 !important; }
 .admin-light .text-slate-400  { color: #475569 !important; }
-.admin-light .text-slate-500  { color: #64748b !important; }
-.admin-light .text-slate-600  { color: #94a3b8 !important; }
+.admin-light .text-slate-500  { color: #64748B !important; }
+.admin-light .text-slate-600  { color: #94A3B8 !important; }
 
 /* Hover text */
-.admin-light .hover\:text-white:hover      { color: #0f172a !important; }
-.admin-light .hover\:text-slate-100:hover  { color: #0f172a !important; }
-.admin-light .hover\:text-slate-200:hover  { color: #1e293b !important; }
+.admin-light .hover\:text-white:hover      { color: #0F172A !important; }
+.admin-light .hover\:text-slate-100:hover  { color: #0F172A !important; }
+.admin-light .hover\:text-slate-200:hover  { color: #1E293B !important; }
 .admin-light .hover\:text-slate-300:hover  { color: #334155 !important; }
 
 /* Borders */
-.admin-light .border-white\/10 { border-color: #e2e8f0 !important; }
-.admin-light .border-white\/5  { border-color: #f1f5f9 !important; }
+.admin-light .border-white\/10 { border-color: #E2E8F0 !important; }
+.admin-light .border-white\/5  { border-color: #F1F5F9 !important; }
 
-/* Missing backgrounds */
-.admin-light .bg-slate-900\/80 { background-color: rgba(248,250,252,.97) !important; }
+/* Dividers */
+.admin-light .divide-white\/5 > :not([hidden]) ~ :not([hidden]) { border-color: #E2E8F0 !important; }
 
-/* Dividers — target the children set by Tailwind's divide utility */
-.admin-light .divide-white\/5 > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0 !important; }
-
-/* Group-hover icon color in sidebar nav */
+/* Group-hover icon */
 .admin-light .group:hover .group-hover\:text-slate-300 { color: #475569 !important; }
 
 /* Admin input override */
 .admin-light .admin-input {
-  border-color: #e2e8f0 !important;
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+  border-color: #E2E8F0 !important;
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
 }
-.admin-light .admin-input::placeholder { color: #94a3b8 !important; }
-.admin-light select.admin-input option  { background: #fff; color: #0f172a; }
-
+.admin-light .admin-input::placeholder { color: #94A3B8 !important; }
+.admin-light select.admin-input option  { background: #fff; color: #0F172A; }

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
@@ -209,7 +209,7 @@ export default function LicensesPage() {
                         <td className="px-4 py-3 text-right">
                           <Link
                             href={`/admin/tenants/${t.id}`}
-                            className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-slate-400 hover:border-amber-500/30 hover:text-amber-400 transition-all"
+                            className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-slate-400 hover:border-blue-600/30 hover:text-blue-400 transition-all"
                           >
                             Renew <ChevronRight className="h-3 w-3" />
                           </Link>

@@ -68,7 +68,7 @@ export default function RequestAccessPage() {
         </div>
         <Link
           href="/auth/login"
-          className="inline-block text-sm font-medium text-amber-600 hover:underline underline-offset-4 dark:text-amber-400"
+          className="inline-block text-sm font-medium text-blue-600 hover:underline underline-offset-4 dark:text-blue-400"
         >
           Back to sign in
         </Link>
@@ -213,7 +213,7 @@ export default function RequestAccessPage() {
         Already have an account?{' '}
         <Link
           href="/auth/login"
-          className="font-medium text-amber-600 hover:underline underline-offset-4 dark:text-amber-400"
+          className="font-medium text-blue-600 hover:underline underline-offset-4 dark:text-blue-400"
         >
           Sign in
         </Link>

@@ -43,7 +43,7 @@ export default async function LoginPage({
         Interested in OneMDR?{' '}
         <Link
           href="/auth/register"
-          className="font-medium text-amber-600 underline-offset-4 hover:underline dark:text-amber-400"
+          className="font-medium text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
         >
           Request access →
         </Link>

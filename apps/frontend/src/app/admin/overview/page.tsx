@@ -46,7 +46,7 @@ export default function AdminOverviewPage() {
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
       </div>
     );
   }
@@ -88,10 +88,10 @@ export default function AdminOverviewPage() {
               ? `${data.requests.overdue} unreviewed (>7 days)`
               : 'All reviewed'
           }
-          subColor={data.requests.overdue > 0 ? 'text-amber-400' : 'text-emerald-400'}
+          subColor={data.requests.overdue > 0 ? 'text-red-400' : 'text-emerald-400'}
           icon={Clock}
-          iconColor="text-amber-400"
-          accent="border-amber-500/20 bg-amber-500/5"
+          iconColor="text-blue-400"
+          accent="border-blue-600/20 bg-blue-600/5"
           href="/admin/leads"
         />
         <KpiCard
@@ -138,7 +138,7 @@ export default function AdminOverviewPage() {
             <h2 className="text-sm font-semibold text-white">New Leads</h2>
             <Link
               href="/admin/leads"
-              className="flex items-center gap-1 text-xs text-amber-400 hover:underline"
+              className="flex items-center gap-1 text-xs text-blue-400 hover:underline"
             >
               View all <ArrowRight className="h-3 w-3" />
             </Link>
@@ -186,7 +186,7 @@ export default function AdminOverviewPage() {
             <h2 className="text-sm font-semibold text-white">Recent Tenants</h2>
             <Link
               href="/admin/tenants"
-              className="flex items-center gap-1 text-xs text-amber-400 hover:underline"
+              className="flex items-center gap-1 text-xs text-blue-400 hover:underline"
             >
               View all <ArrowRight className="h-3 w-3" />
             </Link>

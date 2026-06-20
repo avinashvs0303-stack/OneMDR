@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
@@ -61,15 +61,15 @@ export default function TenantsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, slug…"
-            className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/20 sm:w-56"
+            placeholder="Search name, slugâ€¦"
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-600/40 focus:outline-none focus:ring-1 focus:ring-blue-600/20 sm:w-56"
           />
         </div>
 
         <select
           value={plan}
           onChange={(e) => setPlan(e.target.value)}
-          className="rounded-lg border border-white/10 bg-slate-900 py-1.5 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-amber-500/20"
+          className="rounded-lg border border-white/10 bg-slate-900 py-1.5 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600/20"
         >
           <option value="">All plans</option>
           <option value="FREE">FREE</option>
@@ -80,7 +80,7 @@ export default function TenantsPage() {
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="rounded-lg border border-white/10 bg-slate-900 py-1.5 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-amber-500/20"
+          className="rounded-lg border border-white/10 bg-slate-900 py-1.5 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600/20"
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -88,7 +88,7 @@ export default function TenantsPage() {
         </select>
 
         <p className="sm:ml-auto text-xs text-slate-500">
-          {loading ? '…' : `${tenants.length} result${tenants.length !== 1 ? 's' : ''}`}
+          {loading ? 'â€¦' : `${tenants.length} result${tenants.length !== 1 ? 's' : ''}`}
         </p>
       </div>
 
@@ -208,7 +208,7 @@ export default function TenantsPage() {
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/admin/tenants/${t.id}`}
-                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-slate-400 hover:border-amber-500/30 hover:text-amber-400 transition-all"
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-slate-400 hover:border-blue-600/30 hover:text-blue-400 transition-all"
                       >
                         Manage <ChevronRight className="h-3 w-3" />
                       </Link>

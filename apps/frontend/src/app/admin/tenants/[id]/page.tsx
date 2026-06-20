@@ -261,7 +261,7 @@ export default function TenantDetailPage() {
         <div className="lg:col-span-3 space-y-4">
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <Key className="h-4 w-4 text-amber-400" />
+              <Key className="h-4 w-4 text-blue-400" />
               <h2 className="text-sm font-semibold text-white">License</h2>
             </div>
 
@@ -310,7 +310,7 @@ export default function TenantDetailPage() {
                       className={cn(
                         'rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-all',
                         active
-                          ? 'border-amber-500 bg-amber-500/10 text-amber-300'
+                          ? 'border-blue-600 bg-blue-600/10 text-blue-300'
                           : 'border-white/10 text-slate-500 hover:border-white/20 hover:text-slate-300',
                       )}
                     >
@@ -346,7 +346,7 @@ export default function TenantDetailPage() {
               <button
                 onClick={() => void handleSaveLicense()}
                 disabled={saving || !licenseForm}
-                className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
               >
                 {saving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -426,7 +426,7 @@ export default function TenantDetailPage() {
               </div>
               <button
                 onClick={() => setShowInvite((v) => !v)}
-                className="flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-slate-400 hover:border-amber-500/30 hover:text-amber-400 transition-all"
+                className="flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-slate-400 hover:border-blue-600/30 hover:text-blue-400 transition-all"
               >
                 <UserPlus className="h-3.5 w-3.5" />
                 Invite
@@ -435,8 +435,8 @@ export default function TenantDetailPage() {
 
             {/* Invite form */}
             {showInvite && (
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-2.5">
-                <p className="text-[10px] font-black tracking-widest uppercase text-amber-500">
+              <div className="rounded-lg border border-blue-600/20 bg-blue-600/5 p-3 space-y-2.5">
+                <p className="text-[10px] font-black tracking-widest uppercase text-blue-500">
                   Invite new user
                 </p>
                 <input
@@ -472,7 +472,7 @@ export default function TenantDetailPage() {
                   <button
                     onClick={() => void handleInvite()}
                     disabled={inviting}
-                    className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
                   >
                     {inviting ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
                     Send invite

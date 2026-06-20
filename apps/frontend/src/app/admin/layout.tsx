@@ -96,7 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!isAuthenticated || user?.role !== 'SUPER_ADMIN' || !isClarbit) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
       </div>
     );
   }
@@ -111,8 +111,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       className={cn(
         'flex h-screen overflow-hidden',
         theme === 'dark'
-          ? 'bg-slate-950 text-slate-100'
-          : 'bg-slate-100 text-slate-900 admin-light',
+          ? 'bg-zinc-950 text-zinc-50 admin-dark'
+          : 'bg-slate-50 text-slate-900 admin-light',
       )}
     >
       {/* ── Mobile overlay ─────────────────────────────────────────────────── */}
@@ -132,12 +132,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         {/* Brand */}
         <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10">
-            <ShieldCheck className="h-4 w-4 text-amber-500" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600/10">
+            <ShieldCheck className="h-4 w-4 text-blue-500" />
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white">Clarbit</p>
-            <p className="text-[10px] font-black tracking-widest uppercase text-amber-500">
+            <p className="text-[10px] font-black tracking-widest uppercase text-blue-500">
               Admin Console
             </p>
           </div>
@@ -161,18 +161,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 className={cn(
                   'group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all',
                   active
-                    ? 'bg-amber-500/10 text-amber-400'
+                    ? 'bg-blue-600/10 text-blue-400'
                     : 'text-slate-400 hover:bg-white/5 hover:text-slate-100',
                 )}
               >
                 <item.icon
                   className={cn(
                     'h-4 w-4 shrink-0',
-                    active ? 'text-amber-400' : 'text-slate-500 group-hover:text-slate-300',
+                    active ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300',
                   )}
                 />
                 <span className="flex-1">{item.label}</span>
-                {active && <ChevronRight className="h-3 w-3 text-amber-500" />}
+                {active && <ChevronRight className="h-3 w-3 text-blue-500" />}
               </Link>
             );
           })}
@@ -181,7 +181,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* User footer */}
         <div className="border-t border-white/10 p-3">
           <div className="flex items-center gap-2.5 rounded-lg bg-white/5 px-3 py-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-400">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600/20 text-xs font-bold text-blue-400">
               {(user?.firstName?.[0] ?? 'C').toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
@@ -222,7 +222,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <Menu className="h-5 w-5" />
           </button>
-          <ShieldCheck className="h-4 w-4 text-amber-500" />
+          <ShieldCheck className="h-4 w-4 text-blue-500" />
           <span className="text-sm font-semibold">Clarbit Admin</span>
         </header>
 

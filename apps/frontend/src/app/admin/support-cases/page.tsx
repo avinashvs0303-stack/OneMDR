@@ -134,7 +134,7 @@ export default function SupportCasesPage() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
         >
           <Plus className="h-4 w-4" />
           New case
@@ -161,7 +161,7 @@ export default function SupportCasesPage() {
               className={cn(
                 'rounded-lg px-3 py-1.5 text-xs font-bold tracking-wide uppercase transition-all',
                 filter === value
-                  ? 'bg-amber-500 text-slate-950'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white',
               )}
             >
@@ -192,7 +192,7 @@ export default function SupportCasesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search cases…"
-              className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/20 sm:w-52"
+              className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-600/40 focus:outline-none focus:ring-1 focus:ring-blue-600/20 sm:w-52"
             />
           </div>
         </div>
@@ -412,7 +412,7 @@ function SupportCaseCard({ sc, onRefresh }: { sc: SupportCase; onRefresh: () => 
           <button
             onClick={() => void handleSave()}
             disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             Save changes
@@ -568,7 +568,7 @@ function CreateCaseModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <button
             onClick={() => void handleCreate()}
             disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             Create case

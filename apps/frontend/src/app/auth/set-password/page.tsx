@@ -108,7 +108,7 @@ export default function SetPasswordPage() {
         </div>
         <a
           href="/auth/login"
-          className="inline-block text-sm text-amber-600 hover:underline dark:text-amber-400"
+          className="inline-block text-sm text-blue-600 hover:underline dark:text-blue-400"
         >
           Back to sign in
         </a>
@@ -119,7 +119,7 @@ export default function SetPasswordPage() {
   if (!ready) {
     return (
       <div className="space-y-4 text-center">
-        <Loader2 className="mx-auto h-5 w-5 animate-spin text-amber-600" />
+        <Loader2 className="mx-auto h-5 w-5 animate-spin text-blue-600" />
         <p className="text-sm text-muted-foreground">Verifying your invite link…</p>
       </div>
     );
@@ -129,7 +129,7 @@ export default function SetPasswordPage() {
     <div className="space-y-6">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
-          <ShieldCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
         </div>
         <div>
           <h2 className="text-lg font-semibold text-foreground">Create your password</h2>
@@ -184,7 +184,7 @@ export default function SetPasswordPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Set password & continue

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -94,9 +94,9 @@ function LeadsContent() {
 
   const FILTERS: { value: FilterStatus; label: string }[] = [
     { value: 'ALL', label: 'All' },
-    { value: 'PENDING', label: `New · ${counts.PENDING}` },
-    { value: 'APPROVED', label: `Provisioned · ${counts.APPROVED}` },
-    { value: 'REJECTED', label: `Declined · ${counts.REJECTED}` },
+    { value: 'PENDING', label: `New Â· ${counts.PENDING}` },
+    { value: 'APPROVED', label: `Provisioned Â· ${counts.APPROVED}` },
+    { value: 'REJECTED', label: `Declined Â· ${counts.REJECTED}` },
   ];
 
   return (
@@ -129,7 +129,7 @@ function LeadsContent() {
               className={cn(
                 'rounded-lg px-3 py-1.5 text-xs font-bold tracking-wide uppercase transition-all',
                 filter === value
-                  ? 'bg-amber-500 text-slate-950'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white',
               )}
             >
@@ -143,8 +143,8 @@ function LeadsContent() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search company, email…"
-            className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/20 sm:w-64"
+            placeholder="Search company, emailâ€¦"
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-600/40 focus:outline-none focus:ring-1 focus:ring-blue-600/20 sm:w-64"
           />
         </div>
       </div>
@@ -187,7 +187,7 @@ export default function LeadsPage() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function LeadCard({
   lead,
@@ -273,28 +273,28 @@ function LeadCard({
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-white truncate">{lead.companyName}</h3>
-            {lead.industry && <span className="text-xs text-slate-500">· {lead.industry}</span>}
+            {lead.industry && <span className="text-xs text-slate-500">Â· {lead.industry}</span>}
             {lead.companySize && (
-              <span className="text-xs text-slate-500">· {lead.companySize}</span>
+              <span className="text-xs text-slate-500">Â· {lead.companySize}</span>
             )}
           </div>
           <p className="text-sm text-slate-400">
-            {lead.contactName} ·{' '}
+            {lead.contactName} Â·{' '}
             <a
               href={`mailto:${lead.contactEmail}`}
-              className="hover:text-amber-400 hover:underline transition-colors"
+              className="hover:text-blue-400 hover:underline transition-colors"
             >
               {lead.contactEmail}
             </a>
             {lead.website && (
               <>
                 {' '}
-                ·{' '}
+                Â·{' '}
                 <a
                   href={lead.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-0.5 hover:text-amber-400 hover:underline transition-colors"
+                  className="inline-flex items-center gap-0.5 hover:text-blue-400 hover:underline transition-colors"
                 >
                   website <ExternalLink className="h-3 w-3" />
                 </a>
@@ -362,7 +362,7 @@ function LeadCard({
             </div>
           )}
 
-          {/* Action panels — new leads only */}
+          {/* Action panels â€” new leads only */}
           {lead.status === 'PENDING' && !provisioned && (
             <div className="grid gap-4 md:grid-cols-2">
               {/* Provision panel */}
@@ -412,7 +412,7 @@ function LeadCard({
                         className={cn(
                           'rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-all',
                           provisionForm.licenseModules.includes(mod)
-                            ? 'border-amber-500 bg-amber-500/10 text-amber-300'
+                            ? 'border-blue-600 bg-blue-600/10 text-blue-300'
                             : 'border-white/10 text-slate-500 hover:border-white/20 hover:text-slate-300',
                         )}
                       >
@@ -472,7 +472,7 @@ function LeadCard({
                     rows={5}
                     value={declineReason}
                     onChange={(e) => setDeclineReason(e.target.value)}
-                    placeholder="Thank you for your interest in OneMDR. We're not able to onboard your organisation at this time…"
+                    placeholder="Thank you for your interest in OneMDR. We're not able to onboard your organisation at this timeâ€¦"
                     className="admin-input resize-none"
                   />
                 </Field>
@@ -498,7 +498,7 @@ function LeadCard({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Plan" value={lead.planType} />
               <Stat label="Seat limit" value={String(lead.maxUsers)} />
-              <Stat label="Modules" value={lead.licenseModules.join(', ') || '—'} />
+              <Stat label="Modules" value={lead.licenseModules.join(', ') || 'â€”'} />
               <Stat
                 label="License expires"
                 value={

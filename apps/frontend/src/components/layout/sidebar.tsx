@@ -49,7 +49,7 @@ export function Sidebar() {
         href="/modules"
         className="flex items-center gap-2.5 border-b border-black/10 dark:border-white/10 px-5 py-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-white text-xs font-black shadow-lg shadow-amber-500/30">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white text-xs font-black shadow-lg shadow-blue-500/30">
           M
         </div>
         <div>
@@ -90,14 +90,14 @@ export function Sidebar() {
             className={cn(
               'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
               inModules
-                ? 'bg-amber-50 border-amber-200 text-amber-900 font-semibold dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-300'
+                ? 'bg-blue-50 border-blue-200 text-blue-900 font-semibold dark:bg-blue-600/10 dark:border-blue-600/20 dark:text-blue-300'
                 : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
             )}
           >
             <LayoutGrid
               className={cn(
                 'h-4 w-4 shrink-0',
-                inModules ? 'text-amber-500' : 'text-slate-400 dark:text-zinc-500',
+                inModules ? 'text-blue-500' : 'text-slate-400 dark:text-zinc-500',
               )}
             />
             Module Hub
@@ -127,7 +127,7 @@ export function Sidebar() {
                       className={cn(
                         'h-4 w-4 shrink-0',
                         active
-                          ? 'text-amber-700 dark:text-white'
+                          ? 'text-blue-700 dark:text-white'
                           : 'text-slate-400 dark:text-zinc-500',
                       )}
                     />
@@ -161,7 +161,7 @@ export function Sidebar() {
                       className={cn(
                         'h-4 w-4 shrink-0',
                         active
-                          ? 'text-amber-700 dark:text-white'
+                          ? 'text-blue-700 dark:text-white'
                           : 'text-slate-400 dark:text-zinc-500',
                       )}
                     />
