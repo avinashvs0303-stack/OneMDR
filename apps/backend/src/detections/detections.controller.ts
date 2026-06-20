@@ -49,6 +49,15 @@ export class DetectionsController {
     return { data };
   }
 
+  // ── Dashboard summary ─────────────────────────────────────────────────────────
+
+  @Get('summary')
+  @ApiOperation({ summary: 'Get dashboard KPI summary for the authenticated tenant' })
+  async summary(@CurrentUser() user: JwtPayload) {
+    const data = await this.svc.getSummary(user);
+    return { data };
+  }
+
   // ── Detail ────────────────────────────────────────────────────────────────────
 
   @Get(':id')

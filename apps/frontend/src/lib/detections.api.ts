@@ -82,6 +82,31 @@ export interface ImportResult {
   errors: string[];
 }
 
+export interface DashboardSummary {
+  totalDetections: number;
+  enabledDetections: number;
+  byPlatform: Record<string, number>;
+  bySeverity: Record<string, number>;
+  byTactic: Record<string, number>;
+  avgFpRate: number | null;
+  avgMttdHours: number | null;
+  totalAlertsPerDay: number | null;
+  techniqueCountMap: Record<string, number>;
+  recentDetections: Array<{
+    id: string;
+    ruleId: string;
+    name: string;
+    mitreAttackId: string | null;
+    mitreTactic: string | null;
+    severity: string;
+    platform: string;
+    expectedFpRate: number | null;
+    expectedAlertsPerDay: number | null;
+    isEnabled: boolean;
+    updatedAt: string;
+  }>;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Convert an ArrayBuffer/File to base64 string for the import API.
@@ -135,6 +160,11 @@ export const detectionsApi = {
 
   getStats: async (id: string): Promise<DetectionStat[]> => {
     const res = await api.get<{ data: DetectionStat[] }>(`${BASE}/${id}/stats`);
+    return res.data;
+  },
+
+  summary: async (): Promise<DashboardSummary> => {
+    const res = await api.get<{ data: DashboardSummary }>(`${BASE}/summary`);
     return res.data;
   },
 };

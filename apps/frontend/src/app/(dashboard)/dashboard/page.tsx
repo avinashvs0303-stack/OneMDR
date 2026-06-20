@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { useCurrentUser } from '@/store/auth.store';
 import { Header } from '@/components/layout/header';
 import {
@@ -13,64 +14,93 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { ATTACK_MATRIX, getMatrixStats } from '@/data/attack-matrix';
-import { DETECTIONS, SEVERITY_COLORS, STATUS_COLORS, SIEM_COLORS } from '@/data/detections';
+import {
+  detectionsApi,
+  type DashboardSummary,
+  type DetectionSeverity,
+  type DetectionPlatform,
+  SEVERITY_COLORS,
+  PLATFORM_COLORS,
+  PLATFORM_LABEL,
+} from '@/lib/detections.api';
+import { ATTACK_MATRIX } from '@/data/attack-matrix';
 
-const matrixStats = getMatrixStats();
-const activeDetections = DETECTIONS.filter((d) => d.status === 'Active');
-const testingDetections = DETECTIONS.filter((d) => d.status === 'Testing');
-const avgFpRate = Math.round(
-  activeDetections.reduce((s, d) => s + d.metrics.fpRate, 0) / activeDetections.length,
-);
-const avgMttd = (
-  activeDetections.reduce((s, d) => s + d.metrics.mttd, 0) / activeDetections.length
-).toFixed(1);
-const totalAlertsDay = activeDetections.reduce((s, d) => s + d.metrics.alertsPerDay, 0).toFixed(1);
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const tacticGaps = ATTACK_MATRIX.map((t) => ({
-  name: t.shortName,
-  count: t.techniques.filter((tech) => tech.coverage > 0).length,
-})).filter((t) => t.count === 0);
+function computeCoverage(techniqueCountMap: Record<string, number>) {
+  let total = 0;
+  let covered = 0;
+  let strong = 0;
+  for (const tactic of ATTACK_MATRIX) {
+    for (const tech of tactic.techniques) {
+      total++;
+      const count = Object.entries(techniqueCountMap)
+        .filter(([id]) => id.startsWith(tech.id))
+        .reduce((s, [, c]) => s + c, 0);
+      if (count > 0) covered++;
+      if (count >= 5) strong++;
+    }
+  }
+  return { total, covered, strong, pct: total > 0 ? Math.round((covered / total) * 100) : 0 };
+}
 
-const recentUpdates = DETECTIONS.filter((d) => d.status !== 'Draft')
-  .sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated))
-  .slice(0, 6);
+function tacticCoveredCount(
+  tactic: (typeof ATTACK_MATRIX)[number],
+  techniqueCountMap: Record<string, number>,
+) {
+  return tactic.techniques.filter((tech) =>
+    Object.keys(techniqueCountMap).some((id) => id.startsWith(tech.id)),
+  ).length;
+}
 
-const SIEM_HEALTH = [
-  {
-    name: 'Splunk',
-    status: 'healthy',
-    detections: DETECTIONS.filter((d) => d.siem === 'Splunk').length,
-    lastSync: '2m ago',
-    latency: 48,
-  },
-  {
-    name: 'Sentinel',
-    status: 'healthy',
-    detections: DETECTIONS.filter((d) => d.siem === 'Microsoft Sentinel').length,
-    lastSync: '8m ago',
-    latency: 61,
-  },
-  {
-    name: 'Chronicle',
-    status: 'warning',
-    detections: DETECTIONS.filter((d) => d.siem === 'Chronicle').length,
-    lastSync: '41m ago',
-    latency: 0,
-  },
-  {
-    name: 'Elastic',
-    status: 'healthy',
-    detections: DETECTIONS.filter((d) => d.siem === 'Elastic').length,
-    lastSync: '5m ago',
-    latency: 33,
-  },
+function fmtDate(iso: string) {
+  return iso.slice(0, 10);
+}
+
+const PLATFORM_HEALTH_KEYS: Array<{ key: string; name: string }> = [
+  { key: 'SPLUNK', name: 'Splunk' },
+  { key: 'SENTINEL', name: 'Sentinel' },
+  { key: 'CHRONICLE', name: 'Chronicle' },
+  { key: 'ELASTIC', name: 'Elastic' },
+  { key: 'QRADAR', name: 'QRadar' },
+  { key: 'SIGMA', name: 'SIGMA' },
 ];
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const user = useCurrentUser();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      const data = await detectionsApi.summary();
+      setSummary(data);
+    } catch (err) {
+      console.error('Dashboard summary fetch failed', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchSummary();
+  }, [fetchSummary]);
+
+  const matrixStats = summary ? computeCoverage(summary.techniqueCountMap) : null;
+
+  const tacticGaps = summary
+    ? ATTACK_MATRIX.map((tactic) => ({
+        name: tactic.shortName,
+        covered: tacticCoveredCount(tactic, summary.techniqueCountMap),
+      })).filter((t) => t.covered === 0)
+    : [];
+
+  const enabledRecent = summary?.recentDetections.filter((d) => d.isEnabled) ?? [];
 
   return (
     <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
@@ -100,49 +130,71 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <KpiCard
             label="MITRE ATT&CK COVERAGE"
-            value={`${matrixStats.pct}%`}
-            sub={`${matrixStats.covered}/${matrixStats.total} techniques mapped`}
+            value={loading ? '—' : `${matrixStats?.pct ?? 0}%`}
+            sub={
+              loading
+                ? 'Loading...'
+                : `${matrixStats?.covered ?? 0}/${matrixStats?.total ?? 0} techniques mapped`
+            }
             badge="Goal: >80%"
             badgeColor="text-emerald-600 dark:text-emerald-400 bg-emerald-500/20 border-emerald-500/20"
             icon={Target}
             iconColor="text-amber-400"
-            trendLabel="+3% this month"
+            trendLabel=""
             href="/coverage"
             linkLabel="Open coverage navigator"
           />
           <KpiCard
             label="ACTIVE RULES"
-            value={String(activeDetections.length)}
-            sub={`${DETECTIONS.length} total in library · ${testingDetections.length} in testing`}
+            value={loading ? '—' : String(summary?.enabledDetections ?? 0)}
+            sub={loading ? 'Loading...' : `${summary?.totalDetections ?? 0} total in library`}
             badge="DaaS Library"
             badgeColor="text-violet-600 dark:text-violet-400 bg-violet-500/20 border-violet-500/20"
             icon={ShieldCheck}
             iconColor="text-violet-400"
-            trendLabel="+2 this week"
+            trendLabel=""
             href="/detections"
             linkLabel="Browse detection list"
           />
           <KpiCard
             label="FALSE POSITIVE RATE"
-            value={`${avgFpRate}%`}
-            sub="Avg across active rules"
+            value={
+              loading
+                ? '—'
+                : summary?.avgFpRate != null
+                  ? `${summary.avgFpRate.toFixed(1)}%`
+                  : 'N/A'
+            }
+            sub="Avg across enabled rules"
             badge="Limit: <5%"
             badgeColor="text-orange-600 dark:text-orange-400 bg-orange-500/20 border-orange-500/20"
             icon={AlertTriangle}
             iconColor="text-orange-400"
-            trendLabel="-2% vs last month"
+            trendLabel=""
             href="/reports"
             linkLabel="Review weekly briefs"
           />
           <KpiCard
             label="MEAN TIME TO DETECT"
-            value={`${avgMttd}h`}
-            sub={`${totalAlertsDay} alerts/day avg`}
+            value={
+              loading
+                ? '—'
+                : summary?.avgMttdHours != null
+                  ? `${summary.avgMttdHours.toFixed(1)}h`
+                  : 'N/A'
+            }
+            sub={
+              loading
+                ? 'Loading...'
+                : summary?.totalAlertsPerDay != null
+                  ? `${summary.totalAlertsPerDay.toFixed(1)} alerts/day avg`
+                  : 'No alert data yet'
+            }
             badge="SLA: <1h"
             badgeColor="text-amber-600 dark:text-amber-400 bg-amber-500/20 border-amber-500/20"
             icon={Clock}
             iconColor="text-purple-400"
-            trendLabel="-0.4h improvement"
+            trendLabel=""
             href="/siem"
             linkLabel="Monitor pipeline"
           />
@@ -163,7 +215,7 @@ export default function DashboardPage() {
 
             <div className="space-y-1.5">
               {ATTACK_MATRIX.map((tactic) => {
-                const covered = tactic.techniques.filter((t) => t.coverage > 0).length;
+                const covered = summary ? tacticCoveredCount(tactic, summary.techniqueCountMap) : 0;
                 const pct = Math.round((covered / tactic.techniques.length) * 100);
                 return (
                   <div key={tactic.id} className="flex items-center gap-2">
@@ -203,7 +255,7 @@ export default function DashboardPage() {
                   Health
                 </h3>
                 <p className="text-xs text-slate-400 dark:text-zinc-500 mt-0.5">
-                  Live ingest pipeline status.
+                  Enabled rules per platform.
                 </p>
               </div>
               <Link
@@ -215,63 +267,73 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-2">
-              {SIEM_HEALTH.map((s) => (
-                <div
-                  key={s.name}
-                  className="flex items-center justify-between p-2.5 rounded-lg bg-black/5 dark:bg-black/20 border border-black/5 dark:border-white/5 hover:bg-black/10 dark:hover:bg-white/5 transition-all"
-                >
-                  <div>
-                    <p className="text-xs font-semibold text-slate-800 dark:text-white">{s.name}</p>
-                    <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-                      {s.detections} rules · {s.lastSync}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-xs text-slate-700 dark:text-zinc-300">
-                        {s.latency > 0 ? `${s.latency}ms` : 'Offline'}
+              {PLATFORM_HEALTH_KEYS.map(({ key, name }) => {
+                const count = summary?.byPlatform[key] ?? 0;
+                const active = count > 0;
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between p-2.5 rounded-lg bg-black/5 dark:bg-black/20 border border-black/5 dark:border-white/5 hover:bg-black/10 dark:hover:bg-white/5 transition-all"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-white">{name}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+                        {loading ? '...' : `${count} enabled rules`}
                       </p>
-                      <p className="text-[9px] text-slate-400 dark:text-zinc-500">latency</p>
                     </div>
-                    <span className="relative flex h-2 w-2">
-                      {s.status === 'healthy' ? (
-                        <>
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                        </>
-                      ) : (
-                        <>
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-                        </>
-                      )}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-700 dark:text-zinc-300 font-semibold">
+                          {loading ? '—' : count > 0 ? String(count) : '—'}
+                        </p>
+                        <p className="text-[9px] text-slate-400 dark:text-zinc-500">rules</p>
+                      </div>
+                      <span className="relative flex h-2 w-2">
+                        {active ? (
+                          <>
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                          </>
+                        ) : (
+                          <>
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-40" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-400" />
+                          </>
+                        )}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="border-t border-black/10 dark:border-white/10 pt-3">
               <p className="text-[10px] text-slate-400 dark:text-zinc-500 mb-2 uppercase tracking-widest font-semibold">
                 Active Rules Preview
               </p>
-              <ul className="space-y-1.5">
-                {activeDetections.slice(0, 3).map((det) => (
-                  <li key={det.id} className="flex items-center justify-between text-xs">
-                    <span className="truncate text-slate-700 dark:text-zinc-300 max-w-[160px]">
-                      {det.title}
-                    </span>
-                    <span
-                      className={cn(
-                        'text-[10px] px-1.5 py-0.5 rounded shrink-0 ml-2',
-                        SEVERITY_COLORS[det.severity],
-                      )}
-                    >
-                      {det.severity}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              {enabledRecent.length === 0 ? (
+                <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+                  {loading ? 'Loading...' : 'No enabled detections yet.'}
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {enabledRecent.slice(0, 3).map((det) => (
+                    <li key={det.id} className="flex items-center justify-between text-xs">
+                      <span className="truncate text-slate-700 dark:text-zinc-300 max-w-[160px]">
+                        {det.name}
+                      </span>
+                      <span
+                        className={cn(
+                          'text-[10px] px-1.5 py-0.5 rounded shrink-0 ml-2',
+                          SEVERITY_COLORS[det.severity as DetectionSeverity],
+                        )}
+                      >
+                        {det.severity}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 
@@ -290,7 +352,9 @@ export default function DashboardPage() {
                   Navigator
                 </Link>
               </div>
-              {tacticGaps.length === 0 ? (
+              {loading ? (
+                <p className="text-xs text-slate-400 dark:text-zinc-500 py-2">Loading...</p>
+              ) : tacticGaps.length === 0 ? (
                 <div className="py-3 text-center">
                   <p className="text-xs text-slate-500 dark:text-zinc-400">
                     Zero defense gaps — full tactic coverage.
@@ -329,28 +393,36 @@ export default function DashboardPage() {
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Recent Updates
               </h3>
-              <ul className="space-y-2.5">
-                {recentUpdates.map((det) => (
-                  <li key={det.id} className="flex items-start gap-2.5">
-                    <div
-                      className={cn(
-                        'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[9px] font-bold',
-                        STATUS_COLORS[det.status],
-                      )}
-                    >
-                      {det.status === 'Active' ? '✓' : det.status === 'Testing' ? '⚡' : '✎'}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-slate-800 dark:text-white line-clamp-1">
-                        {det.title}
-                      </p>
-                      <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-                        {det.techniqueId} · {det.lastUpdated}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {loading ? (
+                <p className="text-xs text-slate-400 dark:text-zinc-500">Loading...</p>
+              ) : (summary?.recentDetections ?? []).length === 0 ? (
+                <p className="text-xs text-slate-400 dark:text-zinc-500">No detections yet.</p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {(summary?.recentDetections ?? []).slice(0, 6).map((det) => (
+                    <li key={det.id} className="flex items-start gap-2.5">
+                      <div
+                        className={cn(
+                          'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[9px] font-bold',
+                          det.isEnabled
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                            : 'bg-slate-100 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400',
+                        )}
+                      >
+                        {det.isEnabled ? '✓' : '○'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-slate-800 dark:text-white line-clamp-1">
+                          {det.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+                          {det.mitreAttackId ?? det.ruleId} · {fmtDate(String(det.updatedAt))}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <Link
                 href="/detections"
                 className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 hover:underline"
@@ -394,64 +466,98 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                {activeDetections.slice(0, 6).map((det) => (
-                  <tr
-                    key={det.id}
-                    className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer group"
-                  >
-                    <td className="px-4 py-3 text-xs text-slate-400 dark:text-zinc-500">
-                      {det.id}
-                    </td>
-                    <td className="px-4 py-3 max-w-xs">
-                      <p className="font-medium text-slate-900 dark:text-white text-xs truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                        {det.title}
-                      </p>
-                      <p className="text-[10px] text-slate-400 dark:text-zinc-500">{det.tactic}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs text-amber-600 dark:text-amber-400">
-                        {det.techniqueId}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          'inline-flex rounded-md px-2 py-0.5 text-[10px] font-medium',
-                          SIEM_COLORS[det.siem],
-                        )}
-                      >
-                        {det.siem === 'Microsoft Sentinel' ? 'Sentinel' : det.siem}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          'inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold',
-                          SEVERITY_COLORS[det.severity],
-                        )}
-                      >
-                        {det.severity}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      <span
-                        className={cn(
-                          'font-medium',
-                          det.metrics.fpRate > 15
-                            ? 'text-red-500 dark:text-red-400'
-                            : det.metrics.fpRate > 8
-                              ? 'text-amber-500 dark:text-amber-400'
-                              : 'text-emerald-600 dark:text-emerald-400',
-                        )}
-                      >
-                        {det.metrics.fpRate}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs font-medium text-slate-700 dark:text-zinc-300">
-                      {det.metrics.alertsPerDay}
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-8 text-center text-xs text-slate-400 dark:text-zinc-500"
+                    >
+                      Loading...
                     </td>
                   </tr>
-                ))}
+                ) : enabledRecent.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-8 text-center text-xs text-slate-400 dark:text-zinc-500"
+                    >
+                      No enabled detections.{' '}
+                      <Link
+                        href="/detections"
+                        className="text-amber-600 dark:text-amber-400 hover:underline"
+                      >
+                        Enable rules in the Detection Library.
+                      </Link>
+                    </td>
+                  </tr>
+                ) : (
+                  enabledRecent.slice(0, 6).map((det) => (
+                    <tr
+                      key={det.id}
+                      className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer group"
+                    >
+                      <td className="px-4 py-3 text-xs text-slate-400 dark:text-zinc-500">
+                        {det.ruleId}
+                      </td>
+                      <td className="px-4 py-3 max-w-xs">
+                        <p className="font-medium text-slate-900 dark:text-white text-xs truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                          {det.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+                          {det.mitreTactic ?? '—'}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                          {det.mitreAttackId ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            'inline-flex rounded-md px-2 py-0.5 text-[10px] font-medium',
+                            PLATFORM_COLORS[det.platform as DetectionPlatform],
+                          )}
+                        >
+                          {PLATFORM_LABEL[det.platform as DetectionPlatform] ?? det.platform}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            'inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold',
+                            SEVERITY_COLORS[det.severity as DetectionSeverity],
+                          )}
+                        >
+                          {det.severity}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {det.expectedFpRate != null ? (
+                          <span
+                            className={cn(
+                              'font-medium',
+                              det.expectedFpRate > 15
+                                ? 'text-red-500 dark:text-red-400'
+                                : det.expectedFpRate > 8
+                                  ? 'text-amber-500 dark:text-amber-400'
+                                  : 'text-emerald-600 dark:text-emerald-400',
+                            )}
+                          >
+                            {det.expectedFpRate.toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 dark:text-zinc-500">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-medium text-slate-700 dark:text-zinc-300">
+                        {det.expectedAlertsPerDay != null
+                          ? det.expectedAlertsPerDay.toFixed(1)
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -460,6 +566,8 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+// ── KpiCard ───────────────────────────────────────────────────────────────────
 
 function KpiCard({
   label,

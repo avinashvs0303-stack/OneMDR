@@ -307,6 +307,85 @@ export class DetectionsService {
     return { imported, skipped: errors.length, errors };
   }
 
+  async getSummary(actor: JwtPayload) {
+    const tenantId = actor.tenantId!;
+
+    const detections = await this.db.detection.findMany({
+      where: {
+        OR: [{ isGlobal: true }, { tenantId, isGlobal: false }],
+      },
+      include: {
+        tenantDetections: { where: { tenantId } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const withEnabled = detections.map((d) => ({
+      ...d,
+      isEnabled: d.tenantDetections[0]?.isEnabled ?? false,
+    }));
+    const enabled = withEnabled.filter((d) => d.isEnabled);
+
+    const byPlatform: Record<string, number> = {};
+    const bySeverity: Record<string, number> = {};
+    const byTactic: Record<string, number> = {};
+    const techniqueCountMap: Record<string, number> = {};
+
+    for (const d of enabled) {
+      byPlatform[d.platform] = (byPlatform[d.platform] ?? 0) + 1;
+      bySeverity[d.severity] = (bySeverity[d.severity] ?? 0) + 1;
+      if (d.mitreTactic) {
+        byTactic[d.mitreTactic] = (byTactic[d.mitreTactic] ?? 0) + 1;
+      }
+      if (d.mitreAttackId) {
+        techniqueCountMap[d.mitreAttackId] = (techniqueCountMap[d.mitreAttackId] ?? 0) + 1;
+      }
+    }
+
+    const fpRates = enabled
+      .filter((d) => d.expectedFpRate != null)
+      .map((d) => Number(d.expectedFpRate));
+    const avgFpRate =
+      fpRates.length > 0 ? fpRates.reduce((a, b) => a + b, 0) / fpRates.length : null;
+
+    const mttds = enabled
+      .filter((d) => d.expectedMttdHours != null)
+      .map((d) => Number(d.expectedMttdHours));
+    const avgMttdHours = mttds.length > 0 ? mttds.reduce((a, b) => a + b, 0) / mttds.length : null;
+
+    const alertRates = enabled
+      .filter((d) => d.expectedAlertsPerDay != null)
+      .map((d) => Number(d.expectedAlertsPerDay));
+    const totalAlertsPerDay = alertRates.length > 0 ? alertRates.reduce((a, b) => a + b, 0) : null;
+
+    const recentDetections = withEnabled.slice(0, 10).map((d) => ({
+      id: d.id,
+      ruleId: d.ruleId,
+      name: d.name,
+      mitreAttackId: d.mitreAttackId,
+      mitreTactic: d.mitreTactic,
+      severity: d.severity,
+      platform: d.platform,
+      expectedFpRate: d.expectedFpRate ? Number(d.expectedFpRate) : null,
+      expectedAlertsPerDay: d.expectedAlertsPerDay ? Number(d.expectedAlertsPerDay) : null,
+      isEnabled: d.isEnabled,
+      updatedAt: d.updatedAt,
+    }));
+
+    return {
+      totalDetections: detections.length,
+      enabledDetections: enabled.length,
+      byPlatform,
+      bySeverity,
+      byTactic,
+      avgFpRate,
+      avgMttdHours,
+      totalAlertsPerDay,
+      techniqueCountMap,
+      recentDetections,
+    };
+  }
+
   async getStats(detectionId: string, actor: JwtPayload) {
     const tenantId = actor.tenantId!;
 

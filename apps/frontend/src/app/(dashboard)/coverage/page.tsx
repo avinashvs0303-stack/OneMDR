@@ -1,19 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Header } from '@/components/layout/header';
 import { Target, Download, Filter, Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   ATTACK_MATRIX,
   getCoverageColor,
-  getMatrixStats,
   type AttackTechnique,
   type AttackTactic,
 } from '@/data/attack-matrix';
-import { DETECTIONS } from '@/data/detections';
+import {
+  detectionsApi,
+  type DetectionRow,
+  type DetectionPlatform,
+  PLATFORM_COLORS,
+  PLATFORM_LABEL,
+  SEVERITY_COLORS,
+  type DetectionSeverity,
+} from '@/lib/detections.api';
 
-type SiemFilter = 'All' | 'Splunk' | 'Microsoft Sentinel' | 'Chronicle' | 'Elastic';
+type PlatformFilter = 'ALL' | DetectionPlatform;
+
+const PLATFORM_OPTIONS: Array<{ value: PlatformFilter; label: string }> = [
+  { value: 'ALL', label: 'All Platforms' },
+  { value: 'SPLUNK', label: 'Splunk' },
+  { value: 'SENTINEL', label: 'Sentinel' },
+  { value: 'CHRONICLE', label: 'Chronicle' },
+  { value: 'ELASTIC', label: 'Elastic' },
+  { value: 'QRADAR', label: 'QRadar' },
+  { value: 'SIGMA', label: 'SIGMA' },
+];
 
 interface TooltipState {
   technique: AttackTechnique;
@@ -22,34 +39,104 @@ interface TooltipState {
   y: number;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function buildCoverageMap(detections: DetectionRow[]): Map<string, DetectionRow[]> {
+  const map = new Map<string, DetectionRow[]>();
+  for (const d of detections) {
+    if (!d.mitreAttackId) continue;
+    const existing = map.get(d.mitreAttackId) ?? [];
+    map.set(d.mitreAttackId, [...existing, d]);
+  }
+  return map;
+}
+
+function techCoverageCount(techId: string, map: Map<string, DetectionRow[]>): number {
+  let count = 0;
+  for (const [id, dets] of map.entries()) {
+    if (id.startsWith(techId)) count += dets.length;
+  }
+  return count;
+}
+
+function techDetections(techId: string, map: Map<string, DetectionRow[]>): DetectionRow[] {
+  const result: DetectionRow[] = [];
+  for (const [id, dets] of map.entries()) {
+    if (id.startsWith(techId)) result.push(...dets);
+  }
+  return result;
+}
+
+function computeStats(map: Map<string, DetectionRow[]>) {
+  let total = 0;
+  let covered = 0;
+  let strong = 0;
+  for (const tactic of ATTACK_MATRIX) {
+    for (const tech of tactic.techniques) {
+      total++;
+      const count = techCoverageCount(tech.id, map);
+      if (count > 0) covered++;
+      if (count >= 5) strong++;
+    }
+  }
+  return { total, covered, strong, pct: total > 0 ? Math.round((covered / total) * 100) : 0 };
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function CoveragePage() {
-  const [siemFilter, setSiemFilter] = useState<SiemFilter>('All');
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('ALL');
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [selectedCell, setSelectedCell] = useState<{
     tech: AttackTechnique;
     tactic: AttackTactic;
   } | null>(null);
+  const [allEnabled, setAllEnabled] = useState<DetectionRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const stats = getMatrixStats();
+  const fetchEnabled = useCallback(async () => {
+    try {
+      const data = await detectionsApi.list({ enabled: 'true' });
+      setAllEnabled(data);
+    } catch (err) {
+      console.error('Coverage fetch failed', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const matrix = ATTACK_MATRIX.map((tactic) => ({
-    ...tactic,
-    techniques: tactic.techniques.map((tech) => {
-      if (siemFilter === 'All') return tech;
-      const count = DETECTIONS.filter(
-        (d) => d.techniqueId.startsWith(tech.id) && d.siem === siemFilter && d.status === 'Active',
-      ).length;
-      return { ...tech, coverage: count };
-    }),
-  }));
+  useEffect(() => {
+    void fetchEnabled();
+  }, [fetchEnabled]);
 
-  const detForCell = selectedCell
-    ? DETECTIONS.filter(
-        (d) =>
-          d.techniqueId.startsWith(selectedCell.tech.id) &&
-          (siemFilter === 'All' || d.siem === siemFilter),
-      )
-    : [];
+  const filtered = useMemo(
+    () =>
+      platformFilter === 'ALL'
+        ? allEnabled
+        : allEnabled.filter((d) => d.platform === platformFilter),
+    [allEnabled, platformFilter],
+  );
+
+  const coverageMap = useMemo(() => buildCoverageMap(filtered), [filtered]);
+
+  const stats = useMemo(() => computeStats(coverageMap), [coverageMap]);
+
+  const matrix = useMemo(
+    () =>
+      ATTACK_MATRIX.map((tactic) => ({
+        ...tactic,
+        techniques: tactic.techniques.map((tech) => ({
+          ...tech,
+          coverage: techCoverageCount(tech.id, coverageMap),
+        })),
+      })),
+    [coverageMap],
+  );
+
+  const detForCell = useMemo(
+    () => (selectedCell ? techDetections(selectedCell.tech.id, coverageMap) : []),
+    [selectedCell, coverageMap],
+  );
 
   return (
     <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
@@ -61,22 +148,22 @@ export default function CoveragePage() {
           <div className="flex items-center gap-6">
             <Stat
               label="Coverage"
-              value={`${stats.pct}%`}
+              value={loading ? '—' : `${stats.pct}%`}
               color="text-emerald-600 dark:text-emerald-400"
             />
             <Stat
               label="Covered"
-              value={`${stats.covered}`}
+              value={loading ? '—' : `${stats.covered}`}
               color="text-slate-900 dark:text-white"
             />
             <Stat
               label="Gaps"
-              value={`${stats.total - stats.covered}`}
+              value={loading ? '—' : `${stats.total - stats.covered}`}
               color="text-red-500 dark:text-red-400"
             />
             <Stat
               label="Strong (5+)"
-              value={`${stats.strong}`}
+              value={loading ? '—' : `${stats.strong}`}
               color="text-emerald-600 dark:text-emerald-400"
             />
           </div>
@@ -85,12 +172,17 @@ export default function CoveragePage() {
             <div className="flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-md px-2 py-1.5">
               <Filter className="h-3 w-3 text-slate-400 dark:text-zinc-500" />
               <select
-                value={siemFilter}
-                onChange={(e) => setSiemFilter(e.target.value as SiemFilter)}
+                value={platformFilter}
+                onChange={(e) => {
+                  setPlatformFilter(e.target.value as PlatformFilter);
+                  setSelectedCell(null);
+                }}
                 className="bg-transparent text-xs font-medium text-slate-700 dark:text-zinc-300 focus:outline-none cursor-pointer"
               >
-                {['All', 'Splunk', 'Microsoft Sentinel', 'Chronicle', 'Elastic'].map((s) => (
-                  <option key={s}>{s}</option>
+                {PLATFORM_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -100,9 +192,9 @@ export default function CoveragePage() {
                 className="bg-black/10 dark:bg-white/5 border border-black/10 dark:border-white/10"
                 label="No coverage"
               />
-              <LegendItem className="bg-yellow-500/30" label="1–2 rules" />
-              <LegendItem className="bg-emerald-500/30" label="3–4 rules" />
-              <LegendItem className="bg-emerald-500/50" label="5–6 rules" />
+              <LegendItem className="bg-yellow-500/30" label="1-2 rules" />
+              <LegendItem className="bg-emerald-500/30" label="3-4 rules" />
+              <LegendItem className="bg-emerald-500/50" label="5-6 rules" />
               <LegendItem className="bg-emerald-500/80" label="7+ rules" />
             </div>
 
@@ -118,48 +210,65 @@ export default function CoveragePage() {
         {/* ATT&CK Matrix */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <div className="flex-1 overflow-auto p-4">
-            <div className="inline-flex gap-1 min-w-max">
-              {matrix.map((tactic) => (
-                <div key={tactic.id} className="flex flex-col gap-0.5" style={{ width: 110 }}>
-                  <div className={cn('rounded-t px-2 py-1.5 text-center text-white', tactic.color)}>
-                    <p className="text-[10px] font-black uppercase tracking-wide leading-tight">
-                      {tactic.shortName}
-                    </p>
-                    <p className="text-[9px] opacity-70 mt-0.5">{tactic.id}</p>
-                  </div>
-
-                  {tactic.techniques.map((tech) => (
-                    <button
-                      key={tech.id}
-                      type="button"
-                      onClick={() =>
-                        setSelectedCell(selectedCell?.tech.id === tech.id ? null : { tech, tactic })
-                      }
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setTooltip({ technique: tech, tactic, x: rect.left, y: rect.bottom + 8 });
-                      }}
-                      onMouseLeave={() => setTooltip(null)}
-                      className={cn(
-                        'w-full rounded px-1.5 py-1.5 text-left transition-all border',
-                        getCoverageColor(tech.coverage),
-                        selectedCell?.tech.id === tech.id
-                          ? 'ring-2 ring-amber-500 ring-offset-1 dark:ring-amber-400'
-                          : 'hover:ring-1 hover:ring-black/30 dark:hover:ring-white/30',
-                      )}
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-slate-400 dark:text-zinc-500">
+                  Loading coverage data...
+                </p>
+              </div>
+            ) : (
+              <div className="inline-flex gap-1 min-w-max">
+                {matrix.map((tactic) => (
+                  <div key={tactic.id} className="flex flex-col gap-0.5" style={{ width: 110 }}>
+                    <div
+                      className={cn('rounded-t px-2 py-1.5 text-center text-white', tactic.color)}
                     >
-                      <p className="text-[9px] font-bold leading-tight">{tech.id}</p>
-                      <p className="text-[9px] leading-tight mt-0.5 line-clamp-2 opacity-90">
-                        {tech.name}
+                      <p className="text-[10px] font-black uppercase tracking-wide leading-tight">
+                        {tactic.shortName}
                       </p>
-                      {tech.coverage > 0 && (
-                        <p className="text-[9px] font-bold mt-0.5 opacity-70">{tech.coverage}✓</p>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
+                      <p className="text-[9px] opacity-70 mt-0.5">{tactic.id}</p>
+                    </div>
+
+                    {tactic.techniques.map((tech) => (
+                      <button
+                        key={tech.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedCell(
+                            selectedCell?.tech.id === tech.id ? null : { tech, tactic },
+                          )
+                        }
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setTooltip({
+                            technique: tech,
+                            tactic,
+                            x: rect.left,
+                            y: rect.bottom + 8,
+                          });
+                        }}
+                        onMouseLeave={() => setTooltip(null)}
+                        className={cn(
+                          'w-full rounded px-1.5 py-1.5 text-left transition-all border',
+                          getCoverageColor(tech.coverage),
+                          selectedCell?.tech.id === tech.id
+                            ? 'ring-2 ring-amber-500 ring-offset-1 dark:ring-amber-400'
+                            : 'hover:ring-1 hover:ring-black/30 dark:hover:ring-white/30',
+                        )}
+                      >
+                        <p className="text-[9px] font-bold leading-tight">{tech.id}</p>
+                        <p className="text-[9px] leading-tight mt-0.5 line-clamp-2 opacity-90">
+                          {tech.name}
+                        </p>
+                        {tech.coverage > 0 && (
+                          <p className="text-[9px] font-bold mt-0.5 opacity-70">{tech.coverage}✓</p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Detail panel */}
@@ -189,14 +298,14 @@ export default function CoveragePage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 p-3 text-center">
                     <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                      {selectedCell.tech.coverage}
+                      {detForCell.length}
                     </p>
                     <p className="text-[10px] text-slate-400 dark:text-zinc-500">Detections</p>
                   </div>
                   <div
                     className={cn(
                       'rounded-lg border p-3 text-center',
-                      selectedCell.tech.coverage > 0
+                      detForCell.length > 0
                         ? 'border-emerald-500/30 bg-emerald-500/10'
                         : 'border-red-500/30 bg-red-500/10',
                     )}
@@ -204,12 +313,12 @@ export default function CoveragePage() {
                     <p
                       className={cn(
                         'text-sm font-bold',
-                        selectedCell.tech.coverage > 0
+                        detForCell.length > 0
                           ? 'text-emerald-600 dark:text-emerald-400'
                           : 'text-red-500 dark:text-red-400',
                       )}
                     >
-                      {selectedCell.tech.coverage > 0 ? 'Covered' : 'Gap'}
+                      {detForCell.length > 0 ? 'Covered' : 'Gap'}
                     </p>
                     <p className="text-[10px] text-slate-400 dark:text-zinc-500">Status</p>
                   </div>
@@ -226,26 +335,37 @@ export default function CoveragePage() {
                         className="rounded-lg border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 p-3 space-y-1.5"
                       >
                         <p className="text-xs font-semibold text-slate-900 dark:text-white leading-snug">
-                          {det.title}
+                          {det.name}
                         </p>
                         <div className="flex flex-wrap gap-1">
-                          <span className="text-[10px] text-orange-600 dark:text-orange-400 bg-orange-500/15 border border-orange-500/20 rounded px-1.5 py-0.5">
-                            {det.siem}
+                          <span
+                            className={cn(
+                              'text-[10px] rounded px-1.5 py-0.5 font-medium',
+                              PLATFORM_COLORS[det.platform as DetectionPlatform],
+                            )}
+                          >
+                            {PLATFORM_LABEL[det.platform as DetectionPlatform] ?? det.platform}
                           </span>
                           <span
                             className={cn(
                               'text-[10px] rounded px-1.5 py-0.5 font-medium',
-                              det.status === 'Active'
-                                ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/20'
-                                : 'text-amber-600 dark:text-amber-400 bg-amber-500/20',
+                              SEVERITY_COLORS[det.severity as DetectionSeverity],
                             )}
                           >
-                            {det.status}
+                            {det.severity}
                           </span>
                         </div>
-                        {det.status === 'Active' && (
+                        {(det.expectedFpRate != null || det.expectedAlertsPerDay != null) && (
                           <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-                            FP: {det.metrics.fpRate}% · {det.metrics.alertsPerDay} alerts/day
+                            {det.expectedFpRate != null
+                              ? `FP: ${det.expectedFpRate.toFixed(1)}%`
+                              : ''}
+                            {det.expectedFpRate != null && det.expectedAlertsPerDay != null
+                              ? ' · '
+                              : ''}
+                            {det.expectedAlertsPerDay != null
+                              ? `${det.expectedAlertsPerDay.toFixed(1)} alerts/day`
+                              : ''}
                           </p>
                         )}
                       </div>
@@ -317,6 +437,8 @@ export default function CoveragePage() {
     </div>
   );
 }
+
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function Stat({ label, value, color }: { label: string; value: string; color: string }) {
   return (
