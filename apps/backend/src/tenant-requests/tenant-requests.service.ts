@@ -141,7 +141,9 @@ export class TenantRequestsService {
           name: req.companyName,
           slug,
           plan: dto.planType,
+          tenantType: dto.tenantType ?? 'STANDARD',
           maxUsers: dto.maxUsers,
+          maxSubTenants: dto.maxSubTenants ?? null,
           licenseModules: dto.licenseModules,
           licenseExpiresAt: dto.licenseExpiresAt ? new Date(dto.licenseExpiresAt) : null,
           isActive: true,
@@ -165,7 +167,9 @@ export class TenantRequestsService {
           reviewedAt: new Date(),
           adminNotes: dto.adminNotes,
           planType: dto.planType,
+          tenantType: dto.tenantType ?? 'STANDARD',
           maxUsers: dto.maxUsers,
+          maxSubTenants: dto.maxSubTenants ?? null,
           licenseModules: dto.licenseModules,
           licenseExpiresAt: dto.licenseExpiresAt ? new Date(dto.licenseExpiresAt) : null,
           tenantId: req.id,
@@ -189,6 +193,7 @@ export class TenantRequestsService {
         user_id: user.id,
         tenant_id: req.id,
         app_role: 'OWNER',
+        tenant_type: dto.tenantType ?? 'STANDARD',
       },
     });
 

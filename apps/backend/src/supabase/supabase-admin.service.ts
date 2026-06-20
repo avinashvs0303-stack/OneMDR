@@ -10,6 +10,7 @@ export interface InviteUserOptions {
     user_id: string;
     tenant_id: string;
     app_role: string;
+    tenant_type: string;
   };
 }
 

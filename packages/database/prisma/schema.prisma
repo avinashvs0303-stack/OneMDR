@@ -24,6 +24,13 @@ enum TenantPlan {
   @@map("tenant_plan")
 }
 
+enum TenantType {
+  STANDARD  // Single-tenant customer — no sub-tenant creation
+  MSSP      // Managed Security Service Provider — can create child tenants
+
+  @@map("tenant_type")
+}
+
 enum UserRole {
   SUPER_ADMIN // Platform-level: manages all tenants and tenant requests
   OWNER       // Tenant owner (created at approval)
@@ -80,6 +87,12 @@ model Tenant {
   plan      TenantPlan @default(FREE)
   isActive  Boolean    @default(true) @map("is_active")
 
+  // Tenant architecture type — controls whether this tenant can create child tenants
+  tenantType     TenantType @default(STANDARD) @map("tenant_type")
+  // MSSP hierarchy — null for root tenants, set for MSSP child tenants
+  parentTenantId String?    @map("parent_tenant_id") @db.Uuid
+  maxSubTenants  Int?       @map("max_sub_tenants")  // null = unlimited (MSSP only)
+
   // MFA policy — if true, all members must have MFA enabled
   mfaEnforced Boolean @default(false) @map("mfa_enforced")
 
@@ -102,6 +115,8 @@ model Tenant {
   auditLogs     AuditLog[]
   tenantRequest TenantRequest?
   supportCases  SupportCase[]
+  parent        Tenant?        @relation("TenantHierarchy", fields: [parentTenantId], references: [id])
+  children      Tenant[]       @relation("TenantHierarchy")
 
   @@index([slug])
   @@map("tenants")
@@ -251,10 +266,12 @@ model TenantRequest {
   adminNotes      String?             @map("admin_notes")
 
   // License configuration — set by super admin during approval
-  planType         TenantPlan @default(FREE) @map("plan_type")
-  maxUsers         Int        @default(10)   @map("max_users")
-  licenseModules   String[]   @map("license_modules")  // ["SIEM","HUNT","COVERAGE",...]
-  licenseExpiresAt DateTime?  @map("license_expires_at")
+  planType         TenantPlan @default(FREE)     @map("plan_type")
+  tenantType       TenantType @default(STANDARD) @map("tenant_type")
+  maxUsers         Int        @default(10)       @map("max_users")
+  maxSubTenants    Int?                          @map("max_sub_tenants")
+  licenseModules   String[]                      @map("license_modules")  // ["SIEM","HUNT","COVERAGE",...]
+  licenseExpiresAt DateTime?                     @map("license_expires_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")

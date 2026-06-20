@@ -10,7 +10,7 @@ import {
   ArrayMinSize,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TenantPlan } from '@onemdr/database';
+import { TenantPlan, TenantType } from '@onemdr/database';
 
 export const LICENSE_MODULES = [
   'SIEM',
@@ -46,6 +46,24 @@ export class ApproveTenantRequestDto {
   @IsOptional()
   @IsDateString()
   licenseExpiresAt?: string;
+
+  @ApiPropertyOptional({
+    enum: TenantType,
+    default: 'STANDARD',
+    description: 'STANDARD = single-tenant customer; MSSP = can create child tenants',
+  })
+  @IsOptional()
+  @IsEnum(TenantType)
+  tenantType?: TenantType;
+
+  @ApiPropertyOptional({
+    example: 10,
+    description: 'Max child tenants allowed (MSSP only). Null = unlimited.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxSubTenants?: number;
 
   @ApiPropertyOptional({ description: 'Internal notes for this approval' })
   @IsOptional()

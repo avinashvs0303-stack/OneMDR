@@ -24,6 +24,7 @@ export type {
 // Re-export enums
 export {
   TenantPlan,
+  TenantType,
   UserRole,
   AuditAction,
   TenantRequestStatus,

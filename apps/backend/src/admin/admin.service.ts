@@ -18,7 +18,13 @@ import type {
   RejectTenantRequestDto,
 } from '../tenant-requests/dto/approve-tenant-request.dto';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
-import type { TenantPlan, Prisma, SupportCaseStatus, SupportCasePriority } from '@onemdr/database';
+import type {
+  TenantPlan,
+  TenantType,
+  Prisma,
+  SupportCaseStatus,
+  SupportCasePriority,
+} from '@onemdr/database';
 
 const CLARBIT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -215,11 +221,37 @@ export class AdminService {
       where: { id },
       data: {
         plan: dto.planType,
+        ...(dto.tenantType && { tenantType: dto.tenantType }),
         maxUsers: dto.maxUsers,
+        maxSubTenants: dto.maxSubTenants ?? null,
         licenseModules: dto.licenseModules,
         licenseExpiresAt: dto.licenseExpiresAt ? new Date(dto.licenseExpiresAt) : null,
       },
+      include: {
+        users: {
+          where: { isActive: true, deletedAt: null },
+          select: { supabaseUid: true, id: true, role: true },
+        },
+      },
     });
+
+    // Sync tenant_type into each user's Supabase app_metadata so the JWT reflects the change
+    // on their next token refresh (no re-login required after ~1h).
+    if (dto.tenantType && dto.tenantType !== tenant.tenantType) {
+      const newTenantType = dto.tenantType as TenantType;
+      await Promise.allSettled(
+        updated.users
+          .filter((u) => u.supabaseUid)
+          .map((u) =>
+            this.supabase.updateUserAppMetadata(u.supabaseUid!, {
+              user_id: u.id,
+              tenant_id: id,
+              app_role: u.role,
+              tenant_type: newTenantType,
+            }),
+          ),
+      );
+    }
 
     this.emitter.emit('audit.log', {
       tenantId: actor.tenantId ?? CLARBIT_TENANT_ID,
@@ -328,7 +360,12 @@ export class AdminService {
       email: dto.email,
       redirectTo: `${frontendUrl}/auth/set-password`,
       userMetadata: { first_name: firstName, last_name: lastName },
-      appMetadata: { user_id: user.id, tenant_id: tenantId, app_role: role },
+      appMetadata: {
+        user_id: user.id,
+        tenant_id: tenantId,
+        app_role: role,
+        tenant_type: tenant.tenantType,
+      },
     });
 
     await this.db.user.update({ where: { id: user.id }, data: { supabaseUid } });

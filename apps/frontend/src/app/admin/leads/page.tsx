@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 
 const LICENSE_MODULES = ['SIEM', 'HUNT', 'COVERAGE', 'DETECTIONS', 'REPORTS', 'AUTOMATIONS'];
 const PLANS = ['FREE', 'PRO', 'ENTERPRISE'] as const;
+const TENANT_TYPES = ['STANDARD', 'MSSP'] as const;
 
 type ApiStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 type FilterStatus = 'ALL' | ApiStatus;
@@ -209,6 +210,7 @@ function LeadCard({
 
   const [provisionForm, setProvisionForm] = useState<ProvisionLeadPayload>({
     planType: 'PRO',
+    tenantType: 'STANDARD',
     maxUsers: 25,
     licenseModules: ['DETECTIONS', 'COVERAGE'],
     licenseExpiresAt: '',
@@ -402,6 +404,52 @@ function LeadCard({
                   </Field>
                 </div>
 
+                <Field label="Tenant type">
+                  <div className="flex gap-2 mt-1">
+                    {TENANT_TYPES.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() =>
+                          setProvisionForm((p) => ({
+                            ...p,
+                            tenantType: t,
+                            maxSubTenants: t === 'STANDARD' ? undefined : p.maxSubTenants,
+                          }))
+                        }
+                        className={cn(
+                          'flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all',
+                          provisionForm.tenantType === t
+                            ? 'border-blue-600 bg-blue-600/10 text-blue-300'
+                            : 'border-white/10 text-slate-500 hover:border-white/20 hover:text-slate-300',
+                        )}
+                      >
+                        {t === 'STANDARD' ? 'Standard' : 'MSSP (multi-tenant)'}
+                      </button>
+                    ))}
+                  </div>
+                  {provisionForm.tenantType === 'MSSP' && (
+                    <div className="mt-2">
+                      <label className="text-[10px] text-slate-500">
+                        Max sub-tenants (blank = unlimited)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder="Unlimited"
+                        value={provisionForm.maxSubTenants ?? ''}
+                        onChange={(e) =>
+                          setProvisionForm((p) => ({
+                            ...p,
+                            maxSubTenants: e.target.value ? Number(e.target.value) : undefined,
+                          }))
+                        }
+                        className="admin-input mt-1"
+                      />
+                    </div>
+                  )}
+                </Field>
+
                 <Field label="Modules">
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {LICENSE_MODULES.map((mod) => (
@@ -497,6 +545,7 @@ function LeadCard({
           {lead.status === 'APPROVED' && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Plan" value={lead.planType} />
+              <Stat label="Type" value={lead.tenantType ?? 'STANDARD'} />
               <Stat label="Seat limit" value={String(lead.maxUsers)} />
               <Stat label="Modules" value={lead.licenseModules.join(', ') || 'â€”'} />
               <Stat

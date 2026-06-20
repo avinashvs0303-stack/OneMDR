@@ -12,6 +12,7 @@ export interface AuthUser {
   lastName: string;
   role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST' | 'SUPER_ADMIN';
   tenantId: string;
+  tenantType: 'STANDARD' | 'MSSP';
   avatarUrl?: string;
   mfaEnabled: boolean;
 }
@@ -39,6 +40,7 @@ export const DEV_MOCK_USER: AuthUser = {
   lastName: 'Owner',
   role: 'OWNER',
   tenantId: 'dev-00000000-0000-0000-0000-000000000000',
+  tenantType: 'STANDARD',
   mfaEnabled: false,
 };
 
@@ -58,6 +60,9 @@ export function mapSupabaseSession(user: SupabaseUser): AuthUser {
     lastName: (userMeta['last_name'] as string) ?? '',
     role: ((appMeta['app_role'] as string) ?? 'MEMBER') as AuthUser['role'],
     tenantId: (appMeta['tenant_id'] as string) ?? '',
+    tenantType: ((appMeta['tenant_type'] as string) === 'MSSP'
+      ? 'MSSP'
+      : 'STANDARD') as AuthUser['tenantType'],
     avatarUrl: (userMeta['avatar_url'] as string) ?? undefined,
     mfaEnabled: false,
   };

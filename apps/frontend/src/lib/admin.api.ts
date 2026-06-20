@@ -5,6 +5,7 @@ const BASE = '/admin';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type TenantPlan = 'FREE' | 'PRO' | 'ENTERPRISE';
+export type TenantType = 'STANDARD' | 'MSSP';
 export type UserRole = 'SUPER_ADMIN' | 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST';
 
 export interface TenantSummary {
@@ -12,8 +13,10 @@ export interface TenantSummary {
   name: string;
   slug: string;
   plan: TenantPlan;
+  tenantType: TenantType;
   isActive: boolean;
   maxUsers: number;
+  maxSubTenants: number | null;
   licenseModules: string[];
   licenseExpiresAt: string | null;
   createdAt: string;
@@ -81,7 +84,9 @@ export interface ExpiringLicense {
 
 export interface UpdateLicensePayload {
   planType: TenantPlan;
+  tenantType?: TenantType;
   maxUsers: number;
+  maxSubTenants?: number;
   licenseModules: string[];
   licenseExpiresAt?: string;
   adminNotes?: string;
@@ -109,7 +114,9 @@ export interface Lead {
   useCase: string | null;
   status: LeadStatus;
   planType: TenantPlan;
+  tenantType: TenantType;
   maxUsers: number;
+  maxSubTenants: number | null;
   licenseModules: string[];
   licenseExpiresAt: string | null;
   adminNotes: string | null;
@@ -121,7 +128,9 @@ export interface Lead {
 
 export interface ProvisionLeadPayload {
   planType: TenantPlan;
+  tenantType?: TenantType;
   maxUsers: number;
+  maxSubTenants?: number;
   licenseModules: string[];
   licenseExpiresAt?: string;
   adminNotes?: string;
