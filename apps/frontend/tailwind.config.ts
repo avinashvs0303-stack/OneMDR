@@ -6,14 +6,16 @@ const config: Config = {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/data/**/*.{js,ts,tsx}',
+    './src/lib/**/*.{js,ts,tsx}',
   ],
   theme: {
     extend: {
       fontFamily: {
         // All font classes resolve to Inter
-        sans:    ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         display: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono:    ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
