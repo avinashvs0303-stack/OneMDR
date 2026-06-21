@@ -15,6 +15,7 @@ import {
   ChevronUp,
   Eye,
   EyeOff,
+  ScrollText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -23,6 +24,8 @@ import {
   STATUS_BADGE,
   type IntegrationRow,
   type CreateIntegrationPayload,
+  type IntegrationLog,
+  type LogLevel,
 } from '@/lib/integrations.api';
 import type { DetectionPlatform } from '@/lib/detections.api';
 
@@ -45,6 +48,10 @@ export default function IntegrationsPage() {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [logs, setLogs] = useState<IntegrationLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logFilterId, setLogFilterId] = useState<string>('');
+  const [logFilterLevel, setLogFilterLevel] = useState<LogLevel | ''>('');
 
   const load = useCallback(async () => {
     try {
@@ -57,9 +64,25 @@ export default function IntegrationsPage() {
     }
   }, []);
 
+  const loadLogs = useCallback(async () => {
+    setLogsLoading(true);
+    try {
+      const data = await integrationsApi.getLogs(logFilterId || undefined);
+      setLogs(data);
+    } catch (err) {
+      console.error('Failed to load integration logs', err);
+    } finally {
+      setLogsLoading(false);
+    }
+  }, [logFilterId]);
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void loadLogs();
+  }, [loadLogs]);
 
   const handleTest = async (id: string) => {
     setTestingId(id);
@@ -77,6 +100,7 @@ export default function IntegrationsPage() {
             : i,
         ),
       );
+      void loadLogs();
     } finally {
       setTestingId(null);
     }
@@ -88,6 +112,7 @@ export default function IntegrationsPage() {
     try {
       await integrationsApi.remove(id);
       setIntegrations((prev) => prev.filter((i) => i.id !== id));
+      void loadLogs();
     } finally {
       setDeletingId(null);
     }
@@ -153,7 +178,7 @@ export default function IntegrationsPage() {
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 space-y-8">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-zinc-500" />
@@ -179,6 +204,18 @@ export default function IntegrationsPage() {
               ))}
             </div>
           )}
+
+          {/* Activity Log */}
+          <ActivityLog
+            logs={logs}
+            loading={logsLoading}
+            integrations={integrations}
+            filterIntegrationId={logFilterId}
+            filterLevel={logFilterLevel}
+            onFilterIntegration={setLogFilterId}
+            onFilterLevel={setLogFilterLevel}
+            onRefresh={() => void loadLogs()}
+          />
         </div>
       </main>
 
@@ -571,6 +608,170 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       >
         <Plus className="h-3.5 w-3.5" /> Add Your First Integration
       </button>
+    </div>
+  );
+}
+
+// ── Activity Log ──────────────────────────────────────────────────────────────
+
+const LEVEL_STYLE: Record<LogLevel, { badge: string; row: string }> = {
+  INFO: {
+    badge: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    row: '',
+  },
+  WARN: {
+    badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    row: 'bg-amber-500/5',
+  },
+  ERROR: {
+    badge: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+    row: 'bg-red-500/5',
+  },
+};
+
+const EVENT_LABELS: Record<string, string> = {
+  TEST_CONNECTION: 'Test',
+  DEPLOY: 'Deploy',
+  UNDEPLOY: 'Undeploy',
+  CREATE: 'Create',
+  UPDATE: 'Update',
+  DELETE: 'Delete',
+};
+
+function ActivityLog({
+  logs,
+  loading,
+  integrations,
+  filterIntegrationId,
+  filterLevel,
+  onFilterIntegration,
+  onFilterLevel,
+  onRefresh,
+}: {
+  logs: IntegrationLog[];
+  loading: boolean;
+  integrations: IntegrationRow[];
+  filterIntegrationId: string;
+  filterLevel: LogLevel | '';
+  onFilterIntegration: (id: string) => void;
+  onFilterLevel: (level: LogLevel | '') => void;
+  onRefresh: () => void;
+}) {
+  const visible = logs.filter((l) => !filterLevel || l.level === filterLevel);
+
+  return (
+    <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-black/20 backdrop-blur-md overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-black/10 dark:border-white/10">
+        <div className="flex items-center gap-2">
+          <ScrollText className="h-4 w-4 text-slate-400 dark:text-zinc-500" />
+          <h2 className="text-xs font-bold text-slate-700 dark:text-zinc-300 uppercase tracking-widest">
+            Activity Log
+          </h2>
+          <span className="text-[10px] text-slate-400 dark:text-zinc-500">
+            ({visible.length} entries)
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Integration filter */}
+          <select
+            value={filterIntegrationId}
+            onChange={(e) => onFilterIntegration(e.target.value)}
+            className="rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-1 text-[11px] text-slate-700 dark:text-zinc-300 focus:outline-none"
+          >
+            <option value="">All Integrations</option>
+            {integrations.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
+            ))}
+          </select>
+          {/* Level filter */}
+          <select
+            value={filterLevel}
+            onChange={(e) => onFilterLevel(e.target.value as LogLevel | '')}
+            className="rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-1 text-[11px] text-slate-700 dark:text-zinc-300 focus:outline-none"
+          >
+            <option value="">All Levels</option>
+            <option value="INFO">INFO</option>
+            <option value="WARN">WARN</option>
+            <option value="ERROR">ERROR</option>
+          </select>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            className="rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 p-1.5 text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-white transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+          </button>
+        </div>
+      </div>
+
+      {/* Log entries */}
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-zinc-500" />
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+          <ScrollText className="h-7 w-7 text-slate-300 dark:text-zinc-600" />
+          <p className="text-xs text-slate-400 dark:text-zinc-500">No activity logged yet</p>
+          <p className="text-[11px] text-slate-300 dark:text-zinc-600">
+            Events appear here after testing connections or deploying detections.
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-black/5 dark:divide-white/5 max-h-96 overflow-y-auto">
+          {visible.map((log) => {
+            const ls = LEVEL_STYLE[log.level];
+            return (
+              <div key={log.id} className={cn('flex items-start gap-3 px-4 py-2.5', ls.row)}>
+                {/* Level badge */}
+                <span
+                  className={cn(
+                    'mt-0.5 shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide',
+                    ls.badge,
+                  )}
+                >
+                  {log.level}
+                </span>
+
+                {/* Event chip */}
+                <span className="mt-0.5 shrink-0 rounded bg-black/5 dark:bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide">
+                  {EVENT_LABELS[log.event] ?? log.event}
+                </span>
+
+                {/* Message + integration */}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] text-slate-800 dark:text-zinc-200 leading-snug">
+                    {log.message}
+                  </p>
+                  <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5">
+                    {log.integration.name}
+                    {log.durationMs ? (
+                      <span className="ml-2 text-slate-300 dark:text-zinc-600">
+                        {log.durationMs}ms
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+
+                {/* Timestamp */}
+                <span className="shrink-0 text-[10px] text-slate-300 dark:text-zinc-600 tabular-nums whitespace-nowrap">
+                  {new Date(log.createdAt).toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

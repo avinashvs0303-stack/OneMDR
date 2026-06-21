@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -30,6 +31,22 @@ export class IntegrationsController {
   @ApiOperation({ summary: 'List SIEM integrations for the tenant' })
   list(@CurrentUser() actor: JwtPayload) {
     return this.svc.list(actor);
+  }
+
+  @Get('logs')
+  @ApiOperation({ summary: 'Get tenant-wide integration activity logs' })
+  getLogs(
+    @CurrentUser() actor: JwtPayload,
+    @Query('integrationId') integrationId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.svc.getLogs(actor, integrationId, limit ? parseInt(limit, 10) : undefined);
+  }
+
+  @Get(':id/logs')
+  @ApiOperation({ summary: 'Get activity logs for a single integration' })
+  getIntegrationLogs(@CurrentUser() actor: JwtPayload, @Param('id') id: string) {
+    return this.svc.getLogs(actor, id);
   }
 
   @Get(':id')

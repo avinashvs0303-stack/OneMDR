@@ -48,7 +48,7 @@ export class IntegrationsService {
   async create(actor: JwtPayload, dto: CreateIntegrationDto) {
     const tenantId = actor.tenantId!;
     try {
-      return await this.db.integration.create({
+      const integration = await this.db.integration.create({
         data: {
           tenantId,
           platform: dto.platform as Integration['platform'],
@@ -58,6 +58,14 @@ export class IntegrationsService {
           isEnabled: dto.isEnabled ?? true,
         },
       });
+      this.writeLog(
+        tenantId,
+        integration.id,
+        'CREATE',
+        'INFO',
+        `Integration created: ${integration.name} (${integration.platform})`,
+      );
+      return integration;
     } catch (err: unknown) {
       if ((err as { code?: string }).code === 'P2002') {
         throw new BadRequestException(
@@ -71,7 +79,7 @@ export class IntegrationsService {
   async update(actor: JwtPayload, id: string, dto: UpdateIntegrationDto) {
     const tenantId = actor.tenantId!;
     await this.assertOwnership(tenantId, id);
-    return this.db.integration.update({
+    const updated = await this.db.integration.update({
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
@@ -80,11 +88,24 @@ export class IntegrationsService {
         ...(dto.isEnabled !== undefined ? { isEnabled: dto.isEnabled } : {}),
       },
     });
+    this.writeLog(tenantId, id, 'UPDATE', 'INFO', `Integration updated: ${updated.name}`);
+    return updated;
   }
 
   async remove(actor: JwtPayload, id: string) {
     const tenantId = actor.tenantId!;
-    await this.assertOwnership(tenantId, id);
+    const integration = await this.db.integration.findFirst({
+      where: { id, tenantId },
+      select: { id: true, name: true, platform: true },
+    });
+    if (!integration) throw new NotFoundException('Integration not found');
+    this.writeLog(
+      tenantId,
+      id,
+      'DELETE',
+      'INFO',
+      `Integration removed: ${integration.name} (${integration.platform})`,
+    );
     await this.db.integration.delete({ where: { id } });
   }
 
@@ -95,7 +116,9 @@ export class IntegrationsService {
     const integration = await this.db.integration.findFirst({ where: { id, tenantId } });
     if (!integration) throw new NotFoundException('Integration not found');
 
+    const t0 = Date.now();
     const result = await this.pingPlatform(integration);
+    const durationMs = Date.now() - t0;
 
     await this.db.integration.update({
       where: { id },
@@ -105,6 +128,28 @@ export class IntegrationsService {
         errorMessage: result.error ?? null,
       },
     });
+
+    if (result.success) {
+      this.writeLog(
+        tenantId,
+        id,
+        'TEST_CONNECTION',
+        'INFO',
+        `Connection test passed (${durationMs}ms)`,
+        { durationMs },
+        durationMs,
+      );
+    } else {
+      this.writeLog(
+        tenantId,
+        id,
+        'TEST_CONNECTION',
+        'ERROR',
+        `Connection test failed: ${result.error ?? 'unknown error'}`,
+        { error: result.error, durationMs },
+        durationMs,
+      );
+    }
 
     return result;
   }
@@ -128,13 +173,27 @@ export class IntegrationsService {
     let status = 'deployed';
     let errorMessage: string | null = null;
 
+    const t0 = Date.now();
     try {
       const deployResult = await this.pushToSiem(integration, detection);
       remoteId = deployResult.remoteId ?? null;
+      this.writeLog(
+        tenantId,
+        integrationId,
+        'DEPLOY',
+        'INFO',
+        `Detection deployed: ${detection.ruleId} — ${detection.name}`,
+        { detectionId, remoteId, durationMs: Date.now() - t0 },
+      );
     } catch (err: unknown) {
       status = 'error';
       errorMessage = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Deploy to ${integration.platform} failed: ${errorMessage}`);
+      this.writeLog(tenantId, integrationId, 'DEPLOY', 'ERROR', `Deploy failed: ${errorMessage}`, {
+        detectionId,
+        error: errorMessage,
+        durationMs: Date.now() - t0,
+      });
     }
 
     return this.db.siemDeployment.upsert({
@@ -159,8 +218,25 @@ export class IntegrationsService {
     if (dep.remoteId) {
       try {
         await this.removeFromSiem(integration, dep.remoteId);
+        this.writeLog(
+          tenantId,
+          integrationId,
+          'UNDEPLOY',
+          'INFO',
+          `Detection undeployed (remoteId: ${dep.remoteId})`,
+          { detectionId },
+        );
       } catch (err: unknown) {
-        this.logger.warn(`Undeploy from ${integration.platform} failed: ${String(err)}`);
+        const msg = String(err);
+        this.logger.warn(`Undeploy from ${integration.platform} failed: ${msg}`);
+        this.writeLog(
+          tenantId,
+          integrationId,
+          'UNDEPLOY',
+          'WARN',
+          `Undeploy error (ignored): ${msg}`,
+          { detectionId, error: msg },
+        );
       }
     }
 
@@ -550,6 +626,41 @@ export class IntegrationsService {
     } catch {
       return null;
     }
+  }
+
+  // ── Logs ─────────────────────────────────────────────────────────────────────
+
+  async getLogs(actor: JwtPayload, integrationId?: string, limit = 200) {
+    const tenantId = actor.tenantId!;
+    return this.db.integrationLog.findMany({
+      where: {
+        tenantId,
+        ...(integrationId ? { integrationId } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        integration: { select: { id: true, name: true, platform: true } },
+      },
+    });
+  }
+
+  private writeLog(
+    tenantId: string,
+    integrationId: string,
+    event: string,
+    level: 'INFO' | 'WARN' | 'ERROR',
+    message: string,
+    meta?: Record<string, unknown>,
+    durationMs?: number,
+  ): void {
+    void this.db.integrationLog
+      .create({
+        data: { tenantId, integrationId, event, level, message, meta: meta as object, durationMs },
+      })
+      .catch((err: unknown) => {
+        this.logger.warn(`Failed to write integration log: ${String(err)}`);
+      });
   }
 
   // ── Utility ───────────────────────────────────────────────────────────────────

@@ -40,6 +40,21 @@ export interface SiemDeployment {
   };
 }
 
+export type LogLevel = 'INFO' | 'WARN' | 'ERROR';
+
+export interface IntegrationLog {
+  id: string;
+  tenantId: string;
+  integrationId: string;
+  event: string;
+  level: LogLevel;
+  message: string;
+  meta: Record<string, unknown> | null;
+  durationMs: number | null;
+  createdAt: string;
+  integration: { id: string; name: string; platform: string };
+}
+
 export interface CreateIntegrationPayload {
   platform: DetectionPlatform;
   name: string;
@@ -85,6 +100,14 @@ export const integrationsApi = {
 
   listDeployments: (detectionId: string): Promise<SiemDeployment[]> =>
     api.get(`${BASE}/deployments/${detectionId}`),
+
+  getLogs: (integrationId?: string, limit?: number): Promise<IntegrationLog[]> => {
+    const params = new URLSearchParams();
+    if (integrationId) params.set('integrationId', integrationId);
+    if (limit) params.set('limit', String(limit));
+    const qs = params.toString();
+    return api.get(`${BASE}/logs${qs ? `?${qs}` : ''}`);
+  },
 };
 
 // ── Platform metadata ─────────────────────────────────────────────────────────
