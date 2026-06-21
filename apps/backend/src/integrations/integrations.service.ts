@@ -274,15 +274,16 @@ export class IntegrationsService {
       switch (integration.platform) {
         case 'SPLUNK': {
           const base = this.splunkBase(host, cfg);
-          // Splunk Cloud on port 443 routes the REST API through /en-US/splunkd/__raw/
-          // Splunk Enterprise / port 8089 uses /services/ directly
           const parsed = new URL(base);
           const isPort443 = !parsed.port || parsed.port === '443';
-          const infoPath = isPort443
-            ? `${base}/en-US/splunkd/__raw/services/server/info?output_mode=json`
-            : `${base}/services/server/info?output_mode=json`;
-          const res = await fetch(infoPath, {
-            headers: { Authorization: `Splunk ${cfg['apiToken'] ?? ''}` },
+          // Tokens created in Splunk Settings → Tokens use Bearer scheme.
+          // Session keys (obtained via /services/auth/login) use Splunk scheme.
+          // Use authentication/current-context so the test verifies the token works.
+          const authPath = isPort443
+            ? `${base}/en-US/splunkd/__raw/services/authentication/current-context?output_mode=json`
+            : `${base}/services/authentication/current-context?output_mode=json`;
+          const res = await fetch(authPath, {
+            headers: { Authorization: `Bearer ${cfg['apiToken'] ?? ''}` },
             signal: AbortSignal.timeout(12000),
           });
           if (!res.ok) return { success: false, error: `HTTP ${res.status} from Splunk` };
@@ -366,15 +367,39 @@ export class IntegrationsService {
         const savedSearchesPath = splunkOn443
           ? `${splunkBase}/en-US/splunkd/__raw/services/saved/searches?output_mode=json`
           : `${splunkBase}/services/saved/searches?output_mode=json`;
+
+        // Severity → Splunk alert.severity (1=INFO 2=LOW 3=MEDIUM 4=HIGH 5=CRITICAL)
+        const splunkSeverity: Record<string, string> = {
+          CRITICAL: '5',
+          HIGH: '4',
+          MEDIUM: '3',
+          LOW: '2',
+          INFO: '1',
+        };
+
         const body = new URLSearchParams({
           name: `${detection.ruleId} - ${detection.name}`,
           search: detection.query,
           description: detection.description,
+          // Deploy as a scheduled alert — runs every 5 min, fires when results > 0
+          is_scheduled: '1',
+          cron_schedule: '*/5 * * * *',
+          'dispatch.earliest_time': '-5m',
+          'dispatch.latest_time': 'now',
+          'alert.track': '1',
+          alert_type: 'number of events',
+          alert_comparator: 'greater than',
+          alert_threshold: '0',
+          'alert.severity': splunkSeverity[detection.severity] ?? '3',
+          'alert.suppress': '1',
+          'alert.suppress.period': '5m',
         });
+
+        // Tokens created in Settings → Tokens use Bearer scheme
         const res = await fetch(savedSearchesPath, {
           method: 'POST',
           headers: {
-            Authorization: `Splunk ${cfg['apiToken'] ?? ''}`,
+            Authorization: `Bearer ${cfg['apiToken'] ?? ''}`,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: body.toString(),
@@ -547,7 +572,7 @@ export class IntegrationsService {
           : `${splunkDelBase}/services/saved/searches/${encodeURIComponent(remoteId)}`;
         await fetch(deletePath, {
           method: 'DELETE',
-          headers: { Authorization: `Splunk ${cfg['apiToken'] ?? ''}` },
+          headers: { Authorization: `Bearer ${cfg['apiToken'] ?? ''}` },
           signal: AbortSignal.timeout(10000),
         });
         break;
