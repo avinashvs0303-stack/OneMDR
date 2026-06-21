@@ -665,13 +665,19 @@ export class IntegrationsService {
 
   // ── Utility ───────────────────────────────────────────────────────────────────
 
-  /** Returns the Splunk base URL, appending the port only when the host doesn't already include one. */
+  /**
+   * Returns the Splunk base URL.
+   * Priority: port already in host > cfg.port > omit (HTTPS defaults to 443).
+   * Clearing the Management Port field lets Splunk Cloud trial work on 443.
+   */
   private splunkBase(host: string, cfg: Record<string, string>): string {
     try {
       const parsed = new URL(host);
-      return parsed.port ? host : `${host}:${cfg['port'] ?? '8089'}`;
+      if (parsed.port) return host;
+      if (cfg['port']) return `${host}:${cfg['port']}`;
+      return host;
     } catch {
-      return `${host}:${cfg['port'] ?? '8089'}`;
+      return cfg['port'] ? `${host}:${cfg['port']}` : host;
     }
   }
 
