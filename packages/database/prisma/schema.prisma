@@ -120,6 +120,7 @@ model Tenant {
   detectionStats   DetectionStat[]
   tenantLogSources TenantLogSource[]
   integrations     Integration[]
+  huntMissions     HuntMission[]
   parent           Tenant?        @relation("TenantHierarchy", fields: [parentTenantId], references: [id])
   children         Tenant[]       @relation("TenantHierarchy")
 
@@ -533,4 +534,124 @@ model SiemDeployment {
   @@index([integrationId])
   @@index([detectionId])
   @@map("siem_deployments")
+}
+
+// ── Threat Hunting as a Service (THaaS) ──────────────────────────────────────
+
+enum HuntStatus {
+  PLANNED
+  ACTIVE
+  COMPLETE
+  ARCHIVED
+
+  @@map("hunt_status")
+}
+
+enum HuntPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+
+  @@map("hunt_priority")
+}
+
+enum HuntEvidenceType {
+  FINDING
+  FALSE_POSITIVE
+  ARTIFACT
+  NOTE
+
+  @@map("hunt_evidence_type")
+}
+
+enum HuntIOCType {
+  IP
+  DOMAIN
+  HASH_MD5
+  HASH_SHA1
+  HASH_SHA256
+  URL
+  EMAIL
+  REGISTRY_KEY
+  FILE_PATH
+  OTHER
+
+  @@map("hunt_ioc_type")
+}
+
+model HuntMission {
+  id         String       @id @default(uuid()) @db.Uuid
+  tenantId   String       @map("tenant_id") @db.Uuid
+  missionRef String       @map("mission_ref") // e.g. HNT-0007, auto-generated
+  title      String
+  hypothesis String       @db.Text
+  status     HuntStatus   @default(PLANNED)
+  priority   HuntPriority @default(MEDIUM)
+
+  // MITRE ATT&CK mapping
+  tacticId   String?  @map("tactic_id")
+  tactic     String?
+  techniques String[] @default([])
+
+  // Assignment
+  analystId   String?   @map("analyst_id") @db.Uuid
+  analystName String?   @map("analyst_name")
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  notes       String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evidence HuntEvidence[]
+  iocs     HuntIOC[]
+
+  @@unique([tenantId, missionRef])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, priority])
+  @@map("hunt_missions")
+}
+
+model HuntEvidence {
+  id        String           @id @default(uuid()) @db.Uuid
+  missionId String           @map("mission_id") @db.Uuid
+  tenantId  String           @map("tenant_id") @db.Uuid
+  type      HuntEvidenceType @default(FINDING)
+  title     String
+  body      String           @db.Text
+  severity  String           @default("MEDIUM") // HIGH | MEDIUM | LOW | INFO
+  isFalsePositive Boolean    @default(false) @map("is_false_positive")
+  rawData   Json?            @map("raw_data")
+  analystId   String? @map("analyst_id") @db.Uuid
+  analystName String? @map("analyst_name")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  mission HuntMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([missionId])
+  @@index([tenantId])
+  @@map("hunt_evidence")
+}
+
+model HuntIOC {
+  id         String      @id @default(uuid()) @db.Uuid
+  missionId  String      @map("mission_id") @db.Uuid
+  tenantId   String      @map("tenant_id") @db.Uuid
+  type       HuntIOCType
+  value      String
+  confidence String      @default("MEDIUM") // HIGH | MEDIUM | LOW
+  notes      String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  mission HuntMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([missionId])
+  @@index([tenantId, type])
+  @@map("hunt_iocs")
 }

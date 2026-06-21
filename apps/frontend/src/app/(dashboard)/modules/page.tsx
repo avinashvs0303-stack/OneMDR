@@ -49,11 +49,11 @@ const MODULES: Module[] = [
     description:
       'Proactive threat hunts led by expert analysts. Hypothesis-driven investigation across your log sources.',
     icon: Crosshair,
-    href: '/hunt',
-    color: 'border-border opacity-60',
-    iconBg: 'bg-slate-500/10 text-slate-400',
-    active: false,
-    badge: 'Coming Soon',
+    href: '/thaas',
+    color: 'border-purple-500/30 hover:border-purple-500/60 hover:shadow-purple-500/10',
+    iconBg: 'bg-purple-500/10 text-purple-400',
+    active: true,
+    badge: 'Active',
   },
   {
     id: 'caas',
@@ -174,7 +174,13 @@ export default function ModulesPage() {
 
                 {/* CTA */}
                 {mod.active && (
-                  <div className="flex items-center gap-1 text-sm font-medium text-amber-400 group-hover:text-amber-300 transition-colors">
+                  <div
+                    className={`flex items-center gap-1 text-sm font-medium transition-colors ${
+                      mod.id === 'thaas'
+                        ? 'text-purple-400 group-hover:text-purple-300'
+                        : 'text-amber-400 group-hover:text-amber-300'
+                    }`}
+                  >
                     Open {mod.abbr}{' '}
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                   </div>

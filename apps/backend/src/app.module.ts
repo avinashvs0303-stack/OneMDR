@@ -12,6 +12,7 @@ import { TenantRequestsModule } from './tenant-requests/tenant-requests.module';
 import { AdminModule } from './admin/admin.module';
 import { DetectionsModule } from './detections/detections.module';
 import { IntegrationsModule } from './integrations/integrations.module';
+import { HuntsModule } from './hunts/hunts.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
 
@@ -89,6 +90,7 @@ import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
     AdminModule,
     DetectionsModule,
     IntegrationsModule,
+    HuntsModule,
     // TenantsModule,     ← Step 2
     // UsersModule,       ← Step 2
     // WorkspacesModule,  ← Step 3

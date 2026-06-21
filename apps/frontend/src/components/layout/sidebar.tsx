@@ -16,10 +16,16 @@ import {
   Building2,
   ChevronRight,
   Brain,
+  Crosshair,
+  Microscope,
+  BookOpen,
+  Fingerprint,
+  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/store/auth.store';
 import { getInitials } from '@/lib/utils';
+import { useState } from 'react';
 
 const DAAS_NAV = [
   { label: 'SOC Command Center', href: '/dashboard', icon: LayoutDashboard },
@@ -27,8 +33,15 @@ const DAAS_NAV = [
   { label: 'ATT&CK Navigator', href: '/coverage', icon: Target },
   { label: 'AI Systems', href: '/ai-systems', icon: Brain },
   { label: 'Integrations', href: '/integrations', icon: Database },
-  { label: 'Threat Hunt Missions', href: '/hunts', icon: Search },
   { label: 'Executive Bulletins', href: '/reports', icon: FileText },
+];
+
+const THAAS_NAV = [
+  { label: 'Hunt Dashboard', href: '/thaas', icon: Crosshair },
+  { label: 'Hunt Missions', href: '/thaas/missions', icon: Search },
+  { label: 'Hypotheses', href: '/thaas/hypotheses', icon: Microscope },
+  { label: 'IOC Tracker', href: '/thaas/iocs', icon: Fingerprint },
+  { label: 'Playbooks', href: '/thaas/playbooks', icon: BookOpen },
 ];
 
 const OPS_NAV = [
@@ -37,12 +50,16 @@ const OPS_NAV = [
 ];
 
 const DAAS_PATHS = DAAS_NAV.map((n) => n.href);
+const THAAS_PATHS = THAAS_NAV.map((n) => n.href);
 
 export function Sidebar() {
   const pathname = usePathname();
   const user = useCurrentUser();
   const inDaaS = DAAS_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  const inTHaaS = THAAS_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
   const inModules = pathname === '/modules';
+
+  const [daasExpanded, setDaasExpanded] = useState(true);
 
   return (
     <aside className="flex h-full w-64 flex-col bg-white/80 dark:bg-black/40 border-r border-black/10 dark:border-white/10 backdrop-blur-xl shrink-0">
@@ -64,8 +81,8 @@ export function Sidebar() {
         </div>
       </Link>
 
-      {/* ── Module breadcrumb (when inside DaaS) ────────────────────── */}
-      {inDaaS && (
+      {/* ── Module breadcrumb ────────────────────────────────────────── */}
+      {(inDaaS || inTHaaS) && (
         <div className="flex items-center gap-1.5 border-b border-black/10 dark:border-white/10 px-4 py-2.5">
           <Link
             href="/modules"
@@ -74,15 +91,20 @@ export function Sidebar() {
             Modules
           </Link>
           <ChevronRight className="h-3 w-3 text-muted-foreground" />
-          <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">
-            DaaS
+          <span
+            className={cn(
+              'text-[10px] font-semibold uppercase tracking-wider',
+              inTHaaS ? 'text-purple-400' : 'text-amber-400',
+            )}
+          >
+            {inTHaaS ? 'THaaS' : 'DaaS'}
           </span>
         </div>
       )}
 
       {/* ── Nav ─────────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-        {/* Module hub link — always visible */}
+        {/* Module hub link */}
         <div>
           <span className="block px-2.5 pb-1.5 text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold">
             Home
@@ -106,13 +128,62 @@ export function Sidebar() {
           </Link>
         </div>
 
-        {/* DaaS nav — shown when inside DaaS or always */}
+        {/* DaaS nav — collapsible */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setDaasExpanded((v) => !v)}
+            className="flex w-full items-center justify-between px-2.5 pb-1.5 group"
+          >
+            <span className="text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold group-hover:text-slate-600 dark:group-hover:text-zinc-300 transition-colors">
+              Detection as a Service
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-3 w-3 text-slate-400 dark:text-zinc-500 transition-transform duration-200 group-hover:text-slate-600 dark:group-hover:text-zinc-300',
+                daasExpanded ? 'rotate-0' : '-rotate-90',
+              )}
+            />
+          </button>
+          {daasExpanded && (
+            <ul className="space-y-0.5">
+              {DAAS_NAV.map(({ label, href, icon: Icon }) => {
+                const active = pathname === href || pathname.startsWith(href + '/');
+                return (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
+                        active
+                          ? 'bg-blue-50 border-blue-200 text-blue-900 font-semibold dark:bg-blue-600/10 dark:border-blue-600/20 dark:text-blue-300'
+                          : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          'h-4 w-4 shrink-0',
+                          active
+                            ? 'text-blue-700 dark:text-white'
+                            : 'text-slate-400 dark:text-zinc-500',
+                        )}
+                      />
+                      {label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* THaaS nav */}
         <div>
           <span className="block px-2.5 pb-1.5 text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold">
-            Detection as a Service
+            Threat Hunting as a Service
           </span>
           <ul className="space-y-0.5">
-            {DAAS_NAV.map(({ label, href, icon: Icon }) => {
+            {THAAS_NAV.map(({ label, href, icon: Icon }) => {
               const active = pathname === href || pathname.startsWith(href + '/');
               return (
                 <li key={href}>
@@ -121,7 +192,7 @@ export function Sidebar() {
                     className={cn(
                       'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
                       active
-                        ? 'bg-blue-50 border-blue-200 text-blue-900 font-semibold dark:bg-blue-600/10 dark:border-blue-600/20 dark:text-blue-300'
+                        ? 'bg-purple-50 border-purple-200 text-purple-900 font-semibold dark:bg-purple-600/10 dark:border-purple-600/20 dark:text-purple-300'
                         : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
                     )}
                   >
@@ -129,7 +200,7 @@ export function Sidebar() {
                       className={cn(
                         'h-4 w-4 shrink-0',
                         active
-                          ? 'text-blue-700 dark:text-white'
+                          ? 'text-purple-700 dark:text-purple-300'
                           : 'text-slate-400 dark:text-zinc-500',
                       )}
                     />
