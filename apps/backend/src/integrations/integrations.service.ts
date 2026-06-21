@@ -768,9 +768,13 @@ export class IntegrationsService {
       return Array.from(m.values()).join('; ');
     };
 
+    // Splunk Cloud uses splunkweb_csrf_token_{port} for CSRF, not cval.
+    // The value of this cookie must match X-Splunk-Form-Key exactly.
     const extractCval = (cookies: string[]): string =>
-      cookies
-        .find((c) => c.startsWith('cval='))
+      (
+        cookies.find((c) => /^splunkweb_csrf_token_/.test(c)) ??
+        cookies.find((c) => c.startsWith('cval='))
+      )
         ?.split('=')
         .slice(1)
         .join('=') ?? '';
