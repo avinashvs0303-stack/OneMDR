@@ -915,42 +915,56 @@ export class IntegrationsService {
       throw new BadRequestException(`Splunk history ${res.status}: ${text.slice(0, 200)}`);
     }
 
-    // `published` is a top-level entry field in Splunk REST API, NOT inside content
+    // `published` is a top-level entry field; content from the history endpoint is stripped
+    // in Splunk Cloud's __raw proxy (only isDone/ttl/isScheduled, no eventCount/resultCount).
+    // We must fetch each job individually to get the real metrics.
     const json = (await res.json()) as {
       entry?: Array<{ name: string; published?: string; content: Record<string, unknown> }>;
     };
     const entries = json.entry ?? [];
 
-    // WARN-level dump so it shows in Railway regardless of log level filter
-    if (entries.length > 0) {
-      const first = entries[0];
-      this.logger.warn(
-        `[SPLUNK-HISTORY-DEBUG] entries=${entries.length} ` +
-          `first.published=${first?.published ?? 'MISSING'} ` +
-          `content_keys=${Object.keys(first?.content ?? {})
-            .slice(0, 30)
-            .join(',')} ` +
-          `eventCount=${first?.content['eventCount']} ` +
-          `resultCount=${first?.content['resultCount']} ` +
-          `isDone=${first?.content['isDone']} ` +
-          `dispatchState=${first?.content['dispatchState']}`,
-      );
-      // Also log the raw entry as JSON (truncated) so we can spot field name differences
-      this.logger.warn(
-        `[SPLUNK-HISTORY-RAW] ${JSON.stringify({ name: first?.name, published: first?.published, content: first?.content }).slice(0, 800)}`,
-      );
-    }
+    // Individual job path for the full metrics (eventCount, resultCount, runDuration, etc.)
+    const jobBasePath = isCloud
+      ? `${base}/en-US/splunkd/__raw/services/search/jobs`
+      : `${base}/services/search/jobs`;
 
-    const runs: SplunkJobRun[] = entries.map((e) => ({
-      sid: e.name,
-      published: e.published ?? String(e.content['published'] ?? ''),
-      // Try both camelCase and snake_case variants Splunk may return
-      eventCount: Number(e.content['eventCount'] ?? e.content['event_count'] ?? 0),
-      resultCount: Number(e.content['resultCount'] ?? e.content['result_count'] ?? 0),
-      runDuration: Number(e.content['runDuration'] ?? e.content['run_duration'] ?? 0),
-      isDone: Boolean(e.content['isDone'] ?? e.content['is_done'] ?? false),
-      dispatchState: String(e.content['dispatchState'] ?? e.content['dispatch_state'] ?? ''),
-    }));
+    const runs: SplunkJobRun[] = await Promise.all(
+      entries.map(async (e): Promise<SplunkJobRun> => {
+        const sid = e.name;
+        const fallback: SplunkJobRun = {
+          sid,
+          published: e.published ?? '',
+          eventCount: 0,
+          resultCount: 0,
+          runDuration: 0,
+          isDone: true,
+          dispatchState: 'DONE',
+        };
+        try {
+          const jobPath = `${jobBasePath}/${encodeURIComponent(sid)}?output_mode=json`;
+          const jobRes = await fetch(jobPath, {
+            headers: histHeaders,
+            signal: AbortSignal.timeout(8000),
+          });
+          if (!jobRes.ok) return fallback;
+          const jobJson = (await jobRes.json()) as {
+            entry?: Array<{ content: Record<string, unknown> }>;
+          };
+          const c = jobJson.entry?.[0]?.content ?? {};
+          return {
+            sid,
+            published: e.published ?? '',
+            eventCount: Number(c['eventCount'] ?? 0),
+            resultCount: Number(c['resultCount'] ?? 0),
+            runDuration: Number(c['runDuration'] ?? 0),
+            isDone: Boolean(c['isDone'] ?? true),
+            dispatchState: String(c['dispatchState'] ?? 'DONE'),
+          };
+        } catch {
+          return fallback;
+        }
+      }),
+    );
 
     // Alert triggered = resultCount > 0 (search returned rows → alert condition met)
     const triggeredRuns = runs.filter((r) => r.resultCount > 0).length;
