@@ -921,17 +921,26 @@ export class IntegrationsService {
     };
     const entries = json.entry ?? [];
 
+    // Log the raw content keys of the first entry so we can verify field names
+    if (entries.length > 0) {
+      const first = entries[0];
+      this.logger.log(
+        `Splunk history sample — published:${first?.published ?? 'MISSING'} ` +
+          `content_keys:${Object.keys(first?.content ?? {}).join(',')} ` +
+          `eventCount:${first?.content['eventCount']} resultCount:${first?.content['resultCount']} ` +
+          `eventCountOrField:${first?.content['event_count']} resultCountOrField:${first?.content['result_count']}`,
+      );
+    }
+
     const runs: SplunkJobRun[] = entries.map((e) => ({
       sid: e.name,
       published: e.published ?? String(e.content['published'] ?? ''),
-      eventCount: Number(e.content['eventCount'] ?? 0),
-      // resultCount is what Splunk uses to decide if an alert fires (rows returned after
-      // transforming commands like | stats). eventCount is raw events scanned and is 0
-      // for most transforming searches even when the alert triggers.
-      resultCount: Number(e.content['resultCount'] ?? 0),
-      runDuration: Number(e.content['runDuration'] ?? 0),
-      isDone: Boolean(e.content['isDone'] ?? false),
-      dispatchState: String(e.content['dispatchState'] ?? ''),
+      // Try both camelCase and snake_case variants Splunk may return
+      eventCount: Number(e.content['eventCount'] ?? e.content['event_count'] ?? 0),
+      resultCount: Number(e.content['resultCount'] ?? e.content['result_count'] ?? 0),
+      runDuration: Number(e.content['runDuration'] ?? e.content['run_duration'] ?? 0),
+      isDone: Boolean(e.content['isDone'] ?? e.content['is_done'] ?? false),
+      dispatchState: String(e.content['dispatchState'] ?? e.content['dispatch_state'] ?? ''),
     }));
 
     // Alert triggered = resultCount > 0 (search returned rows → alert condition met)
