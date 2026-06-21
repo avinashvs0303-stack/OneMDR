@@ -15,6 +15,7 @@ import {
   Settings,
   Building2,
   ChevronRight,
+  Brain,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/store/auth.store';
@@ -24,6 +25,7 @@ const DAAS_NAV = [
   { label: 'SOC Command Center', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Detection Library', href: '/detections', icon: ShieldCheck },
   { label: 'ATT&CK Navigator', href: '/coverage', icon: Target },
+  { label: 'AI Systems', href: '/ai-systems', icon: Brain },
   { label: 'SIEM Monitors', href: '/siem', icon: Database },
   { label: 'Threat Hunt Missions', href: '/hunts', icon: Search },
   { label: 'Executive Bulletins', href: '/reports', icon: FileText },

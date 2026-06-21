@@ -187,15 +187,13 @@ export default function CoveragePage() {
               </select>
             </div>
 
+            {/* Legend — colors match getCoverageColor exactly */}
             <div className="hidden xl:flex items-center gap-2 text-[10px] text-slate-400 dark:text-zinc-500 border-l border-black/10 dark:border-white/10 pl-3">
-              <LegendItem
-                className="bg-black/10 dark:bg-white/5 border border-black/10 dark:border-white/10"
-                label="No coverage"
-              />
-              <LegendItem className="bg-yellow-500/30" label="1-2 rules" />
-              <LegendItem className="bg-emerald-500/30" label="3-4 rules" />
-              <LegendItem className="bg-emerald-500/50" label="5-6 rules" />
-              <LegendItem className="bg-emerald-500/80" label="7+ rules" />
+              <LegendItem className="bg-white/5 border border-white/10" label="No coverage" />
+              <LegendItem className="bg-yellow-500/20" label="1-2 rules" />
+              <LegendItem className="bg-emerald-500/20" label="3-4 rules" />
+              <LegendItem className="bg-emerald-500/40" label="5-6 rules" />
+              <LegendItem className="bg-emerald-500/70" label="7+ rules" />
             </div>
 
             <button
