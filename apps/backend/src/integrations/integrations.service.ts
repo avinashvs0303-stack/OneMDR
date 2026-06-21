@@ -197,8 +197,7 @@ export class IntegrationsService {
     try {
       switch (integration.platform) {
         case 'SPLUNK': {
-          const port = cfg['port'] ?? '8089';
-          const url = `${host}:${port}/services/server/info?output_mode=json`;
+          const url = `${this.splunkBase(host, cfg)}/services/server/info?output_mode=json`;
           const res = await fetch(url, {
             headers: { Authorization: `Splunk ${cfg['apiToken'] ?? ''}` },
             signal: AbortSignal.timeout(8000),
@@ -278,21 +277,23 @@ export class IntegrationsService {
 
     switch (integration.platform) {
       case 'SPLUNK': {
-        const port = cfg['port'] ?? '8089';
         const body = new URLSearchParams({
           name: `${detection.ruleId} - ${detection.name}`,
           search: detection.query,
           description: detection.description,
         });
-        const res = await fetch(`${host}:${port}/services/saved/searches?output_mode=json`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Splunk ${cfg['apiToken'] ?? ''}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
+        const res = await fetch(
+          `${this.splunkBase(host, cfg)}/services/saved/searches?output_mode=json`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Splunk ${cfg['apiToken'] ?? ''}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: body.toString(),
+            signal: AbortSignal.timeout(15000),
           },
-          body: body.toString(),
-          signal: AbortSignal.timeout(15000),
-        });
+        );
         if (!res.ok) {
           const text = await res.text();
           throw new Error(`Splunk ${res.status}: ${text.slice(0, 200)}`);
@@ -452,12 +453,14 @@ export class IntegrationsService {
 
     switch (integration.platform) {
       case 'SPLUNK': {
-        const port = cfg['port'] ?? '8089';
-        await fetch(`${host}:${port}/services/saved/searches/${encodeURIComponent(remoteId)}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Splunk ${cfg['apiToken'] ?? ''}` },
-          signal: AbortSignal.timeout(10000),
-        });
+        await fetch(
+          `${this.splunkBase(host, cfg)}/services/saved/searches/${encodeURIComponent(remoteId)}`,
+          {
+            method: 'DELETE',
+            headers: { Authorization: `Splunk ${cfg['apiToken'] ?? ''}` },
+            signal: AbortSignal.timeout(10000),
+          },
+        );
         break;
       }
       case 'QRADAR': {
@@ -550,6 +553,16 @@ export class IntegrationsService {
   }
 
   // ── Utility ───────────────────────────────────────────────────────────────────
+
+  /** Returns the Splunk base URL, appending the port only when the host doesn't already include one. */
+  private splunkBase(host: string, cfg: Record<string, string>): string {
+    try {
+      const parsed = new URL(host);
+      return parsed.port ? host : `${host}:${cfg['port'] ?? '8089'}`;
+    } catch {
+      return `${host}:${cfg['port'] ?? '8089'}`;
+    }
+  }
 
   private async assertOwnership(tenantId: string, id: string) {
     const exists = await this.db.integration.findFirst({
