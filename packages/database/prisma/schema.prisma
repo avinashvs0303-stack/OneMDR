@@ -306,6 +306,36 @@ enum DetectionSeverity {
   @@map("detection_severity")
 }
 
+enum DetectionRuleType {
+  ANOMALY
+  INVESTIGATE
+  HIGH_FIDELITY
+  CORRELATION
+  THREAT_INTEL
+
+  @@map("detection_rule_type")
+}
+
+enum DetectionLifecycle {
+  EXPERIMENTAL
+  FUNCTIONAL
+  STABLE
+  RETIRED
+
+  @@map("detection_lifecycle")
+}
+
+enum DetectionWorkflowStatus {
+  PENDING
+  IN_PROGRESS
+  REVIEW
+  APPROVED
+  ENABLED
+  DISABLED
+
+  @@map("detection_workflow_status")
+}
+
 enum DetectionPlatform {
   SPLUNK
   SENTINEL
@@ -365,6 +395,13 @@ model Detection {
   // Ownership — null tenantId = global seeded rule; set = custom rule for that tenant
   isGlobal  Boolean @default(false) @map("is_global")
   tenantId  String? @map("tenant_id") @db.Uuid
+
+  // Rule classification metadata
+  ruleType       DetectionRuleType?       @map("rule_type")
+  lifecycleStage DetectionLifecycle       @default(EXPERIMENTAL) @map("lifecycle_stage")
+  workflowStatus DetectionWorkflowStatus  @default(PENDING)      @map("workflow_status")
+  ownerName      String?                  @map("owner_name")
+  ownerId        String?                  @map("owner_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")

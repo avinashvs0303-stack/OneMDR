@@ -15,6 +15,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { DetectionsService } from './detections.service';
 import {
   CreateDetectionDto,
+  BulkToggleDetectionDto,
   ToggleDetectionDto,
   ImportDetectionsDto,
   ListDetectionsQueryDto,
@@ -104,6 +105,17 @@ export class DetectionsController {
   @ApiOperation({ summary: 'Get single detection with 90-day stat history' })
   async getOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     const data = await this.svc.getDetection(id, user);
+    return { data };
+  }
+
+  // ── Bulk enable / disable ─────────────────────────────────────────────────────
+
+  @Patch('bulk-toggle')
+  @HttpCode(HttpStatus.OK)
+  @Roles('OWNER', 'ADMIN', 'MEMBER')
+  @ApiOperation({ summary: 'Enable or disable multiple detections at once' })
+  async bulkToggle(@Body() dto: BulkToggleDetectionDto, @CurrentUser() user: JwtPayload) {
+    const data = await this.svc.bulkToggleDetections(dto, user);
     return { data };
   }
 

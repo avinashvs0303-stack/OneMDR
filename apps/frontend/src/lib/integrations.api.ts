@@ -55,6 +55,16 @@ export interface IntegrationLog {
   integration: { id: string; name: string; platform: string };
 }
 
+export interface SplunkJobRun {
+  sid: string;
+  published: string;
+  eventCount: number;
+  resultCount: number;
+  runDuration: number;
+  isDone: boolean;
+  dispatchState: string;
+}
+
 export interface CreateIntegrationPayload {
   platform: DetectionPlatform;
   name: string;
@@ -108,6 +118,12 @@ export const integrationsApi = {
     const qs = params.toString();
     return api.get(`${BASE}/activity${qs ? `?${qs}` : ''}`);
   },
+
+  fetchSplunkHistory: (
+    integrationId: string,
+    detectionId: string,
+  ): Promise<{ runs: SplunkJobRun[]; totalRuns: number; triggeredRuns: number }> =>
+    api.get(`${BASE}/${integrationId}/history/${detectionId}`),
 };
 
 // ── Platform metadata ─────────────────────────────────────────────────────────

@@ -115,4 +115,14 @@ export class IntegrationsController {
   listDeployments(@CurrentUser() actor: JwtPayload, @Param('detectionId') detectionId: string) {
     return this.svc.listDeployments(actor, detectionId);
   }
+
+  @Get(':id/history/:detectionId')
+  @ApiOperation({ summary: 'Fetch saved search job history from Splunk for a deployed detection' })
+  fetchSplunkHistory(
+    @CurrentUser() actor: JwtPayload,
+    @Param('id') id: string,
+    @Param('detectionId') detectionId: string,
+  ) {
+    return this.svc.fetchSplunkHistory(actor, id, detectionId);
+  }
 }

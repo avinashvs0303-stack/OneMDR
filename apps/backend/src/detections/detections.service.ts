@@ -9,12 +9,20 @@ import * as XLSX from 'xlsx';
 import { PrismaService } from '../database/prisma.service';
 import type {
   CreateDetectionDto,
+  BulkToggleDetectionDto,
   ImportDetectionsDto,
   ListDetectionsQueryDto,
   AddLogSourceDto,
 } from './dto/create-detection.dto';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
-import type { DetectionPlatform, DetectionSeverity, QueryLanguage } from '@onemdr/database';
+import type {
+  DetectionPlatform,
+  DetectionSeverity,
+  QueryLanguage,
+  DetectionRuleType,
+  DetectionLifecycle,
+  DetectionWorkflowStatus,
+} from '@onemdr/database';
 
 const VALID_PLATFORMS = [
   'SPLUNK',
@@ -98,6 +106,10 @@ export class DetectionsService {
           isGlobal: d.isGlobal,
           isEnabled,
           isCustom: !d.isGlobal,
+          ruleType: d.ruleType,
+          lifecycleStage: d.lifecycleStage,
+          workflowStatus: d.workflowStatus,
+          ownerName: d.ownerName,
           stats: { triggerCount, truePositives, falsePositives },
           createdAt: d.createdAt,
           updatedAt: d.updatedAt,
@@ -143,6 +155,10 @@ export class DetectionsService {
       isGlobal: d.isGlobal,
       isEnabled: td?.isEnabled ?? false,
       isCustom: !d.isGlobal,
+      ruleType: d.ruleType,
+      lifecycleStage: d.lifecycleStage,
+      workflowStatus: d.workflowStatus,
+      ownerName: d.ownerName,
       stats: d.stats.map((s) => ({
         date: s.date,
         triggerCount: s.triggerCount,
@@ -176,6 +192,14 @@ export class DetectionsService {
     const count = await this.db.detection.count({ where: { tenantId, isGlobal: false } });
     const ruleId = `CUSTOM-${tenantId.slice(0, 8).toUpperCase()}-${String(count + 1).padStart(4, '0')}`;
 
+    const actorUser = await this.db.user.findFirst({
+      where: { id: actor.sub },
+      select: { firstName: true, lastName: true },
+    });
+    const ownerName = actorUser
+      ? `${actorUser.firstName} ${actorUser.lastName}`.trim()
+      : actor.email;
+
     const detection = await this.db.detection.create({
       data: {
         ruleId,
@@ -196,6 +220,11 @@ export class DetectionsService {
         expectedMttdHours: dto.expectedMttdHours ?? null,
         isGlobal: false,
         tenantId,
+        ruleType: (dto.ruleType as DetectionRuleType) ?? null,
+        lifecycleStage: (dto.lifecycleStage as DetectionLifecycle) ?? 'EXPERIMENTAL',
+        workflowStatus: (dto.workflowStatus as DetectionWorkflowStatus) ?? 'PENDING',
+        ownerName,
+        ownerId: actor.sub,
       },
     });
 
@@ -215,6 +244,20 @@ export class DetectionsService {
       isCustom: true,
       stats: { triggerCount: 0, truePositives: 0, falsePositives: 0 },
     };
+  }
+
+  async bulkToggleDetections(dto: BulkToggleDetectionDto, actor: JwtPayload) {
+    const tenantId = actor.tenantId!;
+    await Promise.all(
+      dto.ids.map((detectionId) =>
+        this.db.tenantDetection.upsert({
+          where: { tenantId_detectionId: { tenantId, detectionId } },
+          create: { tenantId, detectionId, isEnabled: dto.enable, enabledById: actor.sub },
+          update: { isEnabled: dto.enable, enabledAt: new Date(), enabledById: actor.sub },
+        }),
+      ),
+    );
+    return { toggled: dto.ids.length, enabled: dto.enable };
   }
 
   async importDetections(dto: ImportDetectionsDto, actor: JwtPayload) {

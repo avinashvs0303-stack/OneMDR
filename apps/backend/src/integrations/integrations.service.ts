@@ -861,6 +861,68 @@ export class IntegrationsService {
     }
   }
 
+  async fetchSplunkHistory(
+    actor: JwtPayload,
+    integrationId: string,
+    detectionId: string,
+  ): Promise<{ runs: SplunkJobRun[]; totalRuns: number; triggeredRuns: number }> {
+    const tenantId = actor.tenantId!;
+    const integration = await this.db.integration.findFirst({
+      where: { id: integrationId, tenantId },
+    });
+    if (!integration) throw new NotFoundException('Integration not found');
+    if (integration.platform !== 'SPLUNK')
+      throw new BadRequestException('Only Splunk integrations support history sync');
+
+    const dep = await this.db.siemDeployment.findUnique({
+      where: { integrationId_detectionId: { integrationId, detectionId } },
+    });
+    if (!dep?.remoteId)
+      throw new NotFoundException('No deployed saved search found for this detection');
+
+    const cfg = integration.config as Record<string, string>;
+    const host = integration.host.replace(/\/$/, '');
+    const base = this.splunkBase(host, cfg);
+    const parsed = new URL(base);
+    const isCloud = !parsed.port || parsed.port === '443';
+
+    const encodedName = encodeURIComponent(dep.remoteId);
+    const historyPath = isCloud
+      ? `${base}/en-US/splunkd/__raw/services/saved/searches/${encodedName}/history?output_mode=json&count=50`
+      : `${base}/services/saved/searches/${encodedName}/history?output_mode=json&count=50`;
+
+    const res = await fetch(historyPath, {
+      headers: {
+        Authorization: `Bearer ${cfg['apiToken'] ?? ''}`,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new BadRequestException(`Splunk history ${res.status}: ${text.slice(0, 200)}`);
+    }
+
+    const json = (await res.json()) as {
+      entry?: Array<{ name: string; content: Record<string, unknown> }>;
+    };
+    const entries = json.entry ?? [];
+
+    const runs: SplunkJobRun[] = entries.map((e) => ({
+      sid: e.name,
+      published: String(e.content['published'] ?? ''),
+      eventCount: Number(e.content['eventCount'] ?? 0),
+      resultCount: Number(e.content['resultCount'] ?? 0),
+      runDuration: Number(e.content['runDuration'] ?? 0),
+      isDone: Boolean(e.content['isDone'] ?? false),
+      dispatchState: String(e.content['dispatchState'] ?? ''),
+    }));
+
+    const triggeredRuns = runs.filter((r) => r.eventCount > 0).length;
+    return { runs, totalRuns: runs.length, triggeredRuns };
+  }
+
   private async assertOwnership(tenantId: string, id: string) {
     const exists = await this.db.integration.findFirst({
       where: { id, tenantId },
@@ -868,4 +930,14 @@ export class IntegrationsService {
     });
     if (!exists) throw new NotFoundException('Integration not found');
   }
+}
+
+interface SplunkJobRun {
+  sid: string;
+  published: string;
+  eventCount: number;
+  resultCount: number;
+  runDuration: number;
+  isDone: boolean;
+  dispatchState: string;
 }

@@ -15,6 +15,20 @@ export type DetectionPlatform =
   | 'SIGMA'
   | 'CUSTOM';
 export type QueryLanguage = 'SPL' | 'KQL' | 'YARA_L' | 'EQL' | 'AQL' | 'SIGMA' | 'CUSTOM';
+export type DetectionRuleType =
+  | 'ANOMALY'
+  | 'INVESTIGATE'
+  | 'HIGH_FIDELITY'
+  | 'CORRELATION'
+  | 'THREAT_INTEL';
+export type DetectionLifecycle = 'EXPERIMENTAL' | 'FUNCTIONAL' | 'STABLE' | 'RETIRED';
+export type DetectionWorkflowStatus =
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'REVIEW'
+  | 'APPROVED'
+  | 'ENABLED'
+  | 'DISABLED';
 
 export interface DetectionRow {
   id: string;
@@ -39,6 +53,10 @@ export interface DetectionRow {
   isGlobal: boolean;
   isEnabled: boolean;
   isCustom: boolean;
+  ruleType: DetectionRuleType | null;
+  lifecycleStage: DetectionLifecycle;
+  workflowStatus: DetectionWorkflowStatus;
+  ownerName: string | null;
   stats: { triggerCount: number; truePositives: number; falsePositives: number };
   createdAt: string;
   updatedAt: string;
@@ -98,6 +116,25 @@ export interface CreateDetectionPayload {
   expectedAlertsPerDay?: number;
   expectedFpRate?: number;
   expectedMttdHours?: number;
+  ruleType?: DetectionRuleType;
+  lifecycleStage?: DetectionLifecycle;
+  workflowStatus?: DetectionWorkflowStatus;
+}
+
+export interface SplunkJobRun {
+  sid: string;
+  published: string;
+  eventCount: number;
+  resultCount: number;
+  runDuration: number;
+  isDone: boolean;
+  dispatchState: string;
+}
+
+export interface SplunkHistoryResult {
+  runs: SplunkJobRun[];
+  totalRuns: number;
+  triggeredRuns: number;
 }
 
 export interface ListDetectionsParams {
@@ -222,9 +259,53 @@ export const detectionsApi = {
     const res = await api.get<{ data: ProposalsResponse }>(`${BASE}/proposals`);
     return res.data;
   },
+
+  bulkToggle: async (ids: string[], enable: boolean): Promise<void> => {
+    await api.patch(`${BASE}/bulk-toggle`, { ids, enable });
+  },
 };
 
 // ── Display helpers ───────────────────────────────────────────────────────────
+
+export const RULE_TYPE_LABEL: Record<DetectionRuleType, string> = {
+  ANOMALY: 'Anomaly',
+  INVESTIGATE: 'Investigate',
+  HIGH_FIDELITY: 'High Fidelity',
+  CORRELATION: 'Correlation',
+  THREAT_INTEL: 'Threat Intel',
+};
+
+export const LIFECYCLE_LABEL: Record<DetectionLifecycle, string> = {
+  EXPERIMENTAL: 'Experimental',
+  FUNCTIONAL: 'Functional',
+  STABLE: 'Stable',
+  RETIRED: 'Retired',
+};
+
+export const WORKFLOW_STATUS_LABEL: Record<DetectionWorkflowStatus, string> = {
+  PENDING: 'Pending',
+  IN_PROGRESS: 'In Progress',
+  REVIEW: 'Review',
+  APPROVED: 'Approved',
+  ENABLED: 'Enabled',
+  DISABLED: 'Disabled',
+};
+
+export const WORKFLOW_STATUS_COLORS: Record<DetectionWorkflowStatus, string> = {
+  PENDING: 'bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300',
+  IN_PROGRESS: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  REVIEW: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  APPROVED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  ENABLED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  DISABLED: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+};
+
+export const LIFECYCLE_COLORS: Record<DetectionLifecycle, string> = {
+  EXPERIMENTAL: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+  FUNCTIONAL: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  STABLE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  RETIRED: 'bg-slate-100 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400',
+};
 
 export const SEVERITY_LABEL: Record<DetectionSeverity, string> = {
   CRITICAL: 'Critical',

@@ -34,12 +34,20 @@ import {
   type CreateDetectionPayload,
   type DetectionSeverity,
   type DetectionPlatform,
+  type DetectionRuleType,
+  type DetectionLifecycle,
+  type DetectionWorkflowStatus,
   type QueryLanguage,
   SEVERITY_LABEL,
   SEVERITY_COLORS,
   PLATFORM_LABEL,
   PLATFORM_COLORS,
   QUERY_LANG_LABEL,
+  RULE_TYPE_LABEL,
+  LIFECYCLE_LABEL,
+  LIFECYCLE_COLORS,
+  WORKFLOW_STATUS_LABEL,
+  WORKFLOW_STATUS_COLORS,
 } from '@/lib/detections.api';
 import {
   integrationsApi,
@@ -47,6 +55,7 @@ import {
   STATUS_BADGE,
   type IntegrationRow,
   type SiemDeployment,
+  type SplunkJobRun,
 } from '@/lib/integrations.api';
 
 // ── Log source catalog ────────────────────────────────────────────────────────
@@ -132,6 +141,28 @@ const ALL_PLATFORM_OPTIONS: DetectionPlatform[] = [
 const ALL_SEVERITY_OPTIONS: DetectionSeverity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
 const ALL_LANG_OPTIONS: QueryLanguage[] = ['SPL', 'KQL', 'YARA_L', 'EQL', 'AQL', 'SIGMA', 'CUSTOM'];
 
+const ALL_RULE_TYPE_OPTIONS: DetectionRuleType[] = [
+  'ANOMALY',
+  'INVESTIGATE',
+  'HIGH_FIDELITY',
+  'CORRELATION',
+  'THREAT_INTEL',
+];
+const ALL_LIFECYCLE_OPTIONS: DetectionLifecycle[] = [
+  'EXPERIMENTAL',
+  'FUNCTIONAL',
+  'STABLE',
+  'RETIRED',
+];
+const ALL_WORKFLOW_STATUS_OPTIONS: DetectionWorkflowStatus[] = [
+  'PENDING',
+  'IN_PROGRESS',
+  'REVIEW',
+  'APPROVED',
+  'ENABLED',
+  'DISABLED',
+];
+
 const PLATFORM_QUERY_LANG: Partial<Record<DetectionPlatform, QueryLanguage>> = {
   SPLUNK: 'SPL',
   SENTINEL: 'KQL',
@@ -157,6 +188,9 @@ const BLANK_FORM: CreateDetectionPayload = {
   nistControls: [],
   dataSources: [],
   tags: [],
+  ruleType: 'ANOMALY',
+  lifecycleStage: 'EXPERIMENTAL',
+  workflowStatus: 'PENDING',
 };
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -219,6 +253,15 @@ export default function DetectionsPage() {
   const [deployments, setDeployments] = useState<SiemDeployment[]>([]);
   const [loadingDeployPanel, setLoadingDeployPanel] = useState(false);
   const [deployingId, setDeployingId] = useState<string | null>(null);
+
+  // Bulk toggle
+  const [bulkToggling, setBulkToggling] = useState(false);
+
+  // Splunk history
+  const [splunkHistory, setSplunkHistory] = useState<
+    Record<string, { runs: SplunkJobRun[]; totalRuns: number; triggeredRuns: number } | null>
+  >({});
+  const [loadingHistory, setLoadingHistory] = useState<string | null>(null);
 
   // ── Data fetch ──────────────────────────────────────────────────────────────
 
@@ -386,6 +429,36 @@ export default function DetectionsPage() {
     await navigator.clipboard.writeText(selected.query);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleBulkToggle = async (enable: boolean) => {
+    if (bulkToggling || detections.length === 0) return;
+    setBulkToggling(true);
+    try {
+      await detectionsApi.bulkToggle(
+        detections.map((d) => d.id),
+        enable,
+      );
+      setDetections((prev) => prev.map((d) => ({ ...d, isEnabled: enable })));
+    } catch {
+      void fetchDetections();
+    } finally {
+      setBulkToggling(false);
+    }
+  };
+
+  const fetchSplunkJobHistory = async (integrationId: string, detectionId: string) => {
+    const key = `${integrationId}-${detectionId}`;
+    if (loadingHistory === key) return;
+    setLoadingHistory(key);
+    try {
+      const result = await integrationsApi.fetchSplunkHistory(integrationId, detectionId);
+      setSplunkHistory((prev) => ({ ...prev, [key]: result }));
+    } catch {
+      setSplunkHistory((prev) => ({ ...prev, [key]: null }));
+    } finally {
+      setLoadingHistory(null);
+    }
   };
 
   const handlePlatformChange = (p: DetectionPlatform) => {
@@ -598,6 +671,28 @@ export default function DetectionsPage() {
                 <span className="text-xs text-slate-400 dark:text-zinc-500">
                   {loading ? '...' : `${detections.length} rules`}
                 </span>
+                {detections.length > 0 && (
+                  <div className="flex items-center gap-1 ml-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleBulkToggle(true)}
+                      disabled={bulkToggling}
+                      className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                    >
+                      <ToggleRight className="h-3 w-3" />
+                      Enable All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleBulkToggle(false)}
+                      disabled={bulkToggling}
+                      className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold bg-slate-500/10 text-slate-600 dark:text-zinc-400 border border-slate-500/20 hover:bg-slate-500/20 transition-colors disabled:opacity-50"
+                    >
+                      <ToggleLeft className="h-3 w-3" />
+                      Disable All
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -750,16 +845,26 @@ export default function DetectionsPage() {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 z-10 bg-white/90 dark:bg-black/40 backdrop-blur-md border-b border-black/10 dark:border-white/10">
                     <tr>
-                      {['', 'On', 'Detection', 'Platform', 'Severity', 'FP%', 'Alerts/d'].map(
-                        (h) => (
-                          <th
-                            key={h}
-                            className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase text-slate-400 dark:text-zinc-500"
-                          >
-                            {h}
-                          </th>
-                        ),
-                      )}
+                      {[
+                        '',
+                        'On',
+                        'Detection',
+                        'Rule Type',
+                        'Lifecycle',
+                        'Status',
+                        'Owner',
+                        'Platform',
+                        'Severity',
+                        'FP%',
+                        'Alerts/d',
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase text-slate-400 dark:text-zinc-500 whitespace-nowrap"
+                        >
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -807,7 +912,7 @@ export default function DetectionsPage() {
                           </button>
                         </td>
 
-                        <td className="px-3 py-3 max-w-[200px]">
+                        <td className="px-3 py-3 max-w-[160px]">
                           <p className="font-medium text-slate-900 dark:text-white text-xs truncate">
                             {det.name}
                           </p>
@@ -819,6 +924,48 @@ export default function DetectionsPage() {
                               </span>
                             )}
                           </p>
+                        </td>
+
+                        {/* Rule Type */}
+                        <td className="px-3 py-3">
+                          {det.ruleType ? (
+                            <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 whitespace-nowrap">
+                              {RULE_TYPE_LABEL[det.ruleType]}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-300 dark:text-zinc-600">—</span>
+                          )}
+                        </td>
+
+                        {/* Lifecycle */}
+                        <td className="px-3 py-3">
+                          <span
+                            className={cn(
+                              'inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap',
+                              LIFECYCLE_COLORS[det.lifecycleStage],
+                            )}
+                          >
+                            {LIFECYCLE_LABEL[det.lifecycleStage]}
+                          </span>
+                        </td>
+
+                        {/* Workflow Status */}
+                        <td className="px-3 py-3">
+                          <span
+                            className={cn(
+                              'inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap',
+                              WORKFLOW_STATUS_COLORS[det.workflowStatus],
+                            )}
+                          >
+                            {WORKFLOW_STATUS_LABEL[det.workflowStatus]}
+                          </span>
+                        </td>
+
+                        {/* Owner */}
+                        <td className="px-3 py-3 text-[10px] text-slate-500 dark:text-zinc-400 max-w-[80px]">
+                          <span className="truncate block">
+                            {det.ownerName ?? (det.isGlobal ? 'OneMDR' : '—')}
+                          </span>
                         </td>
 
                         <td className="px-3 py-3">
@@ -1228,18 +1375,37 @@ export default function DetectionsPage() {
                               </div>
                             </div>
                             {dep ? (
-                              <button
-                                type="button"
-                                disabled={isDeploying}
-                                onClick={() => void handleUndeploy(integration.id, selected.id)}
-                                className="shrink-0 rounded-lg border border-red-500/20 bg-red-500/5 px-2 py-1 text-[10px] font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                              >
-                                {isDeploying ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  'Remove'
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {integration.platform === 'SPLUNK' && (
+                                  <button
+                                    type="button"
+                                    disabled={loadingHistory === `${integration.id}-${selected.id}`}
+                                    onClick={() =>
+                                      void fetchSplunkJobHistory(integration.id, selected.id)
+                                    }
+                                    className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-2 py-1 text-[10px] font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-50"
+                                    title="Fetch alert trigger history from Splunk"
+                                  >
+                                    {loadingHistory === `${integration.id}-${selected.id}` ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      'History'
+                                    )}
+                                  </button>
                                 )}
-                              </button>
+                                <button
+                                  type="button"
+                                  disabled={isDeploying}
+                                  onClick={() => void handleUndeploy(integration.id, selected.id)}
+                                  className="rounded-lg border border-red-500/20 bg-red-500/5 px-2 py-1 text-[10px] font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                >
+                                  {isDeploying ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    'Remove'
+                                  )}
+                                </button>
+                              </div>
                             ) : (
                               <button
                                 type="button"
@@ -1260,6 +1426,62 @@ export default function DetectionsPage() {
                         );
                       })
                     )}
+                    {/* Splunk job history panel */}
+                    {Object.entries(splunkHistory).map(([key, hist]) => {
+                      if (!hist || !key.includes(selected.id)) return null;
+                      return (
+                        <div
+                          key={key}
+                          className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3 space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-semibold text-blue-700 dark:text-blue-400">
+                              Splunk Job History
+                            </p>
+                            <div className="flex items-center gap-3 text-[10px] font-semibold">
+                              <span className="text-slate-600 dark:text-zinc-300">
+                                {hist.totalRuns} runs
+                              </span>
+                              <span className="text-emerald-600 dark:text-emerald-400">
+                                {hist.triggeredRuns} triggered
+                              </span>
+                            </div>
+                          </div>
+                          <div className="max-h-32 overflow-y-auto space-y-1">
+                            {hist.runs.slice(0, 20).map((run) => (
+                              <div key={run.sid} className="flex items-center gap-2 text-[10px]">
+                                <span
+                                  className={cn(
+                                    'shrink-0 h-1.5 w-1.5 rounded-full',
+                                    run.eventCount > 0
+                                      ? 'bg-emerald-500'
+                                      : 'bg-slate-300 dark:bg-zinc-600',
+                                  )}
+                                />
+                                <span className="text-slate-500 dark:text-zinc-400 font-mono">
+                                  {run.published ? new Date(run.published).toLocaleString() : 'N/A'}
+                                </span>
+                                <span
+                                  className={cn(
+                                    'ml-auto font-semibold',
+                                    run.eventCount > 0
+                                      ? 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-slate-400 dark:text-zinc-500',
+                                  )}
+                                >
+                                  {run.eventCount} events
+                                </span>
+                              </div>
+                            ))}
+                            {hist.runs.length === 0 && (
+                              <p className="text-[10px] text-slate-400 dark:text-zinc-500 text-center py-2">
+                                No job history found
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1525,11 +1747,75 @@ export default function DetectionsPage() {
                 />
               </div>
 
+              {/* Rule Type + Lifecycle + Workflow Status */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1.5">
+                    Rule Type <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={form.ruleType ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, ruleType: e.target.value as DetectionRuleType }))
+                    }
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                  >
+                    {ALL_RULE_TYPE_OPTIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {RULE_TYPE_LABEL[r]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1.5">
+                    Lifecycle <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={form.lifecycleStage ?? 'EXPERIMENTAL'}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        lifecycleStage: e.target.value as DetectionLifecycle,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                  >
+                    {ALL_LIFECYCLE_OPTIONS.map((l) => (
+                      <option key={l} value={l}>
+                        {LIFECYCLE_LABEL[l]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1.5">
+                    Workflow Status <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={form.workflowStatus ?? 'PENDING'}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        workflowStatus: e.target.value as DetectionWorkflowStatus,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                  >
+                    {ALL_WORKFLOW_STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {WORKFLOW_STATUS_LABEL[s]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               {/* MITRE */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1.5">
-                    MITRE ID
+                    MITRE ID <span className="text-red-400">*</span>
                   </label>
                   <input
                     value={form.mitreAttackId ?? ''}
@@ -1540,7 +1826,7 @@ export default function DetectionsPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1.5">
-                    Tactic
+                    Tactic <span className="text-red-400">*</span>
                   </label>
                   <input
                     value={form.mitreTactic ?? ''}
@@ -1617,7 +1903,17 @@ export default function DetectionsPage() {
               <button
                 type="button"
                 onClick={() => void handleCreate()}
-                disabled={creating || !form.name || !form.query}
+                disabled={
+                  creating ||
+                  !form.name ||
+                  !form.description ||
+                  !form.query ||
+                  !form.mitreAttackId ||
+                  !form.mitreTactic ||
+                  !form.ruleType ||
+                  !form.lifecycleStage ||
+                  !form.workflowStatus
+                }
                 className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {creating ? 'Creating...' : 'Create Detection'}

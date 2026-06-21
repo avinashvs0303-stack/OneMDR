@@ -9,6 +9,10 @@ import {
 } from 'class-validator';
 import { DetectionSeverity, DetectionPlatform, QueryLanguage } from '@onemdr/database';
 
+const RULE_TYPES = ['ANOMALY', 'INVESTIGATE', 'HIGH_FIDELITY', 'CORRELATION', 'THREAT_INTEL'];
+const LIFECYCLE_STAGES = ['EXPERIMENTAL', 'FUNCTIONAL', 'STABLE', 'RETIRED'];
+const WORKFLOW_STATUSES = ['PENDING', 'IN_PROGRESS', 'REVIEW', 'APPROVED', 'ENABLED', 'DISABLED'];
+
 export class CreateDetectionDto {
   @IsString()
   @MinLength(3)
@@ -67,6 +71,27 @@ export class CreateDetectionDto {
   @IsOptional()
   @IsNumber()
   expectedMttdHours?: number;
+
+  @IsOptional()
+  @IsEnum(RULE_TYPES)
+  ruleType?: string;
+
+  @IsOptional()
+  @IsEnum(LIFECYCLE_STAGES)
+  lifecycleStage?: string;
+
+  @IsOptional()
+  @IsEnum(WORKFLOW_STATUSES)
+  workflowStatus?: string;
+}
+
+export class BulkToggleDetectionDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+
+  @IsBoolean()
+  enable!: boolean;
 }
 
 export class ToggleDetectionDto {
