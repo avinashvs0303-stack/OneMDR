@@ -24,6 +24,7 @@ import {
   Plug,
   Loader2,
   ChevronUp,
+  Pencil,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -263,6 +264,10 @@ export default function DetectionsPage() {
   >({});
   const [loadingHistory, setLoadingHistory] = useState<string | null>(null);
 
+  // Edit / duplicate
+  const [editingDetection, setEditingDetection] = useState<DetectionRow | null>(null);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
+
   // ── Data fetch ──────────────────────────────────────────────────────────────
 
   const fetchLogSources = useCallback(async () => {
@@ -454,10 +459,53 @@ export default function DetectionsPage() {
     try {
       const result = await integrationsApi.fetchSplunkHistory(integrationId, detectionId);
       setSplunkHistory((prev) => ({ ...prev, [key]: result }));
+      // Refresh detection list so Triggers/FP% columns pick up newly synced stats
+      void fetchDetections();
     } catch {
       setSplunkHistory((prev) => ({ ...prev, [key]: null }));
     } finally {
       setLoadingHistory(null);
+    }
+  };
+
+  const handleEdit = (det: DetectionRow) => {
+    setEditingDetection(det);
+    setForm({
+      name: det.name,
+      description: det.description,
+      severity: det.severity,
+      platform: det.platform,
+      query: det.query,
+      queryLanguage: det.queryLanguage,
+      mitreAttackId: det.mitreAttackId ?? '',
+      mitreTactic: det.mitreTactic ?? '',
+      mitreTechnique: det.mitreTechnique ?? '',
+      nistControls: det.nistControls,
+      dataSources: det.dataSources,
+      tags: det.tags,
+      ruleType: det.ruleType ?? 'ANOMALY',
+      lifecycleStage: det.lifecycleStage,
+      workflowStatus: det.workflowStatus,
+    });
+    setNistInput(det.nistControls.join(', '));
+    setDsInput(det.dataSources.join(', '));
+    setTagsInput(det.tags.join(', '));
+    setCreateError(null);
+    setShowNewModal(true);
+  };
+
+  const handleDuplicate = async (det: DetectionRow) => {
+    if (duplicating === det.id) return;
+    setDuplicating(det.id);
+    try {
+      const copy = await detectionsApi.duplicate(det.id);
+      setDetections((prev) => [copy, ...prev]);
+      setSelected(copy);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to duplicate detection';
+      setCreateError(msg);
+    } finally {
+      setDuplicating(null);
     }
   };
 
@@ -494,16 +542,25 @@ export default function DetectionsPage() {
         mitreTactic: form.mitreTactic || undefined,
         mitreTechnique: form.mitreTechnique || undefined,
       };
-      const created = await detectionsApi.create(payload);
-      setDetections((prev) => [created, ...prev]);
+
+      if (editingDetection) {
+        const updated = await detectionsApi.update(editingDetection.id, payload);
+        setDetections((prev) => prev.map((d) => (d.id === editingDetection.id ? updated : d)));
+        if (selected?.id === editingDetection.id) setSelected(updated);
+        setEditingDetection(null);
+      } else {
+        const created = await detectionsApi.create(payload);
+        setDetections((prev) => [created, ...prev]);
+        setSelected(created);
+      }
+
       setShowNewModal(false);
       setForm(BLANK_FORM);
       setNistInput('');
       setDsInput('');
       setTagsInput('');
-      setSelected(created);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create detection';
+      const msg = err instanceof Error ? err.message : 'Failed to save detection';
       setCreateError(msg);
     } finally {
       setCreating(false);
@@ -1076,6 +1133,30 @@ export default function DetectionsPage() {
                     )}
                     {selected.isEnabled ? 'Enabled' : 'Disabled'}
                   </button>
+                  {selected.isCustom && (
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(selected)}
+                      title="Edit this custom detection"
+                      className="flex items-center gap-1 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-400 hover:bg-blue-500/20 transition-colors"
+                    >
+                      <Pencil className="h-3 w-3" /> Edit
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handleDuplicate(selected)}
+                    disabled={duplicating === selected.id}
+                    title="Duplicate as a new custom detection"
+                    className="flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+                  >
+                    {duplicating === selected.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                    {duplicating === selected.id ? '...' : 'Duplicate'}
+                  </button>
                   <button
                     onClick={() => setSelected(null)}
                     className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white text-lg leading-none"
@@ -1626,13 +1707,18 @@ export default function DetectionsPage() {
           <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl border border-black/10 dark:border-white/10">
             <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 px-6 py-4 flex items-center justify-between z-10">
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                New Custom Detection
+                {editingDetection ? 'Edit Detection' : 'New Custom Detection'}
               </h2>
               <button
                 type="button"
                 onClick={() => {
                   setShowNewModal(false);
+                  setEditingDetection(null);
                   setCreateError(null);
+                  setForm(BLANK_FORM);
+                  setNistInput('');
+                  setDsInput('');
+                  setTagsInput('');
                 }}
                 className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
@@ -1894,7 +1980,12 @@ export default function DetectionsPage() {
                 type="button"
                 onClick={() => {
                   setShowNewModal(false);
+                  setEditingDetection(null);
                   setCreateError(null);
+                  setForm(BLANK_FORM);
+                  setNistInput('');
+                  setDsInput('');
+                  setTagsInput('');
                 }}
                 className="rounded-lg border border-black/10 dark:border-white/10 px-4 py-2 text-sm font-medium text-slate-700 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
               >
@@ -1916,7 +2007,13 @@ export default function DetectionsPage() {
                 }
                 className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {creating ? 'Creating...' : 'Create Detection'}
+                {creating
+                  ? editingDetection
+                    ? 'Saving...'
+                    : 'Creating...'
+                  : editingDetection
+                    ? 'Save Changes'
+                    : 'Create Detection'}
               </button>
             </div>
           </div>

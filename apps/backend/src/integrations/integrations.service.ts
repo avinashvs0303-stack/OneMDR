@@ -891,11 +891,22 @@ export class IntegrationsService {
       ? `${base}/en-US/splunkd/__raw/services/saved/searches/${encodedName}/history?output_mode=json&count=50`
       : `${base}/services/saved/searches/${encodedName}/history?output_mode=json&count=50`;
 
+    // Splunk Cloud __raw proxy requires web session cookies for GET too, not just writes
+    const histHeaders: Record<string, string> = { 'X-Requested-With': 'XMLHttpRequest' };
+    if (isCloud) {
+      const webSession = await this.getSplunkWebSession(base, cfg);
+      if (webSession) {
+        histHeaders['Cookie'] = webSession.cookies;
+        histHeaders['X-Splunk-Form-Key'] = webSession.csrfToken;
+      } else {
+        histHeaders['Authorization'] = `Bearer ${cfg['apiToken'] ?? ''}`;
+      }
+    } else {
+      histHeaders['Authorization'] = `Bearer ${cfg['apiToken'] ?? ''}`;
+    }
+
     const res = await fetch(historyPath, {
-      headers: {
-        Authorization: `Bearer ${cfg['apiToken'] ?? ''}`,
-        'X-Requested-With': 'XMLHttpRequest',
-      },
+      headers: histHeaders,
       signal: AbortSignal.timeout(15000),
     });
 
@@ -920,6 +931,26 @@ export class IntegrationsService {
     }));
 
     const triggeredRuns = runs.filter((r) => r.eventCount > 0).length;
+
+    // Sync trigger counts into detection_stats (grouped by calendar day)
+    const dayMap = new Map<string, number>();
+    for (const run of runs) {
+      if (!run.published) continue;
+      const day = run.published.split('T')[0];
+      if (day && !Number.isNaN(new Date(day).getTime())) {
+        dayMap.set(day, (dayMap.get(day) ?? 0) + (run.eventCount > 0 ? 1 : 0));
+      }
+    }
+    await Promise.allSettled(
+      [...dayMap.entries()].map(([day, count]) =>
+        this.db.detectionStat.upsert({
+          where: { tenantId_detectionId_date: { tenantId, detectionId, date: new Date(day) } },
+          create: { tenantId, detectionId, date: new Date(day), triggerCount: count },
+          update: { triggerCount: count },
+        }),
+      ),
+    );
+
     return { runs, totalRuns: runs.length, triggeredRuns };
   }
 

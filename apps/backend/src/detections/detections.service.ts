@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 import { PrismaService } from '../database/prisma.service';
 import type {
   CreateDetectionDto,
+  UpdateDetectionDto,
   BulkToggleDetectionDto,
   ImportDetectionsDto,
   ListDetectionsQueryDto,
@@ -258,6 +259,166 @@ export class DetectionsService {
       ),
     );
     return { toggled: dto.ids.length, enabled: dto.enable };
+  }
+
+  async updateDetection(id: string, dto: UpdateDetectionDto, actor: JwtPayload) {
+    const tenantId = actor.tenantId!;
+    const detection = await this.db.detection.findFirst({
+      where: { id, tenantId, isGlobal: false },
+    });
+    if (!detection) throw new NotFoundException('Detection not found or is not editable');
+
+    const updated = await this.db.detection.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.description !== undefined ? { description: dto.description } : {}),
+        ...(dto.severity !== undefined ? { severity: dto.severity } : {}),
+        ...(dto.platform !== undefined ? { platform: dto.platform } : {}),
+        ...(dto.query !== undefined ? { query: dto.query } : {}),
+        ...(dto.queryLanguage !== undefined ? { queryLanguage: dto.queryLanguage } : {}),
+        ...(dto.mitreAttackId !== undefined ? { mitreAttackId: dto.mitreAttackId || null } : {}),
+        ...(dto.mitreTactic !== undefined ? { mitreTactic: dto.mitreTactic || null } : {}),
+        ...(dto.mitreTechnique !== undefined ? { mitreTechnique: dto.mitreTechnique || null } : {}),
+        ...(dto.nistControls !== undefined ? { nistControls: dto.nistControls } : {}),
+        ...(dto.dataSources !== undefined ? { dataSources: dto.dataSources } : {}),
+        ...(dto.tags !== undefined ? { tags: dto.tags } : {}),
+        ...(dto.expectedAlertsPerDay !== undefined
+          ? { expectedAlertsPerDay: dto.expectedAlertsPerDay }
+          : {}),
+        ...(dto.expectedFpRate !== undefined ? { expectedFpRate: dto.expectedFpRate } : {}),
+        ...(dto.expectedMttdHours !== undefined
+          ? { expectedMttdHours: dto.expectedMttdHours }
+          : {}),
+        ...(dto.ruleType !== undefined
+          ? { ruleType: (dto.ruleType as DetectionRuleType) ?? null }
+          : {}),
+        ...(dto.lifecycleStage !== undefined
+          ? { lifecycleStage: dto.lifecycleStage as DetectionLifecycle }
+          : {}),
+        ...(dto.workflowStatus !== undefined
+          ? { workflowStatus: dto.workflowStatus as DetectionWorkflowStatus }
+          : {}),
+      },
+      include: { tenantDetections: { where: { tenantId } } },
+    });
+
+    return {
+      id: updated.id,
+      ruleId: updated.ruleId,
+      name: updated.name,
+      description: updated.description,
+      severity: updated.severity,
+      platform: updated.platform,
+      mitreAttackId: updated.mitreAttackId,
+      mitreTactic: updated.mitreTactic,
+      mitreTechnique: updated.mitreTechnique,
+      nistControls: updated.nistControls,
+      dataSources: updated.dataSources,
+      logSources: updated.logSources,
+      deviceTypes: updated.deviceTypes,
+      query: updated.query,
+      queryLanguage: updated.queryLanguage,
+      tags: updated.tags,
+      expectedAlertsPerDay: updated.expectedAlertsPerDay
+        ? Number(updated.expectedAlertsPerDay)
+        : null,
+      expectedFpRate: updated.expectedFpRate ? Number(updated.expectedFpRate) : null,
+      expectedMttdHours: updated.expectedMttdHours ? Number(updated.expectedMttdHours) : null,
+      isGlobal: updated.isGlobal,
+      isEnabled: updated.tenantDetections[0]?.isEnabled ?? false,
+      isCustom: true,
+      ruleType: updated.ruleType,
+      lifecycleStage: updated.lifecycleStage,
+      workflowStatus: updated.workflowStatus,
+      ownerName: updated.ownerName,
+      stats: { triggerCount: 0, truePositives: 0, falsePositives: 0 },
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  async duplicateDetection(id: string, actor: JwtPayload) {
+    const tenantId = actor.tenantId!;
+    const source = await this.db.detection.findFirst({
+      where: { id, OR: [{ isGlobal: true }, { tenantId }] },
+    });
+    if (!source) throw new NotFoundException('Detection not found');
+
+    const count = await this.db.detection.count({ where: { tenantId, isGlobal: false } });
+    const ruleId = `CUSTOM-${tenantId.slice(0, 8).toUpperCase()}-${String(count + 1).padStart(4, '0')}`;
+
+    const actorUser = await this.db.user.findFirst({
+      where: { id: actor.sub },
+      select: { firstName: true, lastName: true },
+    });
+    const ownerName = actorUser
+      ? `${actorUser.firstName} ${actorUser.lastName}`.trim()
+      : actor.email;
+
+    const copy = await this.db.detection.create({
+      data: {
+        ruleId,
+        name: `${source.name} (Copy)`,
+        description: source.description,
+        severity: source.severity,
+        platform: source.platform,
+        mitreAttackId: source.mitreAttackId,
+        mitreTactic: source.mitreTactic,
+        mitreTechnique: source.mitreTechnique,
+        nistControls: source.nistControls,
+        dataSources: source.dataSources,
+        query: source.query,
+        queryLanguage: source.queryLanguage,
+        tags: source.tags,
+        expectedAlertsPerDay: source.expectedAlertsPerDay,
+        expectedFpRate: source.expectedFpRate,
+        expectedMttdHours: source.expectedMttdHours,
+        isGlobal: false,
+        tenantId,
+        ruleType: source.ruleType,
+        lifecycleStage: source.lifecycleStage ?? 'EXPERIMENTAL',
+        workflowStatus: 'PENDING',
+        ownerName,
+        ownerId: actor.sub,
+      },
+    });
+
+    await this.db.tenantDetection.create({
+      data: { tenantId, detectionId: copy.id, isEnabled: true, enabledById: actor.sub },
+    });
+
+    return {
+      id: copy.id,
+      ruleId: copy.ruleId,
+      name: copy.name,
+      description: copy.description,
+      severity: copy.severity,
+      platform: copy.platform,
+      mitreAttackId: copy.mitreAttackId,
+      mitreTactic: copy.mitreTactic,
+      mitreTechnique: copy.mitreTechnique,
+      nistControls: copy.nistControls,
+      dataSources: copy.dataSources,
+      logSources: copy.logSources,
+      deviceTypes: copy.deviceTypes,
+      query: copy.query,
+      queryLanguage: copy.queryLanguage,
+      tags: copy.tags,
+      expectedAlertsPerDay: copy.expectedAlertsPerDay ? Number(copy.expectedAlertsPerDay) : null,
+      expectedFpRate: copy.expectedFpRate ? Number(copy.expectedFpRate) : null,
+      expectedMttdHours: copy.expectedMttdHours ? Number(copy.expectedMttdHours) : null,
+      isGlobal: false,
+      isEnabled: true,
+      isCustom: true,
+      ruleType: copy.ruleType,
+      lifecycleStage: copy.lifecycleStage,
+      workflowStatus: copy.workflowStatus,
+      ownerName: copy.ownerName,
+      stats: { triggerCount: 0, truePositives: 0, falsePositives: 0 },
+      createdAt: copy.createdAt,
+      updatedAt: copy.updatedAt,
+    };
   }
 
   async importDetections(dto: ImportDetectionsDto, actor: JwtPayload) {

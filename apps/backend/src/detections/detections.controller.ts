@@ -15,6 +15,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { DetectionsService } from './detections.service';
 import {
   CreateDetectionDto,
+  UpdateDetectionDto,
   BulkToggleDetectionDto,
   ToggleDetectionDto,
   ImportDetectionsDto,
@@ -159,6 +160,32 @@ export class DetectionsController {
   })
   async importFile(@Body() dto: ImportDetectionsDto, @CurrentUser() user: JwtPayload) {
     const data = await this.svc.importDetections(dto, user);
+    return { data };
+  }
+
+  // ── Edit custom detection ────────────────────────────────────────────────────
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Update a custom (non-global) detection rule' })
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateDetectionDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const data = await this.svc.updateDetection(id, dto, user);
+    return { data };
+  }
+
+  // ── Duplicate detection ───────────────────────────────────────────────────────
+
+  @Post(':id/duplicate')
+  @HttpCode(HttpStatus.CREATED)
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Duplicate a detection (global or custom) as a new custom rule' })
+  async duplicate(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    const data = await this.svc.duplicateDetection(id, user);
     return { data };
   }
 

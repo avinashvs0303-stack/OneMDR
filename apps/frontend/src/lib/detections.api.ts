@@ -263,6 +263,16 @@ export const detectionsApi = {
   bulkToggle: async (ids: string[], enable: boolean): Promise<void> => {
     await api.patch(`${BASE}/bulk-toggle`, { ids, enable });
   },
+
+  update: async (id: string, payload: Partial<CreateDetectionPayload>): Promise<DetectionRow> => {
+    const res = await api.patch<{ data: DetectionRow }>(`${BASE}/${id}`, payload);
+    return res.data;
+  },
+
+  duplicate: async (id: string): Promise<DetectionRow> => {
+    const res = await api.post<{ data: DetectionRow }>(`${BASE}/${id}/duplicate`, {});
+    return res.data;
+  },
 };
 
 // ── Display helpers ───────────────────────────────────────────────────────────

@@ -129,6 +129,84 @@ export class ListDetectionsQueryDto {
   enabled?: string; // 'true' | 'false'
 }
 
+export class UpdateDetectionDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsEnum(DetectionSeverity)
+  severity?: DetectionSeverity;
+
+  @IsOptional()
+  @IsEnum(DetectionPlatform)
+  platform?: DetectionPlatform;
+
+  @IsOptional()
+  @IsString()
+  query?: string;
+
+  @IsOptional()
+  @IsEnum(QueryLanguage)
+  queryLanguage?: QueryLanguage;
+
+  @IsOptional()
+  @IsString()
+  mitreAttackId?: string;
+
+  @IsOptional()
+  @IsString()
+  mitreTactic?: string;
+
+  @IsOptional()
+  @IsString()
+  mitreTechnique?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  nistControls?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  dataSources?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsNumber()
+  expectedAlertsPerDay?: number;
+
+  @IsOptional()
+  @IsNumber()
+  expectedFpRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  expectedMttdHours?: number;
+
+  @IsOptional()
+  @IsEnum(RULE_TYPES)
+  ruleType?: string;
+
+  @IsOptional()
+  @IsEnum(LIFECYCLE_STAGES)
+  lifecycleStage?: string;
+
+  @IsOptional()
+  @IsEnum(WORKFLOW_STATUSES)
+  workflowStatus?: string;
+}
+
 export class AddLogSourceDto {
   @IsString()
   @MinLength(2)
