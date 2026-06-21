@@ -395,15 +395,18 @@ export class IntegrationsService {
           'alert.suppress.period': '5m',
         });
 
-        // Session key from username/password login works on __raw POST (port 443).
-        // Bearer token only works for GET ops on the __raw proxy.
-        const sessionKey = await this.getSplunkSessionKey(splunkBase, cfg, splunkOn443);
-        const splunkAuth = sessionKey ? `Splunk ${sessionKey}` : `Bearer ${cfg['apiToken'] ?? ''}`;
+        // __raw proxy (port 443): session keys from __raw/auth/login are rejected
+        // by subsequent __raw API calls (different auth context). Basic auth +
+        // X-Requested-With (XHR) is the correct pattern that bypasses CSRF.
+        const splunkWriteAuth =
+          cfg['username'] && cfg['password']
+            ? `Basic ${Buffer.from(`${cfg['username']}:${cfg['password']}`).toString('base64')}`
+            : `Bearer ${cfg['apiToken'] ?? ''}`;
 
         const res = await fetch(savedSearchesPath, {
           method: 'POST',
           headers: {
-            Authorization: splunkAuth,
+            Authorization: splunkWriteAuth,
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest',
           },
@@ -418,8 +421,8 @@ export class IntegrationsService {
         if (!ct.includes('json')) {
           const preview = (await res.text()).slice(0, 120);
           throw new Error(
-            sessionKey
-              ? `Splunk returned HTML despite valid session key — CSRF not bypassed: ${preview}`
+            cfg['username']
+              ? `Splunk returned HTML despite credentials — CSRF header may not be sufficient: ${preview}`
               : `Splunk returned HTML — add Username+Password to the integration config to enable write operations: ${preview}`,
           );
         }
@@ -584,13 +587,15 @@ export class IntegrationsService {
         const deletePath = splunkDelOn443
           ? `${splunkDelBase}/en-US/splunkd/__raw/services/saved/searches/${encodeURIComponent(remoteId)}`
           : `${splunkDelBase}/services/saved/searches/${encodeURIComponent(remoteId)}`;
-        const delSessionKey = await this.getSplunkSessionKey(splunkDelBase, cfg, splunkDelOn443);
+        const splunkDelAuth =
+          cfg['username'] && cfg['password']
+            ? `Basic ${Buffer.from(`${cfg['username']}:${cfg['password']}`).toString('base64')}`
+            : `Bearer ${cfg['apiToken'] ?? ''}`;
         await fetch(deletePath, {
           method: 'DELETE',
           headers: {
-            Authorization: delSessionKey
-              ? `Splunk ${delSessionKey}`
-              : `Bearer ${cfg['apiToken'] ?? ''}`,
+            Authorization: splunkDelAuth,
+            'X-Requested-With': 'XMLHttpRequest',
           },
           signal: AbortSignal.timeout(10000),
         });
