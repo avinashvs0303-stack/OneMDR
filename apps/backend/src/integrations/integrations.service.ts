@@ -921,14 +921,23 @@ export class IntegrationsService {
     };
     const entries = json.entry ?? [];
 
-    // Log the raw content keys of the first entry so we can verify field names
+    // WARN-level dump so it shows in Railway regardless of log level filter
     if (entries.length > 0) {
       const first = entries[0];
-      this.logger.log(
-        `Splunk history sample — published:${first?.published ?? 'MISSING'} ` +
-          `content_keys:${Object.keys(first?.content ?? {}).join(',')} ` +
-          `eventCount:${first?.content['eventCount']} resultCount:${first?.content['resultCount']} ` +
-          `eventCountOrField:${first?.content['event_count']} resultCountOrField:${first?.content['result_count']}`,
+      this.logger.warn(
+        `[SPLUNK-HISTORY-DEBUG] entries=${entries.length} ` +
+          `first.published=${first?.published ?? 'MISSING'} ` +
+          `content_keys=${Object.keys(first?.content ?? {})
+            .slice(0, 30)
+            .join(',')} ` +
+          `eventCount=${first?.content['eventCount']} ` +
+          `resultCount=${first?.content['resultCount']} ` +
+          `isDone=${first?.content['isDone']} ` +
+          `dispatchState=${first?.content['dispatchState']}`,
+      );
+      // Also log the raw entry as JSON (truncated) so we can spot field name differences
+      this.logger.warn(
+        `[SPLUNK-HISTORY-RAW] ${JSON.stringify({ name: first?.name, published: first?.published, content: first?.content }).slice(0, 800)}`,
       );
     }
 
