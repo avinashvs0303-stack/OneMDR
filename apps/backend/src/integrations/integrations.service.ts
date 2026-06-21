@@ -395,30 +395,33 @@ export class IntegrationsService {
           'alert.suppress.period': '5m',
         });
 
-        // __raw is a web UI proxy: it needs browser-style web session cookies, not
-        // Basic auth or management API session keys. We simulate a browser login to
-        // get the cookies, then use them with the CSRF token for API write calls.
-        const webSession = await this.getSplunkWebSession(splunkBase, cfg);
-
         let splunkPostHeaders: Record<string, string>;
-        if (webSession) {
+        if (splunkOn443) {
+          // Splunk Cloud (port 443): the __raw proxy requires browser-style web session
+          // cookies + CSRF token — Bearer and Basic auth are rejected for write operations.
+          const webSession = await this.getSplunkWebSession(splunkBase, cfg);
+          if (!webSession) {
+            throw new Error(
+              'Splunk Cloud: add Username and Password to the integration config to deploy',
+            );
+          }
           splunkPostHeaders = {
             Cookie: webSession.cookies,
             'X-Splunk-Form-Key': webSession.csrfToken,
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest',
           };
-        } else if (cfg['apiToken']) {
-          // Bearer + XHR as fallback — works on some Splunk versions
+        } else {
+          // Splunk On-Prem (port 8089): direct management REST API accepts Bearer token.
+          if (!cfg['apiToken']) {
+            throw new Error(
+              'Splunk On-Prem: add an API Token to the integration config to deploy via port 8089',
+            );
+          }
           splunkPostHeaders = {
             Authorization: `Bearer ${cfg['apiToken']}`,
             'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest',
           };
-        } else {
-          throw new Error(
-            'Splunk: add Username+Password to the integration config to deploy via Splunk Cloud port 443',
-          );
         }
 
         const res = await fetch(savedSearchesPath, {
@@ -597,11 +600,13 @@ export class IntegrationsService {
         const deletePath = splunkDelOn443
           ? `${splunkDelBase}/en-US/splunkd/__raw/services/saved/searches/${encodeURIComponent(remoteId)}`
           : `${splunkDelBase}/services/saved/searches/${encodeURIComponent(remoteId)}`;
-        const delWebSession = await this.getSplunkWebSession(splunkDelBase, cfg);
         const splunkDelHeaders: Record<string, string> = { 'X-Requested-With': 'XMLHttpRequest' };
-        if (delWebSession) {
-          splunkDelHeaders['Cookie'] = delWebSession.cookies;
-          splunkDelHeaders['X-Splunk-Form-Key'] = delWebSession.csrfToken;
+        if (splunkDelOn443) {
+          const delWebSession = await this.getSplunkWebSession(splunkDelBase, cfg);
+          if (delWebSession) {
+            splunkDelHeaders['Cookie'] = delWebSession.cookies;
+            splunkDelHeaders['X-Splunk-Form-Key'] = delWebSession.csrfToken;
+          }
         } else if (cfg['apiToken']) {
           splunkDelHeaders['Authorization'] = `Bearer ${cfg['apiToken']}`;
         }
