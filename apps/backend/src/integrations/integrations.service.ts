@@ -395,21 +395,35 @@ export class IntegrationsService {
           'alert.suppress.period': '5m',
         });
 
-        // __raw proxy (port 443): session keys from __raw/auth/login are rejected
-        // by subsequent __raw API calls (different auth context). Basic auth +
-        // X-Requested-With (XHR) is the correct pattern that bypasses CSRF.
-        const splunkWriteAuth =
-          cfg['username'] && cfg['password']
-            ? `Basic ${Buffer.from(`${cfg['username']}:${cfg['password']}`).toString('base64')}`
-            : `Bearer ${cfg['apiToken'] ?? ''}`;
+        // __raw is a web UI proxy: it needs browser-style web session cookies, not
+        // Basic auth or management API session keys. We simulate a browser login to
+        // get the cookies, then use them with the CSRF token for API write calls.
+        const webSession = await this.getSplunkWebSession(splunkBase, cfg);
+
+        let splunkPostHeaders: Record<string, string>;
+        if (webSession) {
+          splunkPostHeaders = {
+            Cookie: webSession.cookies,
+            'X-Splunk-Form-Key': webSession.csrfToken,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest',
+          };
+        } else if (cfg['apiToken']) {
+          // Bearer + XHR as fallback — works on some Splunk versions
+          splunkPostHeaders = {
+            Authorization: `Bearer ${cfg['apiToken']}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest',
+          };
+        } else {
+          throw new Error(
+            'Splunk: add Username+Password to the integration config to deploy via Splunk Cloud port 443',
+          );
+        }
 
         const res = await fetch(savedSearchesPath, {
           method: 'POST',
-          headers: {
-            Authorization: splunkWriteAuth,
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
+          headers: splunkPostHeaders,
           body: body.toString(),
           signal: AbortSignal.timeout(15000),
         });
@@ -420,11 +434,7 @@ export class IntegrationsService {
         const ct = res.headers.get('content-type') ?? '';
         if (!ct.includes('json')) {
           const preview = (await res.text()).slice(0, 120);
-          throw new Error(
-            cfg['username']
-              ? `Splunk returned HTML despite credentials — CSRF header may not be sufficient: ${preview}`
-              : `Splunk returned HTML — add Username+Password to the integration config to enable write operations: ${preview}`,
-          );
+          throw new Error(`Splunk returned non-JSON — auth may still be blocked: ${preview}`);
         }
         const json = (await res.json()) as { entry?: Array<{ name?: string }> };
         return { remoteId: json.entry?.[0]?.name };
@@ -587,16 +597,17 @@ export class IntegrationsService {
         const deletePath = splunkDelOn443
           ? `${splunkDelBase}/en-US/splunkd/__raw/services/saved/searches/${encodeURIComponent(remoteId)}`
           : `${splunkDelBase}/services/saved/searches/${encodeURIComponent(remoteId)}`;
-        const splunkDelAuth =
-          cfg['username'] && cfg['password']
-            ? `Basic ${Buffer.from(`${cfg['username']}:${cfg['password']}`).toString('base64')}`
-            : `Bearer ${cfg['apiToken'] ?? ''}`;
+        const delWebSession = await this.getSplunkWebSession(splunkDelBase, cfg);
+        const splunkDelHeaders: Record<string, string> = { 'X-Requested-With': 'XMLHttpRequest' };
+        if (delWebSession) {
+          splunkDelHeaders['Cookie'] = delWebSession.cookies;
+          splunkDelHeaders['X-Splunk-Form-Key'] = delWebSession.csrfToken;
+        } else if (cfg['apiToken']) {
+          splunkDelHeaders['Authorization'] = `Bearer ${cfg['apiToken']}`;
+        }
         await fetch(deletePath, {
           method: 'DELETE',
-          headers: {
-            Authorization: splunkDelAuth,
-            'X-Requested-With': 'XMLHttpRequest',
-          },
+          headers: splunkDelHeaders,
           signal: AbortSignal.timeout(10000),
         });
         break;
@@ -728,49 +739,88 @@ export class IntegrationsService {
   // ── Utility ───────────────────────────────────────────────────────────────────
 
   /**
-   * Splunk Cloud __raw proxy (port 443) blocks POST with Bearer tokens.
-   * Only session keys obtained via /services/auth/login work for write ops.
-   * Returns a fresh session key when username+password are configured.
+   * Simulates a browser login to obtain Splunk web session cookies.
+   * The __raw proxy (port 443) is a UI proxy that accepts web session cookies +
+   * X-Splunk-Form-Key CSRF token for write operations — not Basic auth or API tokens.
+   *
+   * Flow: GET /en-US/account/login (→ cval CSRF cookie) → POST credentials
+   *       (redirect: 'manual' to capture Set-Cookie from 302) → merge cookies.
    */
-  private async getSplunkSessionKey(
+  private async getSplunkWebSession(
     base: string,
     cfg: Record<string, string>,
-    on443: boolean,
-  ): Promise<string | null> {
+  ): Promise<{ cookies: string; csrfToken: string } | null> {
     if (!cfg['username'] || !cfg['password']) return null;
-    const loginPath = on443
-      ? `${base}/en-US/splunkd/__raw/services/auth/login?output_mode=json`
-      : `${base}/services/auth/login?output_mode=json`;
+
+    const getSetCookies = (res: Response): string[] => {
+      const h = res.headers as unknown as { getSetCookie?: () => string[] };
+      return (h.getSetCookie?.() ?? [res.headers.get('set-cookie') ?? '']).filter(Boolean);
+    };
+
+    const parseCookies = (raw: string[]): string[] =>
+      raw.map((c) => c.split(';')[0]!.trim()).filter(Boolean);
+
+    const mergeCookies = (...batches: string[][]): string => {
+      const m = new Map<string, string>();
+      batches.flat().forEach((c) => {
+        const key = c.split('=')[0]!.trim();
+        m.set(key, c);
+      });
+      return Array.from(m.values()).join('; ');
+    };
+
     try {
-      const res = await fetch(loginPath, {
+      // Step 1: GET login page → capture initial cval CSRF cookie
+      const pageRes = await fetch(`${base}/en-US/account/login`, {
+        headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html,*/*' },
+        signal: AbortSignal.timeout(10000),
+      });
+      const pageCookies = parseCookies(getSetCookies(pageRes));
+      const cval =
+        pageCookies
+          .find((c) => c.startsWith('cval='))
+          ?.split('=')
+          .slice(1)
+          .join('=') ?? '';
+
+      // Step 2: POST credentials; redirect: 'manual' captures Set-Cookie from the 302
+      const loginRes = await fetch(`${base}/en-US/account/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          // Identifies as AJAX request — Splunk __raw proxy skips CSRF for XHR
+          Cookie: pageCookies.join('; '),
+          'User-Agent': 'Mozilla/5.0',
+          Referer: `${base}/en-US/account/login`,
           'X-Requested-With': 'XMLHttpRequest',
         },
         body: new URLSearchParams({
           username: cfg['username'],
           password: cfg['password'],
-          output_mode: 'json',
+          cval,
+          return_to: '/en-US/',
+          set_has_js: '1',
         }).toString(),
-        signal: AbortSignal.timeout(10000),
+        redirect: 'manual', // capture Set-Cookie from the 302 response directly
+        signal: AbortSignal.timeout(15000),
       });
-      if (!res.ok) {
-        this.logger.warn(`Splunk auth/login returned ${res.status}`);
-        return null;
-      }
-      const ct = res.headers.get('content-type') ?? '';
-      if (!ct.includes('json')) {
-        const preview = (await res.text()).slice(0, 120);
-        this.logger.warn(`Splunk auth/login returned non-JSON (${ct}): ${preview}`);
-        return null;
-      }
-      const json = (await res.json()) as { sessionKey?: string };
-      if (json.sessionKey) this.logger.log('Splunk session key obtained');
-      return json.sessionKey ?? null;
+      const loginCookies = parseCookies(getSetCookies(loginRes));
+
+      const cookieStr = mergeCookies(pageCookies, loginCookies);
+      const updatedCval =
+        loginCookies
+          .find((c) => c.startsWith('cval='))
+          ?.split('=')
+          .slice(1)
+          .join('=') ?? cval;
+
+      const hasSession = cookieStr.includes('session_id') || cookieStr.includes('splunkweb_uid');
+      this.logger.log(
+        `Splunk web session: ${hasSession ? 'session cookie obtained' : 'no session cookie — login may have failed'}; cookies=${cookieStr.slice(0, 80)}`,
+      );
+
+      return { cookies: cookieStr, csrfToken: updatedCval };
     } catch (err: unknown) {
-      this.logger.warn(`Splunk session key error: ${String(err)}`);
+      this.logger.warn(`Splunk web session error: ${String(err)}`);
       return null;
     }
   }
