@@ -33,7 +33,7 @@ export class IntegrationsController {
     return this.svc.list(actor);
   }
 
-  @Get('logs')
+  @Get('activity')
   @ApiOperation({ summary: 'Get tenant-wide integration activity logs' })
   getLogs(
     @CurrentUser() actor: JwtPayload,
@@ -43,7 +43,7 @@ export class IntegrationsController {
     return this.svc.getLogs(actor, integrationId, limit ? parseInt(limit, 10) : undefined);
   }
 
-  @Get(':id/logs')
+  @Get(':id/activity')
   @ApiOperation({ summary: 'Get activity logs for a single integration' })
   getIntegrationLogs(@CurrentUser() actor: JwtPayload, @Param('id') id: string) {
     return this.svc.getLogs(actor, id);

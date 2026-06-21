@@ -273,10 +273,17 @@ export class IntegrationsService {
     try {
       switch (integration.platform) {
         case 'SPLUNK': {
-          const url = `${this.splunkBase(host, cfg)}/services/server/info?output_mode=json`;
-          const res = await fetch(url, {
+          const base = this.splunkBase(host, cfg);
+          // Splunk Cloud on port 443 routes the REST API through /en-US/splunkd/__raw/
+          // Splunk Enterprise / port 8089 uses /services/ directly
+          const parsed = new URL(base);
+          const isPort443 = !parsed.port || parsed.port === '443';
+          const infoPath = isPort443
+            ? `${base}/en-US/splunkd/__raw/services/server/info?output_mode=json`
+            : `${base}/services/server/info?output_mode=json`;
+          const res = await fetch(infoPath, {
             headers: { Authorization: `Splunk ${cfg['apiToken'] ?? ''}` },
-            signal: AbortSignal.timeout(8000),
+            signal: AbortSignal.timeout(12000),
           });
           if (!res.ok) return { success: false, error: `HTTP ${res.status} from Splunk` };
           return { success: true };
@@ -353,23 +360,26 @@ export class IntegrationsService {
 
     switch (integration.platform) {
       case 'SPLUNK': {
+        const splunkBase = this.splunkBase(host, cfg);
+        const splunkParsed = new URL(splunkBase);
+        const splunkOn443 = !splunkParsed.port || splunkParsed.port === '443';
+        const savedSearchesPath = splunkOn443
+          ? `${splunkBase}/en-US/splunkd/__raw/services/saved/searches?output_mode=json`
+          : `${splunkBase}/services/saved/searches?output_mode=json`;
         const body = new URLSearchParams({
           name: `${detection.ruleId} - ${detection.name}`,
           search: detection.query,
           description: detection.description,
         });
-        const res = await fetch(
-          `${this.splunkBase(host, cfg)}/services/saved/searches?output_mode=json`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Splunk ${cfg['apiToken'] ?? ''}`,
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: body.toString(),
-            signal: AbortSignal.timeout(15000),
+        const res = await fetch(savedSearchesPath, {
+          method: 'POST',
+          headers: {
+            Authorization: `Splunk ${cfg['apiToken'] ?? ''}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
-        );
+          body: body.toString(),
+          signal: AbortSignal.timeout(15000),
+        });
         if (!res.ok) {
           const text = await res.text();
           throw new Error(`Splunk ${res.status}: ${text.slice(0, 200)}`);
@@ -529,14 +539,17 @@ export class IntegrationsService {
 
     switch (integration.platform) {
       case 'SPLUNK': {
-        await fetch(
-          `${this.splunkBase(host, cfg)}/services/saved/searches/${encodeURIComponent(remoteId)}`,
-          {
-            method: 'DELETE',
-            headers: { Authorization: `Splunk ${cfg['apiToken'] ?? ''}` },
-            signal: AbortSignal.timeout(10000),
-          },
-        );
+        const splunkDelBase = this.splunkBase(host, cfg);
+        const splunkDelParsed = new URL(splunkDelBase);
+        const splunkDelOn443 = !splunkDelParsed.port || splunkDelParsed.port === '443';
+        const deletePath = splunkDelOn443
+          ? `${splunkDelBase}/en-US/splunkd/__raw/services/saved/searches/${encodeURIComponent(remoteId)}`
+          : `${splunkDelBase}/services/saved/searches/${encodeURIComponent(remoteId)}`;
+        await fetch(deletePath, {
+          method: 'DELETE',
+          headers: { Authorization: `Splunk ${cfg['apiToken'] ?? ''}` },
+          signal: AbortSignal.timeout(10000),
+        });
         break;
       }
       case 'QRADAR': {

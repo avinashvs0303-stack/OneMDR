@@ -106,7 +106,7 @@ export const integrationsApi = {
     if (integrationId) params.set('integrationId', integrationId);
     if (limit) params.set('limit', String(limit));
     const qs = params.toString();
-    return api.get(`${BASE}/logs${qs ? `?${qs}` : ''}`);
+    return api.get(`${BASE}/activity${qs ? `?${qs}` : ''}`);
   },
 };
 
