@@ -24,7 +24,11 @@ export type {
   DetectionStat,
   TenantLogSource,
   Integration,
+  IntegrationLog,
   SiemDeployment,
+  HuntMission,
+  HuntEvidence,
+  HuntIOC,
 } from '@prisma/client';
 
 // Re-export enums
@@ -38,6 +42,13 @@ export {
   SupportCasePriority,
   DetectionSeverity,
   DetectionPlatform,
+  DetectionRuleType,
+  DetectionLifecycle,
+  DetectionWorkflowStatus,
   QueryLanguage,
   IntegrationStatus,
+  HuntStatus,
+  HuntPriority,
+  HuntEvidenceType,
+  HuntIOCType,
 } from '@prisma/client';
