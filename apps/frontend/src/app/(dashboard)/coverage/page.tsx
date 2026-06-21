@@ -86,6 +86,7 @@ function computeStats(map: Map<string, DetectionRow[]>) {
 
 export default function CoveragePage() {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('ALL');
+  const [coveredOnly, setCoveredOnly] = useState(false);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [selectedCell, setSelectedCell] = useState<{
     tech: AttackTechnique;
@@ -125,12 +126,14 @@ export default function CoveragePage() {
     () =>
       ATTACK_MATRIX.map((tactic) => ({
         ...tactic,
-        techniques: tactic.techniques.map((tech) => ({
-          ...tech,
-          coverage: techCoverageCount(tech.id, coverageMap),
-        })),
-      })),
-    [coverageMap],
+        techniques: tactic.techniques
+          .map((tech) => ({
+            ...tech,
+            coverage: techCoverageCount(tech.id, coverageMap),
+          }))
+          .filter((tech) => !coveredOnly || tech.coverage > 0),
+      })).filter((tactic) => !coveredOnly || tactic.techniques.length > 0),
+    [coverageMap, coveredOnly],
   );
 
   const detForCell = useMemo(
@@ -189,12 +192,31 @@ export default function CoveragePage() {
 
             {/* Legend — colors match getCoverageColor exactly */}
             <div className="hidden xl:flex items-center gap-2 text-[10px] text-slate-400 dark:text-zinc-500 border-l border-black/10 dark:border-white/10 pl-3">
-              <LegendItem className="bg-white/5 border border-white/10" label="No coverage" />
-              <LegendItem className="bg-yellow-500/20" label="1-2 rules" />
-              <LegendItem className="bg-emerald-500/20" label="3-4 rules" />
-              <LegendItem className="bg-emerald-500/40" label="5-6 rules" />
-              <LegendItem className="bg-emerald-500/70" label="7+ rules" />
+              <LegendItem
+                className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10"
+                label="No coverage"
+              />
+              <LegendItem className="bg-yellow-100 dark:bg-yellow-500/20" label="1-2 rules" />
+              <LegendItem className="bg-emerald-100 dark:bg-emerald-500/20" label="3-4 rules" />
+              <LegendItem className="bg-emerald-200 dark:bg-emerald-500/40" label="5-6 rules" />
+              <LegendItem className="bg-emerald-500 dark:bg-emerald-500/70" label="7+ rules" />
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCoveredOnly((v) => !v);
+                setSelectedCell(null);
+              }}
+              className={cn(
+                'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+                coveredOnly
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                  : 'border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 text-slate-500 dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white',
+              )}
+            >
+              {coveredOnly ? 'Show All' : 'Covered Only'}
+            </button>
 
             <button
               type="button"
@@ -420,8 +442,8 @@ export default function CoveragePage() {
           <div className="mt-1.5 flex items-center gap-1.5">
             <span
               className={cn(
-                'h-2 w-2 rounded-sm',
-                getCoverageColor(tooltip.technique.coverage).split(' ')[0],
+                'h-2 w-2 rounded-sm border',
+                getCoverageColor(tooltip.technique.coverage),
               )}
             />
             <span className="text-[10px] font-medium text-slate-700 dark:text-zinc-300">

@@ -119,6 +119,7 @@ model Tenant {
   tenantDetections TenantDetection[]
   detectionStats   DetectionStat[]
   tenantLogSources TenantLogSource[]
+  integrations     Integration[]
   parent           Tenant?        @relation("TenantHierarchy", fields: [parentTenantId], references: [id])
   children         Tenant[]       @relation("TenantHierarchy")
 
@@ -369,6 +370,7 @@ model Detection {
   tenant           Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tenantDetections TenantDetection[]
   stats            DetectionStat[]
+  siemDeployments  SiemDeployment[]
 
   @@index([platform])
   @@index([severity])
@@ -474,4 +476,61 @@ model SupportCase {
   @@index([status])
   @@index([priority])
   @@map("support_cases")
+}
+
+// ── SIEM Integrations ─────────────────────────────────────────────────────────
+
+enum IntegrationStatus {
+  UNCONFIGURED
+  CONNECTED
+  ERROR
+  DEGRADED
+
+  @@map("integration_status")
+}
+
+model Integration {
+  id       String            @id @default(uuid()) @db.Uuid
+  tenantId String            @map("tenant_id") @db.Uuid
+  platform DetectionPlatform
+  name     String
+
+  // Connection — host URL for REST-based SIEMs
+  host     String  @default("")
+  // Credentials stored as an encrypted JSON blob at the application layer
+  config   Json    @default("{}")
+
+  status       IntegrationStatus @default(UNCONFIGURED)
+  lastTestedAt DateTime?         @map("last_tested_at")
+  errorMessage String?           @map("error_message")
+  isEnabled    Boolean           @default(true) @map("is_enabled")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deployments SiemDeployment[]
+
+  @@unique([tenantId, platform, name])
+  @@index([tenantId])
+  @@map("integrations")
+}
+
+model SiemDeployment {
+  id            String @id @default(uuid()) @db.Uuid
+  integrationId String @map("integration_id") @db.Uuid
+  detectionId   String @map("detection_id") @db.Uuid
+  remoteId      String? @map("remote_id")    // ID assigned by the target SIEM
+  status        String  @default("deployed") // deployed | error | removed
+  errorMessage  String? @map("error_message")
+  deployedAt    DateTime @default(now()) @map("deployed_at")
+  updatedAt     DateTime @updatedAt      @map("updated_at")
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  detection   Detection   @relation(fields: [detectionId],   references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, detectionId])
+  @@index([integrationId])
+  @@index([detectionId])
+  @@map("siem_deployments")
 }

@@ -21,6 +21,9 @@ import {
   Database,
   Trash2,
   Zap,
+  Plug,
+  Loader2,
+  ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -38,6 +41,13 @@ import {
   PLATFORM_COLORS,
   QUERY_LANG_LABEL,
 } from '@/lib/detections.api';
+import {
+  integrationsApi,
+  PLATFORM_INFO,
+  STATUS_BADGE,
+  type IntegrationRow,
+  type SiemDeployment,
+} from '@/lib/integrations.api';
 
 // ── Log source catalog ────────────────────────────────────────────────────────
 
@@ -203,6 +213,13 @@ export default function DetectionsPage() {
   const [proposalLoading, setProposalLoading] = useState(false);
   const [enablingProposal, setEnablingProposal] = useState<Record<string, boolean>>({});
 
+  // Deploy to SIEM
+  const [showDeployPanel, setShowDeployPanel] = useState(false);
+  const [deployIntegrations, setDeployIntegrations] = useState<IntegrationRow[]>([]);
+  const [deployments, setDeployments] = useState<SiemDeployment[]>([]);
+  const [loadingDeployPanel, setLoadingDeployPanel] = useState(false);
+  const [deployingId, setDeployingId] = useState<string | null>(null);
+
   // ── Data fetch ──────────────────────────────────────────────────────────────
 
   const fetchLogSources = useCallback(async () => {
@@ -266,6 +283,48 @@ export default function DetectionsPage() {
       // silently fail
     } finally {
       setEnablingProposal((prev) => ({ ...prev, [proposal.id]: false }));
+    }
+  };
+
+  const openDeployPanel = useCallback(async (detectionId: string) => {
+    setShowDeployPanel(true);
+    setLoadingDeployPanel(true);
+    try {
+      const [ints, deps] = await Promise.all([
+        integrationsApi.list(),
+        integrationsApi.listDeployments(detectionId),
+      ]);
+      setDeployIntegrations(ints.filter((i) => i.isEnabled));
+      setDeployments(deps);
+    } catch {
+      // non-critical
+    } finally {
+      setLoadingDeployPanel(false);
+    }
+  }, []);
+
+  const handleDeploy = async (integrationId: string, detectionId: string) => {
+    setDeployingId(integrationId);
+    try {
+      const dep = await integrationsApi.deploy(integrationId, detectionId);
+      setDeployments((prev) => {
+        const exists = prev.find((d) => d.integrationId === integrationId);
+        return exists
+          ? prev.map((d) => (d.integrationId === integrationId ? dep : d))
+          : [...prev, dep];
+      });
+    } finally {
+      setDeployingId(null);
+    }
+  };
+
+  const handleUndeploy = async (integrationId: string, detectionId: string) => {
+    setDeployingId(integrationId);
+    try {
+      const dep = await integrationsApi.undeploy(integrationId, detectionId);
+      setDeployments((prev) => prev.map((d) => (d.integrationId === integrationId ? dep : d)));
+    } finally {
+      setDeployingId(null);
     }
   };
 
@@ -707,7 +766,10 @@ export default function DetectionsPage() {
                     {detections.map((det) => (
                       <tr
                         key={det.id}
-                        onClick={() => setSelected(det.id === selected?.id ? null : det)}
+                        onClick={() => {
+                          setSelected(det.id === selected?.id ? null : det);
+                          setShowDeployPanel(false);
+                        }}
                         className={cn(
                           'cursor-pointer transition-colors',
                           selected?.id === det.id
@@ -1096,6 +1158,111 @@ export default function DetectionsPage() {
                   ))}
                 </div>
               )}
+
+              {/* Deploy to SIEM */}
+              <div className="rounded-lg border border-black/10 dark:border-white/10 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!showDeployPanel) void openDeployPanel(selected.id);
+                    else setShowDeployPanel(false);
+                  }}
+                  className="flex w-full items-center justify-between px-3 py-2 bg-black/3 dark:bg-white/3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                >
+                  <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-zinc-200">
+                    <Plug className="h-3 w-3 text-blue-500 dark:text-blue-400" />
+                    Deploy to SIEM
+                  </span>
+                  {showDeployPanel ? (
+                    <ChevronUp className="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500" />
+                  )}
+                </button>
+
+                {showDeployPanel && (
+                  <div className="px-3 pb-3 pt-2 space-y-2 border-t border-black/5 dark:border-white/5">
+                    {loadingDeployPanel ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-slate-400 dark:text-zinc-500" />
+                      </div>
+                    ) : deployIntegrations.length === 0 ? (
+                      <p className="text-[10px] text-slate-400 dark:text-zinc-500 py-2 text-center">
+                        No active integrations. Configure one in{' '}
+                        <a href="/integrations" className="text-blue-500 hover:underline">
+                          Integrations
+                        </a>
+                        .
+                      </p>
+                    ) : (
+                      deployIntegrations.map((integration) => {
+                        const dep = deployments.find(
+                          (d) => d.integrationId === integration.id && d.status !== 'removed',
+                        );
+                        const isDeploying = deployingId === integration.id;
+                        const info = PLATFORM_INFO[integration.platform];
+                        const badge = STATUS_BADGE[integration.status];
+                        return (
+                          <div
+                            key={integration.id}
+                            className="flex items-center gap-2 rounded-lg border border-black/8 dark:border-white/8 bg-white/60 dark:bg-white/3 px-3 py-2"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className={cn('text-[10px] font-semibold truncate', info.color)}>
+                                {integration.name}
+                              </p>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span
+                                  className={cn(
+                                    'text-[9px] rounded px-1.5 py-0.5 border font-medium',
+                                    badge.className,
+                                  )}
+                                >
+                                  {badge.label}
+                                </span>
+                                {dep && (
+                                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                    ✓ Deployed{dep.remoteId ? ` (${dep.remoteId})` : ''}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {dep ? (
+                              <button
+                                type="button"
+                                disabled={isDeploying}
+                                onClick={() => void handleUndeploy(integration.id, selected.id)}
+                                className="shrink-0 rounded-lg border border-red-500/20 bg-red-500/5 px-2 py-1 text-[10px] font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                              >
+                                {isDeploying ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  'Remove'
+                                )}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={isDeploying || integration.status !== 'CONNECTED'}
+                                onClick={() => void handleDeploy(integration.id, selected.id)}
+                                className="shrink-0 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[10px] font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-40"
+                              >
+                                {isDeploying ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : integration.status !== 'CONNECTED' ? (
+                                  'Not connected'
+                                ) : (
+                                  'Deploy'
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
 
               <div className="flex gap-4 text-[10px] text-slate-400 dark:text-zinc-500 border-t border-black/10 dark:border-white/10 pt-3">
                 <span>Created {new Date(selected.createdAt).toLocaleDateString()}</span>

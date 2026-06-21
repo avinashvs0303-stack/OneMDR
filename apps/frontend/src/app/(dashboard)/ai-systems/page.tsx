@@ -22,6 +22,7 @@ function computeStats(matrix: AttackTactic[]) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AISystemsPage() {
+  const [coveredOnly, setCoveredOnly] = useState(false);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [selectedCell, setSelectedCell] = useState<{
     tech: AttackTechnique;
@@ -29,6 +30,15 @@ export default function AISystemsPage() {
   } | null>(null);
 
   const stats = useMemo(() => computeStats(ATLAS_MATRIX), []);
+
+  const matrix = useMemo(
+    () =>
+      ATLAS_MATRIX.map((tactic) => ({
+        ...tactic,
+        techniques: tactic.techniques.filter((tech) => !coveredOnly || tech.coverage > 0),
+      })).filter((tactic) => !coveredOnly || tactic.techniques.length > 0),
+    [coveredOnly],
+  );
 
   return (
     <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
@@ -63,12 +73,31 @@ export default function AISystemsPage() {
           <div className="flex items-center gap-2">
             {/* Legend */}
             <div className="hidden xl:flex items-center gap-2 text-[10px] text-slate-400 dark:text-zinc-500 border-r border-black/10 dark:border-white/10 pr-3">
-              <LegendItem className="bg-white/5 border border-white/10" label="No coverage" />
-              <LegendItem className="bg-yellow-500/20" label="1-2 rules" />
-              <LegendItem className="bg-emerald-500/20" label="3-4 rules" />
-              <LegendItem className="bg-emerald-500/40" label="5-6 rules" />
-              <LegendItem className="bg-emerald-500/70" label="7+ rules" />
+              <LegendItem
+                className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10"
+                label="No coverage"
+              />
+              <LegendItem className="bg-yellow-100 dark:bg-yellow-500/20" label="1-2 rules" />
+              <LegendItem className="bg-emerald-100 dark:bg-emerald-500/20" label="3-4 rules" />
+              <LegendItem className="bg-emerald-200 dark:bg-emerald-500/40" label="5-6 rules" />
+              <LegendItem className="bg-emerald-500 dark:bg-emerald-500/70" label="7+ rules" />
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCoveredOnly((v) => !v);
+                setSelectedCell(null);
+              }}
+              className={cn(
+                'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+                coveredOnly
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                  : 'border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 text-slate-500 dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white',
+              )}
+            >
+              {coveredOnly ? 'Show All' : 'Covered Only'}
+            </button>
 
             <button
               type="button"
@@ -92,54 +121,75 @@ export default function AISystemsPage() {
         {/* Heatmap + Detail panel */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <div className="flex-1 overflow-auto p-4">
-            <div className="inline-flex gap-1 min-w-max">
-              {ATLAS_MATRIX.map((tactic) => (
-                <div key={tactic.id} className="flex flex-col gap-0.5" style={{ width: 110 }}>
-                  {/* Tactic header */}
-                  <div className={cn('rounded-t px-2 py-1.5 text-center text-white', tactic.color)}>
-                    <p className="text-[10px] font-black uppercase tracking-wide leading-tight">
-                      {tactic.shortName}
-                    </p>
-                    <p className="text-[9px] opacity-70 mt-0.5">{tactic.id}</p>
-                  </div>
-
-                  {/* Technique cells */}
-                  {tactic.techniques.map((tech) => (
-                    <button
-                      key={`${tactic.id}-${tech.id}`}
-                      type="button"
-                      onClick={() =>
-                        setSelectedCell(
-                          selectedCell?.tech.id === tech.id && selectedCell.tactic.id === tactic.id
-                            ? null
-                            : { tech, tactic },
-                        )
-                      }
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setTooltip({ technique: tech, tactic, x: rect.left, y: rect.bottom + 8 });
-                      }}
-                      onMouseLeave={() => setTooltip(null)}
-                      className={cn(
-                        'w-full rounded px-1.5 py-1.5 text-left transition-all border',
-                        getCoverageColor(tech.coverage),
-                        selectedCell?.tech.id === tech.id && selectedCell.tactic.id === tactic.id
-                          ? 'ring-2 ring-purple-500 ring-offset-1 dark:ring-purple-400'
-                          : 'hover:ring-1 hover:ring-black/30 dark:hover:ring-white/30',
-                      )}
+            {coveredOnly && matrix.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+                <p className="text-sm font-medium text-slate-500 dark:text-zinc-400">
+                  No AI Systems techniques covered yet
+                </p>
+                <p className="text-xs text-slate-400 dark:text-zinc-500">
+                  Assign AI technique IDs to detection rules to track coverage here.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setCoveredOnly(false)}
+                  className="rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-1.5 text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                >
+                  Show All Techniques
+                </button>
+              </div>
+            ) : (
+              <div className="inline-flex gap-1 min-w-max">
+                {matrix.map((tactic) => (
+                  <div key={tactic.id} className="flex flex-col gap-0.5" style={{ width: 110 }}>
+                    {/* Tactic header */}
+                    <div
+                      className={cn('rounded-t px-2 py-1.5 text-center text-white', tactic.color)}
                     >
-                      <p className="text-[9px] font-bold leading-tight">{tech.id}</p>
-                      <p className="text-[9px] leading-tight mt-0.5 line-clamp-2 opacity-90">
-                        {tech.name}
+                      <p className="text-[10px] font-black uppercase tracking-wide leading-tight">
+                        {tactic.shortName}
                       </p>
-                      {tech.coverage > 0 && (
-                        <p className="text-[9px] font-bold mt-0.5 opacity-70">{tech.coverage}✓</p>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
+                      <p className="text-[9px] opacity-70 mt-0.5">{tactic.id}</p>
+                    </div>
+
+                    {/* Technique cells */}
+                    {tactic.techniques.map((tech) => (
+                      <button
+                        key={`${tactic.id}-${tech.id}`}
+                        type="button"
+                        onClick={() =>
+                          setSelectedCell(
+                            selectedCell?.tech.id === tech.id &&
+                              selectedCell.tactic.id === tactic.id
+                              ? null
+                              : { tech, tactic },
+                          )
+                        }
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setTooltip({ technique: tech, tactic, x: rect.left, y: rect.bottom + 8 });
+                        }}
+                        onMouseLeave={() => setTooltip(null)}
+                        className={cn(
+                          'w-full rounded px-1.5 py-1.5 text-left transition-all border',
+                          getCoverageColor(tech.coverage),
+                          selectedCell?.tech.id === tech.id && selectedCell.tactic.id === tactic.id
+                            ? 'ring-2 ring-purple-500 ring-offset-1 dark:ring-purple-400'
+                            : 'hover:ring-1 hover:ring-black/30 dark:hover:ring-white/30',
+                        )}
+                      >
+                        <p className="text-[9px] font-bold leading-tight">{tech.id}</p>
+                        <p className="text-[9px] leading-tight mt-0.5 line-clamp-2 opacity-90">
+                          {tech.name}
+                        </p>
+                        {tech.coverage > 0 && (
+                          <p className="text-[9px] font-bold mt-0.5 opacity-70">{tech.coverage}✓</p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Detail panel */}
@@ -222,7 +272,7 @@ export default function AISystemsPage() {
             {tooltip.tactic.name}
           </p>
           <div className="mt-1.5 flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-sm bg-white/5 border border-white/10" />
+            <span className="h-2 w-2 rounded-sm bg-slate-200 dark:bg-white/5 border border-slate-300 dark:border-white/10" />
             <span className="text-[10px] font-medium text-slate-700 dark:text-zinc-300">
               No coverage
             </span>

@@ -14,7 +14,10 @@ export interface AttackTactic {
 
 export const ATTACK_MATRIX: AttackTactic[] = [
   {
-    id: 'TA0043', name: 'Reconnaissance', shortName: 'Recon', color: 'bg-slate-600',
+    id: 'TA0043',
+    name: 'Reconnaissance',
+    shortName: 'Recon',
+    color: 'bg-slate-600',
     techniques: [
       { id: 'T1595', name: 'Active Scanning', coverage: 2 },
       { id: 'T1590', name: 'Gather Victim Network Info', coverage: 0 },
@@ -26,7 +29,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0042', name: 'Resource Development', shortName: 'Resource Dev', color: 'bg-slate-600',
+    id: 'TA0042',
+    name: 'Resource Development',
+    shortName: 'Resource Dev',
+    color: 'bg-slate-600',
     techniques: [
       { id: 'T1583', name: 'Acquire Infrastructure', coverage: 0 },
       { id: 'T1586', name: 'Compromise Accounts', coverage: 1 },
@@ -36,7 +42,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0001', name: 'Initial Access', shortName: 'Initial Access', color: 'bg-red-700',
+    id: 'TA0001',
+    name: 'Initial Access',
+    shortName: 'Initial Access',
+    color: 'bg-red-700',
     techniques: [
       { id: 'T1566', name: 'Phishing', coverage: 6 },
       { id: 'T1190', name: 'Exploit Public-Facing App', coverage: 4 },
@@ -49,7 +58,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0002', name: 'Execution', shortName: 'Execution', color: 'bg-orange-700',
+    id: 'TA0002',
+    name: 'Execution',
+    shortName: 'Execution',
+    color: 'bg-orange-700',
     techniques: [
       { id: 'T1059', name: 'Command & Scripting Interpreter', coverage: 8 },
       { id: 'T1203', name: 'Exploitation for Client Execution', coverage: 3 },
@@ -62,7 +74,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0003', name: 'Persistence', shortName: 'Persistence', color: 'bg-yellow-700',
+    id: 'TA0003',
+    name: 'Persistence',
+    shortName: 'Persistence',
+    color: 'bg-yellow-700',
     techniques: [
       { id: 'T1547', name: 'Boot/Logon Autostart Execution', coverage: 5 },
       { id: 'T1543', name: 'Create/Modify System Process', coverage: 4 },
@@ -75,7 +90,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0004', name: 'Privilege Escalation', shortName: 'Priv Esc', color: 'bg-amber-700',
+    id: 'TA0004',
+    name: 'Privilege Escalation',
+    shortName: 'Priv Esc',
+    color: 'bg-amber-700',
     techniques: [
       { id: 'T1548', name: 'Abuse Elevation Control', coverage: 4 },
       { id: 'T1134', name: 'Access Token Manipulation', coverage: 3 },
@@ -86,7 +104,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0005', name: 'Defense Evasion', shortName: 'Defense Evasion', color: 'bg-lime-700',
+    id: 'TA0005',
+    name: 'Defense Evasion',
+    shortName: 'Defense Evasion',
+    color: 'bg-lime-700',
     techniques: [
       { id: 'T1140', name: 'Deobfuscate/Decode Files', coverage: 4 },
       { id: 'T1218', name: 'System Binary Proxy Execution', coverage: 5 },
@@ -101,7 +122,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0006', name: 'Credential Access', shortName: 'Credential Access', color: 'bg-emerald-700',
+    id: 'TA0006',
+    name: 'Credential Access',
+    shortName: 'Credential Access',
+    color: 'bg-emerald-700',
     techniques: [
       { id: 'T1110', name: 'Brute Force', coverage: 7 },
       { id: 'T1003', name: 'OS Credential Dumping', coverage: 6 },
@@ -114,7 +138,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0007', name: 'Discovery', shortName: 'Discovery', color: 'bg-teal-700',
+    id: 'TA0007',
+    name: 'Discovery',
+    shortName: 'Discovery',
+    color: 'bg-teal-700',
     techniques: [
       { id: 'T1087', name: 'Account Discovery', coverage: 4 },
       { id: 'T1580', name: 'Cloud Infrastructure Discovery', coverage: 2 },
@@ -127,7 +154,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0008', name: 'Lateral Movement', shortName: 'Lateral Movement', color: 'bg-cyan-700',
+    id: 'TA0008',
+    name: 'Lateral Movement',
+    shortName: 'Lateral Movement',
+    color: 'bg-cyan-700',
     techniques: [
       { id: 'T1210', name: 'Exploitation of Remote Services', coverage: 3 },
       { id: 'T1534', name: 'Internal Spearphishing', coverage: 2 },
@@ -138,7 +168,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0009', name: 'Collection', shortName: 'Collection', color: 'bg-blue-700',
+    id: 'TA0009',
+    name: 'Collection',
+    shortName: 'Collection',
+    color: 'bg-blue-700',
     techniques: [
       { id: 'T1560', name: 'Archive Collected Data', coverage: 3 },
       { id: 'T1119', name: 'Automated Collection', coverage: 2 },
@@ -150,7 +183,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0011', name: 'Command and Control', shortName: 'C2', color: 'bg-violet-700',
+    id: 'TA0011',
+    name: 'Command and Control',
+    shortName: 'C2',
+    color: 'bg-violet-700',
     techniques: [
       { id: 'T1071', name: 'Application Layer Protocol', coverage: 5 },
       { id: 'T1132', name: 'Data Encoding', coverage: 2 },
@@ -163,7 +199,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0010', name: 'Exfiltration', shortName: 'Exfiltration', color: 'bg-purple-700',
+    id: 'TA0010',
+    name: 'Exfiltration',
+    shortName: 'Exfiltration',
+    color: 'bg-purple-700',
     techniques: [
       { id: 'T1020', name: 'Automated Exfiltration', coverage: 2 },
       { id: 'T1030', name: 'Data Transfer Size Limits', coverage: 1 },
@@ -174,7 +213,10 @@ export const ATTACK_MATRIX: AttackTactic[] = [
     ],
   },
   {
-    id: 'TA0040', name: 'Impact', shortName: 'Impact', color: 'bg-rose-800',
+    id: 'TA0040',
+    name: 'Impact',
+    shortName: 'Impact',
+    color: 'bg-rose-800',
     techniques: [
       { id: 'T1485', name: 'Data Destruction', coverage: 3 },
       { id: 'T1486', name: 'Data Encrypted for Impact', coverage: 5 },
@@ -188,11 +230,15 @@ export const ATTACK_MATRIX: AttackTactic[] = [
 ];
 
 export function getCoverageColor(coverage: number): string {
-  if (coverage === 0) return 'bg-white/5 text-zinc-500 border-white/5';
-  if (coverage <= 2) return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/20';
-  if (coverage <= 4) return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/20';
-  if (coverage <= 6) return 'bg-emerald-500/40 text-emerald-200 border-emerald-500/30';
-  return 'bg-emerald-500/70 text-white border-emerald-500/50';
+  if (coverage === 0)
+    return 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-zinc-500 border-slate-200 dark:border-white/5';
+  if (coverage <= 2)
+    return 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-500/20';
+  if (coverage <= 4)
+    return 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20';
+  if (coverage <= 6)
+    return 'bg-emerald-200 dark:bg-emerald-500/40 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-500/30';
+  return 'bg-emerald-500 dark:bg-emerald-500/70 text-white border-emerald-600 dark:border-emerald-500/50';
 }
 
 export function getMatrixStats() {

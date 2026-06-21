@@ -26,7 +26,7 @@ const DAAS_NAV = [
   { label: 'Detection Library', href: '/detections', icon: ShieldCheck },
   { label: 'ATT&CK Navigator', href: '/coverage', icon: Target },
   { label: 'AI Systems', href: '/ai-systems', icon: Brain },
-  { label: 'SIEM Monitors', href: '/siem', icon: Database },
+  { label: 'Integrations', href: '/integrations', icon: Database },
   { label: 'Threat Hunt Missions', href: '/hunts', icon: Search },
   { label: 'Executive Bulletins', href: '/reports', icon: FileText },
 ];

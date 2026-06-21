@@ -22,6 +22,9 @@ export type {
   Detection,
   TenantDetection,
   DetectionStat,
+  TenantLogSource,
+  Integration,
+  SiemDeployment,
 } from '@prisma/client';
 
 // Re-export enums
@@ -36,4 +39,5 @@ export {
   DetectionSeverity,
   DetectionPlatform,
   QueryLanguage,
+  IntegrationStatus,
 } from '@prisma/client';
