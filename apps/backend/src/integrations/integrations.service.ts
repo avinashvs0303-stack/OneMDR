@@ -739,12 +739,11 @@ export class IntegrationsService {
   // ── Utility ───────────────────────────────────────────────────────────────────
 
   /**
-   * Simulates a browser login to obtain Splunk web session cookies.
-   * The __raw proxy (port 443) is a UI proxy that accepts web session cookies +
-   * X-Splunk-Form-Key CSRF token for write operations — not Basic auth or API tokens.
+   * Simulates browser login to get web session cookies + authenticated cval.
    *
-   * Flow: GET /en-US/account/login (→ cval CSRF cookie) → POST credentials
-   *       (redirect: 'manual' to capture Set-Cookie from 302) → merge cookies.
+   * The pre-login cval is invalidated after login (Splunk rotates it per session).
+   * Step 3 fetches /en-US/ with the session cookies to get the post-login cval
+   * that the __raw proxy will accept in X-Splunk-Form-Key.
    */
   private async getSplunkWebSession(
     base: string,
@@ -769,21 +768,23 @@ export class IntegrationsService {
       return Array.from(m.values()).join('; ');
     };
 
+    const extractCval = (cookies: string[]): string =>
+      cookies
+        .find((c) => c.startsWith('cval='))
+        ?.split('=')
+        .slice(1)
+        .join('=') ?? '';
+
     try {
-      // Step 1: GET login page → capture initial cval CSRF cookie
+      // Step 1: GET login page → initial cval cookie (pre-login, for form submission)
       const pageRes = await fetch(`${base}/en-US/account/login`, {
         headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html,*/*' },
         signal: AbortSignal.timeout(10000),
       });
       const pageCookies = parseCookies(getSetCookies(pageRes));
-      const cval =
-        pageCookies
-          .find((c) => c.startsWith('cval='))
-          ?.split('=')
-          .slice(1)
-          .join('=') ?? '';
+      const preCval = extractCval(pageCookies);
 
-      // Step 2: POST credentials; redirect: 'manual' captures Set-Cookie from the 302
+      // Step 2: POST credentials; redirect:'manual' lets Node.js 22 expose 302 headers
       const loginRes = await fetch(`${base}/en-US/account/login`, {
         method: 'POST',
         headers: {
@@ -796,29 +797,39 @@ export class IntegrationsService {
         body: new URLSearchParams({
           username: cfg['username'],
           password: cfg['password'],
-          cval,
+          cval: preCval,
           return_to: '/en-US/',
           set_has_js: '1',
         }).toString(),
-        redirect: 'manual', // capture Set-Cookie from the 302 response directly
+        redirect: 'manual',
         signal: AbortSignal.timeout(15000),
       });
-      const loginCookies = parseCookies(getSetCookies(loginRes));
+      const loginCookies302 = parseCookies(getSetCookies(loginRes));
+      const sessionStr = mergeCookies(pageCookies, loginCookies302);
 
-      const cookieStr = mergeCookies(pageCookies, loginCookies);
-      const updatedCval =
-        loginCookies
-          .find((c) => c.startsWith('cval='))
-          ?.split('=')
-          .slice(1)
-          .join('=') ?? cval;
-
-      const hasSession = cookieStr.includes('session_id') || cookieStr.includes('splunkweb_uid');
       this.logger.log(
-        `Splunk web session: ${hasSession ? 'session cookie obtained' : 'no session cookie — login may have failed'}; cookies=${cookieStr.slice(0, 80)}`,
+        `Splunk login 302 cookies: ${loginCookies302.map((c) => c.split('=')[0]).join(', ')}`,
       );
 
-      return { cookies: cookieStr, csrfToken: updatedCval };
+      // Step 3: GET /en-US/ with session cookies → post-login cval for the authenticated session
+      const dashRes = await fetch(`${base}/en-US/`, {
+        headers: { Cookie: sessionStr, 'User-Agent': 'Mozilla/5.0', Accept: 'text/html,*/*' },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(10000),
+      });
+      const dashCookies = parseCookies(getSetCookies(dashRes));
+
+      const authCval = extractCval(dashCookies) || extractCval(loginCookies302) || preCval;
+      const finalCookies = mergeCookies(pageCookies, loginCookies302, dashCookies);
+
+      this.logger.log(
+        `Splunk web session: authCval=${authCval}, keys=${finalCookies
+          .split('; ')
+          .map((c) => c.split('=')[0])
+          .join(',')}`,
+      );
+
+      return { cookies: finalCookies, csrfToken: authCval };
     } catch (err: unknown) {
       this.logger.warn(`Splunk web session error: ${String(err)}`);
       return null;
