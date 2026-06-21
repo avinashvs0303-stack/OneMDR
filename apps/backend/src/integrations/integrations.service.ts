@@ -395,11 +395,15 @@ export class IntegrationsService {
           'alert.suppress.period': '5m',
         });
 
-        // Tokens created in Settings → Tokens use Bearer scheme
+        // Session key from username/password login works on __raw POST (port 443).
+        // Bearer token only works for GET ops on the __raw proxy.
+        const sessionKey = await this.getSplunkSessionKey(splunkBase, cfg, splunkOn443);
+        const splunkAuth = sessionKey ? `Splunk ${sessionKey}` : `Bearer ${cfg['apiToken'] ?? ''}`;
+
         const res = await fetch(savedSearchesPath, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${cfg['apiToken'] ?? ''}`,
+            Authorization: splunkAuth,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: body.toString(),
@@ -570,9 +574,14 @@ export class IntegrationsService {
         const deletePath = splunkDelOn443
           ? `${splunkDelBase}/en-US/splunkd/__raw/services/saved/searches/${encodeURIComponent(remoteId)}`
           : `${splunkDelBase}/services/saved/searches/${encodeURIComponent(remoteId)}`;
+        const delSessionKey = await this.getSplunkSessionKey(splunkDelBase, cfg, splunkDelOn443);
         await fetch(deletePath, {
           method: 'DELETE',
-          headers: { Authorization: `Bearer ${cfg['apiToken'] ?? ''}` },
+          headers: {
+            Authorization: delSessionKey
+              ? `Splunk ${delSessionKey}`
+              : `Bearer ${cfg['apiToken'] ?? ''}`,
+          },
           signal: AbortSignal.timeout(10000),
         });
         break;
@@ -702,6 +711,42 @@ export class IntegrationsService {
   }
 
   // ── Utility ───────────────────────────────────────────────────────────────────
+
+  /**
+   * Splunk Cloud __raw proxy (port 443) blocks POST with Bearer tokens.
+   * Only session keys obtained via /services/auth/login work for write ops.
+   * Returns a fresh session key when username+password are configured.
+   */
+  private async getSplunkSessionKey(
+    base: string,
+    cfg: Record<string, string>,
+    on443: boolean,
+  ): Promise<string | null> {
+    if (!cfg['username'] || !cfg['password']) return null;
+    const loginPath = on443
+      ? `${base}/en-US/splunkd/__raw/services/auth/login?output_mode=json`
+      : `${base}/services/auth/login?output_mode=json`;
+    try {
+      const res = await fetch(loginPath, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          username: cfg['username'],
+          password: cfg['password'],
+        }).toString(),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        this.logger.warn(`Splunk auth/login returned ${res.status}`);
+        return null;
+      }
+      const json = (await res.json()) as { sessionKey?: string };
+      return json.sessionKey ?? null;
+    } catch (err: unknown) {
+      this.logger.warn(`Splunk session key error: ${String(err)}`);
+      return null;
+    }
+  }
 
   /**
    * Returns the Splunk base URL.
