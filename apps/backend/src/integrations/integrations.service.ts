@@ -405,6 +405,7 @@ export class IntegrationsService {
           headers: {
             Authorization: splunkAuth,
             'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest',
           },
           body: body.toString(),
           signal: AbortSignal.timeout(15000),
@@ -412,6 +413,15 @@ export class IntegrationsService {
         if (!res.ok) {
           const text = await res.text();
           throw new Error(`Splunk ${res.status}: ${text.slice(0, 200)}`);
+        }
+        const ct = res.headers.get('content-type') ?? '';
+        if (!ct.includes('json')) {
+          const preview = (await res.text()).slice(0, 120);
+          throw new Error(
+            sessionKey
+              ? `Splunk returned HTML despite valid session key — CSRF not bypassed: ${preview}`
+              : `Splunk returned HTML — add Username+Password to the integration config to enable write operations: ${preview}`,
+          );
         }
         const json = (await res.json()) as { entry?: Array<{ name?: string }> };
         return { remoteId: json.entry?.[0]?.name };
@@ -729,10 +739,15 @@ export class IntegrationsService {
     try {
       const res = await fetch(loginPath, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          // Identifies as AJAX request — Splunk __raw proxy skips CSRF for XHR
+          'X-Requested-With': 'XMLHttpRequest',
+        },
         body: new URLSearchParams({
           username: cfg['username'],
           password: cfg['password'],
+          output_mode: 'json',
         }).toString(),
         signal: AbortSignal.timeout(10000),
       });
@@ -740,7 +755,14 @@ export class IntegrationsService {
         this.logger.warn(`Splunk auth/login returned ${res.status}`);
         return null;
       }
+      const ct = res.headers.get('content-type') ?? '';
+      if (!ct.includes('json')) {
+        const preview = (await res.text()).slice(0, 120);
+        this.logger.warn(`Splunk auth/login returned non-JSON (${ct}): ${preview}`);
+        return null;
+      }
       const json = (await res.json()) as { sessionKey?: string };
+      if (json.sessionKey) this.logger.log('Splunk session key obtained');
       return json.sessionKey ?? null;
     } catch (err: unknown) {
       this.logger.warn(`Splunk session key error: ${String(err)}`);

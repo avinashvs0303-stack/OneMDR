@@ -16,6 +16,7 @@ import {
   Eye,
   EyeOff,
   ScrollText,
+  Pencil,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -44,7 +45,8 @@ const SUPPORTED_PLATFORMS: DetectionPlatform[] = [
 export default function IntegrationsPage() {
   const [integrations, setIntegrations] = useState<IntegrationRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingIntegration, setEditingIntegration] = useState<IntegrationRow | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -127,7 +129,12 @@ export default function IntegrationsPage() {
 
   const handleCreated = (integration: IntegrationRow) => {
     setIntegrations((prev) => [...prev, integration]);
-    setShowModal(false);
+    setShowAddModal(false);
+  };
+
+  const handleUpdated = (integration: IntegrationRow) => {
+    setIntegrations((prev) => prev.map((i) => (i.id === integration.id ? integration : i)));
+    setEditingIntegration(null);
   };
 
   const connected = integrations.filter((i) => i.status === 'CONNECTED').length;
@@ -161,7 +168,7 @@ export default function IntegrationsPage() {
           </div>
           <button
             type="button"
-            onClick={() => setShowModal(true)}
+            onClick={() => setShowAddModal(true)}
             className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 transition-colors shadow-sm"
           >
             <Plus className="h-3.5 w-3.5" /> Add Integration
@@ -184,7 +191,7 @@ export default function IntegrationsPage() {
               <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-zinc-500" />
             </div>
           ) : integrations.length === 0 ? (
-            <EmptyState onAdd={() => setShowModal(true)} />
+            <EmptyState onAdd={() => setShowAddModal(true)} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {integrations.map((integration) => (
@@ -200,6 +207,7 @@ export default function IntegrationsPage() {
                   onTest={() => void handleTest(integration.id)}
                   onDelete={() => void handleDelete(integration.id)}
                   onToggle={() => void handleToggle(integration)}
+                  onEdit={() => setEditingIntegration(integration)}
                 />
               ))}
             </div>
@@ -219,8 +227,15 @@ export default function IntegrationsPage() {
         </div>
       </main>
 
-      {showModal && (
-        <AddIntegrationModal onClose={() => setShowModal(false)} onCreated={handleCreated} />
+      {showAddModal && (
+        <IntegrationModal onClose={() => setShowAddModal(false)} onSaved={handleCreated} />
+      )}
+      {editingIntegration && (
+        <IntegrationModal
+          existing={editingIntegration}
+          onClose={() => setEditingIntegration(null)}
+          onSaved={handleUpdated}
+        />
       )}
     </div>
   );
@@ -237,6 +252,7 @@ function IntegrationCard({
   onTest,
   onDelete,
   onToggle,
+  onEdit,
 }: {
   integration: IntegrationRow;
   isExpanded: boolean;
@@ -246,6 +262,7 @@ function IntegrationCard({
   onTest: () => void;
   onDelete: () => void;
   onToggle: () => void;
+  onEdit: () => void;
 }) {
   const info = PLATFORM_INFO[integration.platform];
   const badge = STATUS_BADGE[integration.status];
@@ -352,6 +369,17 @@ function IntegrationCard({
 
         <div className="flex-1" />
 
+        {/* Edit */}
+        <button
+          type="button"
+          onClick={onEdit}
+          title="Edit integration"
+          className="rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 p-1.5 text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+
+        {/* Expand */}
         <button
           type="button"
           onClick={onExpand}
@@ -360,6 +388,7 @@ function IntegrationCard({
           {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </button>
 
+        {/* Delete */}
         <button
           type="button"
           onClick={onDelete}
@@ -395,20 +424,28 @@ function IntegrationCard({
   );
 }
 
-// ── Add Integration Modal ─────────────────────────────────────────────────────
+// ── Integration Modal (create + edit) ─────────────────────────────────────────
 
-function AddIntegrationModal({
+function IntegrationModal({
+  existing,
   onClose,
-  onCreated,
+  onSaved,
 }: {
+  existing?: IntegrationRow;
   onClose: () => void;
-  onCreated: (integration: IntegrationRow) => void;
+  onSaved: (integration: IntegrationRow) => void;
 }) {
-  const [step, setStep] = useState<'pick' | 'configure'>('pick');
-  const [selectedPlatform, setSelectedPlatform] = useState<DetectionPlatform | null>(null);
-  const [name, setName] = useState('');
-  const [host, setHost] = useState('');
-  const [configValues, setConfigValues] = useState<Record<string, string>>({});
+  const isEdit = !!existing;
+
+  const [step, setStep] = useState<'pick' | 'configure'>(isEdit ? 'configure' : 'pick');
+  const [selectedPlatform, setSelectedPlatform] = useState<DetectionPlatform | null>(
+    existing?.platform ?? null,
+  );
+  const [name, setName] = useState(existing?.name ?? '');
+  const [host, setHost] = useState(existing?.host ?? '');
+  const [configValues, setConfigValues] = useState<Record<string, string>>(
+    (existing?.config as Record<string, string>) ?? {},
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
@@ -428,16 +465,29 @@ function AddIntegrationModal({
     setSubmitting(true);
     setError(null);
     try {
-      const payload: CreateIntegrationPayload = {
-        platform: selectedPlatform,
-        name: name.trim(),
-        host: host.trim(),
-        config: configValues,
-      };
-      const created = await integrationsApi.create(payload);
-      onCreated(created);
+      if (isEdit && existing) {
+        const updated = await integrationsApi.update(existing.id, {
+          name: name.trim(),
+          host: host.trim(),
+          config: configValues,
+        });
+        onSaved({ ...existing, ...updated });
+      } else {
+        const payload: CreateIntegrationPayload = {
+          platform: selectedPlatform,
+          name: name.trim(),
+          host: host.trim(),
+          config: configValues,
+        };
+        const created = await integrationsApi.create(payload);
+        onSaved(created);
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create integration');
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Failed to ${isEdit ? 'update' : 'create'} integration`,
+      );
     } finally {
       setSubmitting(false);
     }
@@ -449,7 +499,11 @@ function AddIntegrationModal({
         {/* Modal header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-black/10 dark:border-white/10">
           <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-            {step === 'pick' ? 'Select Platform' : 'Configure Integration'}
+            {isEdit
+              ? `Edit Integration`
+              : step === 'pick'
+                ? 'Select Platform'
+                : 'Configure Integration'}
           </h2>
           <button
             onClick={onClose}
@@ -563,13 +617,15 @@ function AddIntegrationModal({
             )}
 
             <div className="flex items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setStep('pick')}
-                className="rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-1.5 text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                Back
-              </button>
+              {!isEdit && (
+                <button
+                  type="button"
+                  onClick={() => setStep('pick')}
+                  className="rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-1.5 text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                >
+                  Back
+                </button>
+              )}
               <div className="flex-1" />
               <button
                 type="submit"
@@ -577,7 +633,7 @@ function AddIntegrationModal({
                 className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
               >
                 {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                Add Integration
+                {isEdit ? 'Save Changes' : 'Add Integration'}
               </button>
             </div>
           </form>
