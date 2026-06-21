@@ -915,22 +915,27 @@ export class IntegrationsService {
       throw new BadRequestException(`Splunk history ${res.status}: ${text.slice(0, 200)}`);
     }
 
+    // `published` is a top-level entry field in Splunk REST API, NOT inside content
     const json = (await res.json()) as {
-      entry?: Array<{ name: string; content: Record<string, unknown> }>;
+      entry?: Array<{ name: string; published?: string; content: Record<string, unknown> }>;
     };
     const entries = json.entry ?? [];
 
     const runs: SplunkJobRun[] = entries.map((e) => ({
       sid: e.name,
-      published: String(e.content['published'] ?? ''),
+      published: e.published ?? String(e.content['published'] ?? ''),
       eventCount: Number(e.content['eventCount'] ?? 0),
+      // resultCount is what Splunk uses to decide if an alert fires (rows returned after
+      // transforming commands like | stats). eventCount is raw events scanned and is 0
+      // for most transforming searches even when the alert triggers.
       resultCount: Number(e.content['resultCount'] ?? 0),
       runDuration: Number(e.content['runDuration'] ?? 0),
       isDone: Boolean(e.content['isDone'] ?? false),
       dispatchState: String(e.content['dispatchState'] ?? ''),
     }));
 
-    const triggeredRuns = runs.filter((r) => r.eventCount > 0).length;
+    // Alert triggered = resultCount > 0 (search returned rows → alert condition met)
+    const triggeredRuns = runs.filter((r) => r.resultCount > 0).length;
 
     // Sync trigger counts into detection_stats (grouped by calendar day)
     const dayMap = new Map<string, number>();
@@ -938,7 +943,7 @@ export class IntegrationsService {
       if (!run.published) continue;
       const day = run.published.split('T')[0];
       if (day && !Number.isNaN(new Date(day).getTime())) {
-        dayMap.set(day, (dayMap.get(day) ?? 0) + (run.eventCount > 0 ? 1 : 0));
+        dayMap.set(day, (dayMap.get(day) ?? 0) + (run.resultCount > 0 ? 1 : 0));
       }
     }
     await Promise.allSettled(

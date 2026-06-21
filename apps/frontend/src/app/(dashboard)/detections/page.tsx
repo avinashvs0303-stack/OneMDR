@@ -1534,7 +1534,7 @@ export default function DetectionsPage() {
                                 <span
                                   className={cn(
                                     'shrink-0 h-1.5 w-1.5 rounded-full',
-                                    run.eventCount > 0
+                                    run.resultCount > 0
                                       ? 'bg-emerald-500'
                                       : 'bg-slate-300 dark:bg-zinc-600',
                                   )}
@@ -1545,12 +1545,14 @@ export default function DetectionsPage() {
                                 <span
                                   className={cn(
                                     'ml-auto font-semibold',
-                                    run.eventCount > 0
+                                    run.resultCount > 0
                                       ? 'text-emerald-600 dark:text-emerald-400'
                                       : 'text-slate-400 dark:text-zinc-500',
                                   )}
                                 >
-                                  {run.eventCount} events
+                                  {run.resultCount > 0
+                                    ? `${run.resultCount} results`
+                                    : `${run.eventCount} events`}
                                 </span>
                               </div>
                             ))}
