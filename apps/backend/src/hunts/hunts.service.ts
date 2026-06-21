@@ -89,10 +89,10 @@ export class HuntsService {
   }
 
   async create(actor: JwtPayload, dto: CreateHuntMissionDto) {
-    const missionRef = await this.nextRef(actor.tenantId);
+    const missionRef = await this.nextRef(actor.tenantId!);
     return this.prisma.huntMission.create({
       data: {
-        tenantId: actor.tenantId,
+        tenantId: actor.tenantId!,
         missionRef,
         title: dto.title,
         hypothesis: dto.hypothesis,
@@ -149,7 +149,7 @@ export class HuntsService {
     return this.prisma.huntEvidence.create({
       data: {
         missionId,
-        tenantId: actor.tenantId,
+        tenantId: actor.tenantId!,
         type: (dto.type as EvidenceRow['type']) ?? 'FINDING',
         title: dto.title,
         body: dto.body,
@@ -176,7 +176,7 @@ export class HuntsService {
     return this.prisma.huntIOC.create({
       data: {
         missionId,
-        tenantId: actor.tenantId,
+        tenantId: actor.tenantId!,
         type: dto.type as IOCRow['type'],
         value: dto.value,
         confidence: dto.confidence ?? 'MEDIUM',
