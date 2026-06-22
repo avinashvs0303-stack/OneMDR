@@ -65,6 +65,13 @@ export interface SplunkJobRun {
   dispatchState: string;
 }
 
+export interface SplunkSearchResult {
+  sid: string;
+  resultCount: number;
+  fields: string[];
+  results: Array<Record<string, string>>;
+}
+
 export interface CreateIntegrationPayload {
   platform: DetectionPlatform;
   name: string;
@@ -124,6 +131,15 @@ export const integrationsApi = {
     detectionId: string,
   ): Promise<{ runs: SplunkJobRun[]; totalRuns: number; triggeredRuns: number }> =>
     api.get(`${BASE}/${integrationId}/history/${detectionId}`),
+
+  runSearch: (
+    integrationId: string,
+    detectionId: string,
+    params: { earliest: string; latest: string },
+  ): Promise<SplunkSearchResult> =>
+    api.get(
+      `${BASE}/${integrationId}/run/${detectionId}?earliest=${encodeURIComponent(params.earliest)}&latest=${encodeURIComponent(params.latest)}`,
+    ),
 };
 
 // ── Platform metadata ─────────────────────────────────────────────────────────

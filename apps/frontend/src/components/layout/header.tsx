@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { Search, Bell, Plus, ChevronDown, LogOut, User, Zap, Sun, Moon } from 'lucide-react';
+import { Search, Bell, ChevronDown, LogOut, User, Zap, Sun, Moon } from 'lucide-react';
 import { useAuthStore, useCurrentUser } from '@/store/auth.store';
 import { getInitials, cn } from '@/lib/utils';
 
@@ -23,6 +23,7 @@ export function Header({ title }: HeaderProps) {
   useEffect(() => setMounted(true), []);
 
   const handleLogout = async () => {
+    setMenuOpen(false); // close dropdown immediately so no flash of empty/U avatar
     await logout();
     router.push('/auth/login');
   };
@@ -67,15 +68,6 @@ export function Header({ title }: HeaderProps) {
           suppressHydrationWarning
         >
           {mounted && theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </button>
-
-        {/* New item */}
-        <button
-          type="button"
-          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-blue-500 active:scale-95"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New
         </button>
 
         {/* Notifications */}

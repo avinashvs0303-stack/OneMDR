@@ -125,4 +125,16 @@ export class IntegrationsController {
   ) {
     return this.svc.fetchSplunkHistory(actor, id, detectionId);
   }
+
+  @Get(':id/run/:detectionId')
+  @ApiOperation({ summary: 'Run the detection search ad-hoc in Splunk with a custom time range' })
+  runSearch(
+    @CurrentUser() actor: JwtPayload,
+    @Param('id') id: string,
+    @Param('detectionId') detectionId: string,
+    @Query('earliest') earliest?: string,
+    @Query('latest') latest?: string,
+  ) {
+    return this.svc.runDetectionSearch(actor, id, detectionId, earliest ?? '-30d', latest ?? 'now');
+  }
 }

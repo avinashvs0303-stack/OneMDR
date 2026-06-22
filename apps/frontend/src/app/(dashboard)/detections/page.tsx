@@ -57,6 +57,7 @@ import {
   type IntegrationRow,
   type SiemDeployment,
   type SplunkJobRun,
+  type SplunkSearchResult,
 } from '@/lib/integrations.api';
 
 // ── Log source catalog ────────────────────────────────────────────────────────
@@ -268,6 +269,13 @@ export default function DetectionsPage() {
   const [editingDetection, setEditingDetection] = useState<DetectionRow | null>(null);
   const [duplicating, setDuplicating] = useState<string | null>(null);
 
+  // Run search
+  const [runSearchResult, setRunSearchResult] = useState<Record<string, SplunkSearchResult | null>>(
+    {},
+  );
+  const [loadingRunSearch, setLoadingRunSearch] = useState<string | null>(null);
+  const [runSearchRange, setRunSearchRange] = useState('-30d');
+
   // ── Data fetch ──────────────────────────────────────────────────────────────
 
   const fetchLogSources = useCallback(async () => {
@@ -465,6 +473,23 @@ export default function DetectionsPage() {
       setSplunkHistory((prev) => ({ ...prev, [key]: null }));
     } finally {
       setLoadingHistory(null);
+    }
+  };
+
+  const handleRunSearch = async (integrationId: string, detectionId: string) => {
+    const key = `${integrationId}-${detectionId}`;
+    if (loadingRunSearch === key) return;
+    setLoadingRunSearch(key);
+    try {
+      const result = await integrationsApi.runSearch(integrationId, detectionId, {
+        earliest: runSearchRange,
+        latest: 'now',
+      });
+      setRunSearchResult((prev) => ({ ...prev, [key]: result }));
+    } catch {
+      setRunSearchResult((prev) => ({ ...prev, [key]: null }));
+    } finally {
+      setLoadingRunSearch(null);
     }
   };
 
@@ -1458,21 +1483,54 @@ export default function DetectionsPage() {
                             {dep ? (
                               <div className="flex items-center gap-1.5 shrink-0">
                                 {integration.platform === 'SPLUNK' && (
-                                  <button
-                                    type="button"
-                                    disabled={loadingHistory === `${integration.id}-${selected.id}`}
-                                    onClick={() =>
-                                      void fetchSplunkJobHistory(integration.id, selected.id)
-                                    }
-                                    className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-2 py-1 text-[10px] font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-50"
-                                    title="Fetch alert trigger history from Splunk"
-                                  >
-                                    {loadingHistory === `${integration.id}-${selected.id}` ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      'History'
-                                    )}
-                                  </button>
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        loadingHistory === `${integration.id}-${selected.id}`
+                                      }
+                                      onClick={() =>
+                                        void fetchSplunkJobHistory(integration.id, selected.id)
+                                      }
+                                      className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-2 py-1 text-[10px] font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-50"
+                                      title="Fetch alert trigger history from Splunk"
+                                    >
+                                      {loadingHistory === `${integration.id}-${selected.id}` ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        'History'
+                                      )}
+                                    </button>
+                                    <select
+                                      value={runSearchRange}
+                                      onChange={(e) => setRunSearchRange(e.target.value)}
+                                      className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-1.5 py-1 text-[10px] font-medium text-violet-700 dark:text-violet-400 outline-none cursor-pointer"
+                                      title="Time range for ad-hoc search"
+                                    >
+                                      <option value="-1h">1h</option>
+                                      <option value="-6h">6h</option>
+                                      <option value="-24h">24h</option>
+                                      <option value="-7d">7d</option>
+                                      <option value="-30d">30d</option>
+                                    </select>
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        loadingRunSearch === `${integration.id}-${selected.id}`
+                                      }
+                                      onClick={() =>
+                                        void handleRunSearch(integration.id, selected.id)
+                                      }
+                                      className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-2 py-1 text-[10px] font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-500/10 transition-colors disabled:opacity-50"
+                                      title="Run detection search in Splunk with selected time range"
+                                    >
+                                      {loadingRunSearch === `${integration.id}-${selected.id}` ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        'Run'
+                                      )}
+                                    </button>
+                                  </>
                                 )}
                                 <button
                                   type="button"
@@ -1507,6 +1565,99 @@ export default function DetectionsPage() {
                         );
                       })
                     )}
+                    {/* Run search results panel */}
+                    {Object.entries(runSearchResult).map(([key, result]) => {
+                      if (!key.includes(selected.id)) return null;
+                      return (
+                        <div
+                          key={key}
+                          className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3 space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-semibold text-violet-700 dark:text-violet-400">
+                              Search Results
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  'text-[10px] font-semibold',
+                                  result && result.resultCount > 0
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-slate-400 dark:text-zinc-500',
+                                )}
+                              >
+                                {result
+                                  ? `${result.resultCount} result${result.resultCount !== 1 ? 's' : ''}`
+                                  : 'Error'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setRunSearchResult((prev) => {
+                                    const n = { ...prev };
+                                    delete n[key];
+                                    return n;
+                                  })
+                                }
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300 transition-colors"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                          {!result ? (
+                            <p className="text-[10px] text-red-500 text-center py-2">
+                              Search failed — check the query and integration connection
+                            </p>
+                          ) : result.resultCount === 0 ? (
+                            <p className="text-[10px] text-slate-400 dark:text-zinc-500 text-center py-2">
+                              No events matched this query in the selected time range
+                            </p>
+                          ) : (
+                            <div className="max-h-48 overflow-auto rounded border border-black/10 dark:border-white/10">
+                              <table className="w-full text-[9px]">
+                                <thead>
+                                  <tr className="border-b border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 sticky top-0">
+                                    {result.fields.slice(0, 5).map((field) => (
+                                      <th
+                                        key={field}
+                                        className="px-2 py-1 text-left font-medium text-slate-600 dark:text-zinc-400 truncate max-w-[80px]"
+                                      >
+                                        {field}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {result.results.slice(0, 20).map((row, i) => (
+                                    <tr
+                                      key={i}
+                                      className="border-b border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5"
+                                    >
+                                      {result.fields.slice(0, 5).map((field) => (
+                                        <td
+                                          key={field}
+                                          className="px-2 py-1 text-slate-600 dark:text-zinc-400 truncate max-w-[80px] font-mono"
+                                          title={row[field] ?? ''}
+                                        >
+                                          {row[field] ?? '—'}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                              {result.results.length > 20 && (
+                                <p className="px-2 py-1 text-[9px] text-slate-400 dark:text-zinc-500">
+                                  Showing 20 of {result.results.length} rows
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
                     {/* Splunk job history panel */}
                     {Object.entries(splunkHistory).map(([key, hist]) => {
                       if (!hist || !key.includes(selected.id)) return null;
