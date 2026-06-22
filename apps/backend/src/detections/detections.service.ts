@@ -68,6 +68,11 @@ export class DetectionsService {
       include: {
         tenantDetections: { where: { tenantId } },
         stats: { where: { tenantId }, orderBy: { date: 'desc' }, take: 30 },
+        // Count active SIEM deployments for this tenant's integrations
+        siemDeployments: {
+          where: { status: 'deployed', integration: { tenantId } },
+          select: { id: true },
+        },
       },
       orderBy: [{ isGlobal: 'desc' }, { ruleId: 'asc' }],
     });
@@ -107,6 +112,8 @@ export class DetectionsService {
           isGlobal: d.isGlobal,
           isEnabled,
           isCustom: !d.isGlobal,
+          // deployedCount = number of SIEMs this detection is actively deployed to
+          deployedCount: d.siemDeployments.length,
           ruleType: d.ruleType,
           lifecycleStage: d.lifecycleStage,
           workflowStatus: d.workflowStatus,
@@ -573,6 +580,14 @@ export class DetectionsService {
       .map((d) => Number(d.expectedAlertsPerDay));
     const totalAlertsPerDay = alertRates.length > 0 ? alertRates.reduce((a, b) => a + b, 0) : null;
 
+    // Count distinct detections that are actively deployed to at least one of this tenant's SIEMs
+    const deployedRows = await this.db.siemDeployment.findMany({
+      where: { status: 'deployed', integration: { tenantId } },
+      select: { detectionId: true },
+      distinct: ['detectionId'],
+    });
+    const deployedDetections = deployedRows.length;
+
     const recentDetections = withEnabled.slice(0, 10).map((d) => ({
       id: d.id,
       ruleId: d.ruleId,
@@ -590,6 +605,7 @@ export class DetectionsService {
     return {
       totalDetections: detections.length,
       enabledDetections: enabled.length,
+      deployedDetections,
       byPlatform,
       bySeverity,
       byTactic,

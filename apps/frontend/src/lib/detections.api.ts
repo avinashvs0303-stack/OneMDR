@@ -53,6 +53,7 @@ export interface DetectionRow {
   isGlobal: boolean;
   isEnabled: boolean;
   isCustom: boolean;
+  deployedCount: number;
   ruleType: DetectionRuleType | null;
   lifecycleStage: DetectionLifecycle;
   workflowStatus: DetectionWorkflowStatus;
@@ -154,6 +155,7 @@ export interface ImportResult {
 export interface DashboardSummary {
   totalDetections: number;
   enabledDetections: number;
+  deployedDetections: number;
   byPlatform: Record<string, number>;
   bySeverity: Record<string, number>;
   byTactic: Record<string, number>;

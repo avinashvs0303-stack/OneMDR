@@ -751,7 +751,21 @@ export default function DetectionsPage() {
                   <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
                 </button>
                 <span className="text-xs text-slate-400 dark:text-zinc-500">
-                  {loading ? '...' : `${detections.length} rules`}
+                  {loading ? (
+                    '...'
+                  ) : (
+                    <>
+                      {detections.length} rules
+                      <span className="mx-1.5 text-slate-200 dark:text-zinc-700">·</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                        {detections.filter((d) => d.isEnabled).length} active
+                      </span>
+                      <span className="mx-1.5 text-slate-200 dark:text-zinc-700">·</span>
+                      <span className="text-violet-600 dark:text-violet-400 font-medium">
+                        {detections.filter((d) => d.deployedCount > 0).length} in SIEM
+                      </span>
+                    </>
+                  )}
                 </span>
                 {detections.length > 0 && (
                   <div className="flex items-center gap-1 ml-2">
@@ -929,7 +943,7 @@ export default function DetectionsPage() {
                     <tr>
                       {[
                         '',
-                        'On',
+                        'State',
                         'Detection',
                         'Rule Type',
                         'Lifecycle',
@@ -974,24 +988,42 @@ export default function DetectionsPage() {
                           />
                         </td>
 
-                        {/* Enable / disable toggle */}
+                        {/* Active toggle + SIEM deployed indicator */}
                         <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={(e) => void handleToggle(det, e)}
-                            disabled={toggling[det.id]}
-                            title={det.isEnabled ? 'Disable detection' : 'Enable detection'}
-                            className={cn(
-                              'transition-colors rounded',
-                              toggling[det.id] && 'opacity-50 cursor-wait',
-                            )}
-                          >
-                            {det.isEnabled ? (
-                              <ToggleRight className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
+                          <div className="flex flex-col items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={(e) => void handleToggle(det, e)}
+                              disabled={toggling[det.id]}
+                              title={
+                                det.isEnabled
+                                  ? 'Active — click to deactivate'
+                                  : 'Inactive — click to activate'
+                              }
+                              className={cn(
+                                'transition-colors rounded',
+                                toggling[det.id] && 'opacity-50 cursor-wait',
+                              )}
+                            >
+                              {det.isEnabled ? (
+                                <ToggleRight className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
+                              ) : (
+                                <ToggleLeft className="h-5 w-5 text-slate-300 dark:text-zinc-600" />
+                              )}
+                            </button>
+                            {det.deployedCount > 0 ? (
+                              <span
+                                className="text-[8px] font-bold text-violet-600 dark:text-violet-400 leading-none"
+                                title={`Deployed to ${det.deployedCount} SIEM${det.deployedCount > 1 ? 's' : ''}`}
+                              >
+                                SIEM
+                              </span>
                             ) : (
-                              <ToggleLeft className="h-5 w-5 text-slate-300 dark:text-zinc-600" />
+                              <span className="text-[8px] text-slate-300 dark:text-zinc-700 leading-none">
+                                —
+                              </span>
                             )}
-                          </button>
+                          </div>
                         </td>
 
                         <td className="px-3 py-3 max-w-[160px]">

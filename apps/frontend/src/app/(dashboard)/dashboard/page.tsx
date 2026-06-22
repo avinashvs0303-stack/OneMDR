@@ -147,7 +147,11 @@ export default function DashboardPage() {
           <KpiCard
             label="ACTIVE RULES"
             value={loading ? '—' : String(summary?.enabledDetections ?? 0)}
-            sub={loading ? 'Loading...' : `${summary?.totalDetections ?? 0} total in library`}
+            sub={
+              loading
+                ? 'Loading...'
+                : `${summary?.deployedDetections ?? 0} deployed to SIEM · ${summary?.totalDetections ?? 0} total`
+            }
             badge="DaaS Library"
             badgeColor="text-violet-600 dark:text-violet-400 bg-violet-500/20 border-violet-500/20"
             icon={ShieldCheck}
