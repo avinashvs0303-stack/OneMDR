@@ -562,10 +562,10 @@ export class DetectionsService {
       }
     }
 
-    // techniqueCountMap — count ALL library detections (global + custom) regardless of enabled
-    // state. Coverage = "what techniques can this tenant detect", not just "what's switched on".
+    // techniqueCountMap — global detections count only when enabled by this tenant;
+    // custom (tenant-created, isGlobal=false) detections always count since the tenant owns them.
     for (const d of withEnabled) {
-      if (d.mitreAttackId) {
+      if (d.mitreAttackId && (d.isEnabled || !d.isGlobal)) {
         techniqueCountMap[d.mitreAttackId] = (techniqueCountMap[d.mitreAttackId] ?? 0) + 1;
       }
     }
