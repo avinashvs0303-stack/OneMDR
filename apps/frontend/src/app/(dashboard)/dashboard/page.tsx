@@ -8,9 +8,9 @@ import {
   Target,
   AlertTriangle,
   Clock,
-  Database,
   ArrowRight,
   ArrowUpRight,
+  Plug,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,7 @@ import {
   PLATFORM_COLORS,
   PLATFORM_LABEL,
 } from '@/lib/detections.api';
+import { integrationsApi, type IntegrationRow, STATUS_BADGE } from '@/lib/integrations.api';
 import { ATTACK_MATRIX } from '@/data/attack-matrix';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -57,15 +58,6 @@ function fmtDate(iso: string) {
   return iso.slice(0, 10);
 }
 
-const PLATFORM_HEALTH_KEYS: Array<{ key: string; name: string }> = [
-  { key: 'SPLUNK', name: 'Splunk' },
-  { key: 'SENTINEL', name: 'Sentinel' },
-  { key: 'CHRONICLE', name: 'Chronicle' },
-  { key: 'ELASTIC', name: 'Elastic' },
-  { key: 'QRADAR', name: 'QRadar' },
-  { key: 'SIGMA', name: 'SIGMA' },
-];
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -75,11 +67,13 @@ export default function DashboardPage() {
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [integrations, setIntegrations] = useState<IntegrationRow[]>([]);
 
   const fetchSummary = useCallback(async () => {
     try {
-      const data = await detectionsApi.summary();
+      const [data, ints] = await Promise.all([detectionsApi.summary(), integrationsApi.list()]);
       setSummary(data);
+      setIntegrations(ints);
     } catch (err) {
       console.error('Dashboard summary fetch failed', err);
     } finally {
@@ -90,6 +84,8 @@ export default function DashboardPage() {
   useEffect(() => {
     void fetchSummary();
   }, [fetchSummary]);
+
+  const connectedIntegrations = integrations.filter((i) => i.status === 'CONNECTED' && i.isEnabled);
 
   const matrixStats = summary ? computeCoverage(summary.techniqueCountMap) : null;
 
@@ -162,45 +158,27 @@ export default function DashboardPage() {
           />
           <KpiCard
             label="FALSE POSITIVE RATE"
-            value={
-              loading
-                ? '—'
-                : summary?.avgFpRate != null
-                  ? `${summary.avgFpRate.toFixed(1)}%`
-                  : 'N/A'
-            }
-            sub="Avg across enabled rules"
-            badge="Limit: <5%"
+            value="N/A"
+            sub="Updated after analyst marks alerts TP/FP"
+            badge="Target: <5%"
             badgeColor="text-orange-600 dark:text-orange-400 bg-orange-500/20 border-orange-500/20"
             icon={AlertTriangle}
             iconColor="text-orange-400"
             trendLabel=""
-            href="/reports"
-            linkLabel="Review weekly briefs"
+            href="/detections"
+            linkLabel="Manage detections"
           />
           <KpiCard
             label="MEAN TIME TO DETECT"
-            value={
-              loading
-                ? '—'
-                : summary?.avgMttdHours != null
-                  ? `${summary.avgMttdHours.toFixed(1)}h`
-                  : 'N/A'
-            }
-            sub={
-              loading
-                ? 'Loading...'
-                : summary?.totalAlertsPerDay != null
-                  ? `${summary.totalAlertsPerDay.toFixed(1)} alerts/day avg`
-                  : 'No alert data yet'
-            }
-            badge="SLA: <1h"
+            value="N/A"
+            sub="Available once SIEM alert data is ingested"
+            badge="Target: <1h"
             badgeColor="text-amber-600 dark:text-amber-400 bg-amber-500/20 border-amber-500/20"
             icon={Clock}
             iconColor="text-purple-400"
             trendLabel=""
-            href="/siem"
-            linkLabel="Monitor pipeline"
+            href="/detections"
+            linkLabel="Deploy to SIEM"
           />
         </div>
 
@@ -250,93 +228,75 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Col 2: SIEM Ingestion Health */}
+          {/* Col 2: SIEM Integrations */}
           <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-md p-5 shadow-sm dark:shadow-lg space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Database className="h-4 w-4 text-slate-400 dark:text-zinc-400" /> SIEM Ingestion
-                  Health
+                  <Plug className="h-4 w-4 text-slate-400 dark:text-zinc-400" /> SIEM Integrations
                 </h3>
                 <p className="text-xs text-slate-400 dark:text-zinc-500 mt-0.5">
-                  Enabled rules per platform.
+                  Active connected integrations.
                 </p>
               </div>
               <Link
-                href="/siem"
+                href="/integrations"
                 className="text-xs text-amber-600 dark:text-amber-400 hover:underline"
               >
-                Configure
+                Manage
               </Link>
             </div>
 
             <div className="space-y-2">
-              {PLATFORM_HEALTH_KEYS.map(({ key, name }) => {
-                const count = summary?.byPlatform[key] ?? 0;
-                const active = count > 0;
-                return (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-black/5 dark:bg-black/20 border border-black/5 dark:border-white/5 hover:bg-black/10 dark:hover:bg-white/5 transition-all"
-                  >
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-white">{name}</p>
-                      <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-                        {loading ? '...' : `${count} enabled rules`}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="text-xs text-slate-700 dark:text-zinc-300 font-semibold">
-                          {loading ? '—' : count > 0 ? String(count) : '—'}
-                        </p>
-                        <p className="text-[9px] text-slate-400 dark:text-zinc-500">rules</p>
-                      </div>
-                      <span className="relative flex h-2 w-2">
-                        {active ? (
-                          <>
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                          </>
-                        ) : (
-                          <>
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-40" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-400" />
-                          </>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="border-t border-black/10 dark:border-white/10 pt-3">
-              <p className="text-[10px] text-slate-400 dark:text-zinc-500 mb-2 uppercase tracking-widest font-semibold">
-                Active Rules Preview
-              </p>
-              {enabledRecent.length === 0 ? (
-                <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-                  {loading ? 'Loading...' : 'No enabled detections yet.'}
+              {loading ? (
+                <p className="text-xs text-slate-400 dark:text-zinc-500 py-4 text-center">
+                  Loading...
                 </p>
+              ) : connectedIntegrations.length === 0 ? (
+                <div className="py-6 text-center space-y-2">
+                  <p className="text-xs text-slate-400 dark:text-zinc-500">
+                    No active integrations yet.
+                  </p>
+                  <Link
+                    href="/integrations"
+                    className="text-xs text-amber-600 dark:text-amber-400 hover:underline"
+                  >
+                    Connect a SIEM →
+                  </Link>
+                </div>
               ) : (
-                <ul className="space-y-1.5">
-                  {enabledRecent.slice(0, 3).map((det) => (
-                    <li key={det.id} className="flex items-center justify-between text-xs">
-                      <span className="truncate text-slate-700 dark:text-zinc-300 max-w-[160px]">
-                        {det.name}
-                      </span>
-                      <span
-                        className={cn(
-                          'text-[10px] px-1.5 py-0.5 rounded shrink-0 ml-2',
-                          SEVERITY_COLORS[det.severity as DetectionSeverity],
-                        )}
-                      >
-                        {det.severity}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                connectedIntegrations.map((integration) => {
+                  const badge = STATUS_BADGE[integration.status];
+                  return (
+                    <div
+                      key={integration.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-black/5 dark:bg-black/20 border border-black/5 dark:border-white/5"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-800 dark:text-white truncate">
+                          {integration.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+                          {integration.platform} · {integration.deployedCount} deployed
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={cn(
+                            'text-[9px] rounded px-1.5 py-0.5 border font-medium',
+                            badge.className,
+                          )}
+                        >
+                          {badge.label}
+                        </span>
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

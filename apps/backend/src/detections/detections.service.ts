@@ -553,12 +553,18 @@ export class DetectionsService {
     const byTactic: Record<string, number> = {};
     const techniqueCountMap: Record<string, number> = {};
 
+    // byPlatform / bySeverity / byTactic — only count enabled detections
     for (const d of enabled) {
       byPlatform[d.platform] = (byPlatform[d.platform] ?? 0) + 1;
       bySeverity[d.severity] = (bySeverity[d.severity] ?? 0) + 1;
       if (d.mitreTactic) {
         byTactic[d.mitreTactic] = (byTactic[d.mitreTactic] ?? 0) + 1;
       }
+    }
+
+    // techniqueCountMap — count ALL library detections (global + custom) regardless of enabled
+    // state. Coverage = "what techniques can this tenant detect", not just "what's switched on".
+    for (const d of withEnabled) {
       if (d.mitreAttackId) {
         techniqueCountMap[d.mitreAttackId] = (techniqueCountMap[d.mitreAttackId] ?? 0) + 1;
       }

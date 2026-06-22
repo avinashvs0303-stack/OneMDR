@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { Search, Bell, ChevronDown, LogOut, User, Zap, Sun, Moon } from 'lucide-react';
+import { Search, Bell, ChevronDown, LogOut, User, Zap, Sun, Moon, Loader2 } from 'lucide-react';
 import { useAuthStore, useCurrentUser } from '@/store/auth.store';
 import { getInitials, cn } from '@/lib/utils';
 
@@ -19,11 +19,13 @@ export function Header({ title }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
   const handleLogout = async () => {
-    setMenuOpen(false); // close dropdown immediately so no flash of empty/U avatar
+    setMenuOpen(false);
+    setIsLoggingOut(true);
     await logout();
     router.push('/auth/login');
   };
@@ -88,7 +90,13 @@ export function Header({ title }: HeaderProps) {
             className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
           >
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
-              {user ? getInitials(user.firstName, user.lastName) : 'U'}
+              {isLoggingOut ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : user ? (
+                getInitials(user.firstName, user.lastName)
+              ) : (
+                'U'
+              )}
             </div>
             <ChevronDown className="h-3 w-3 text-slate-400 dark:text-zinc-500" />
           </button>
