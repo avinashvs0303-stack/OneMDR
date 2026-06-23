@@ -18,6 +18,12 @@ import {
   UpdateHuntMissionDto,
   CreateHuntEvidenceDto,
   CreateHuntIOCDto,
+  CreatePlaybookDto,
+  UpdatePlaybookDto,
+  LaunchPlaybookDto,
+  RunPlaybookQueryDto,
+  CreateScheduleDto,
+  UpdateScheduleDto,
 } from './dto/hunts.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -32,11 +38,120 @@ import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 export class HuntsController {
   constructor(private readonly svc: HuntsService) {}
 
+  // ── Stats ─────────────────────────────────────────────────────────────────────
+
   @Get('stats')
   @ApiOperation({ summary: 'THaaS dashboard stats' })
   stats(@CurrentUser() actor: JwtPayload) {
     return this.svc.stats(actor);
   }
+
+  // ── Playbooks (before :id routes) ────────────────────────────────────────────
+
+  @Get('playbooks')
+  @ApiOperation({ summary: 'List all playbooks (global + tenant custom)' })
+  listPlaybooks(@CurrentUser() actor: JwtPayload) {
+    return this.svc.listPlaybooks(actor);
+  }
+
+  @Get('playbooks/:id')
+  @ApiOperation({ summary: 'Get a playbook with its schedules' })
+  getPlaybook(@CurrentUser() actor: JwtPayload, @Param('id') id: string) {
+    return this.svc.getPlaybook(actor, id);
+  }
+
+  @Post('playbooks')
+  @Roles('OWNER', 'ADMIN', 'MEMBER')
+  @ApiOperation({ summary: 'Create a custom playbook' })
+  createPlaybook(@CurrentUser() actor: JwtPayload, @Body() dto: CreatePlaybookDto) {
+    return this.svc.createPlaybook(actor, dto);
+  }
+
+  @Patch('playbooks/:id')
+  @Roles('OWNER', 'ADMIN', 'MEMBER')
+  @ApiOperation({ summary: 'Update a custom playbook' })
+  updatePlaybook(
+    @CurrentUser() actor: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: UpdatePlaybookDto,
+  ) {
+    return this.svc.updatePlaybook(actor, id, dto);
+  }
+
+  @Delete('playbooks/:id')
+  @Roles('OWNER', 'ADMIN')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a custom playbook' })
+  deletePlaybook(@CurrentUser() actor: JwtPayload, @Param('id') id: string) {
+    return this.svc.deletePlaybook(actor, id);
+  }
+
+  @Post('playbooks/:id/launch')
+  @Roles('OWNER', 'ADMIN', 'MEMBER')
+  @ApiOperation({ summary: 'Launch a hunt mission from a playbook' })
+  launchPlaybook(
+    @CurrentUser() actor: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: LaunchPlaybookDto,
+  ) {
+    return this.svc.launchPlaybook(actor, id, dto);
+  }
+
+  @Post('playbooks/run-query')
+  @Roles('OWNER', 'ADMIN', 'MEMBER')
+  @ApiOperation({ summary: 'Run a Splunk query from a playbook (ad-hoc preview)' })
+  runPlaybookQuery(@CurrentUser() actor: JwtPayload, @Body() dto: RunPlaybookQueryDto) {
+    return this.svc.runPlaybookQuery(actor, dto);
+  }
+
+  // ── Schedules ─────────────────────────────────────────────────────────────────
+
+  @Get('schedules')
+  @ApiOperation({ summary: 'List all hunt schedules' })
+  listSchedules(@CurrentUser() actor: JwtPayload) {
+    return this.svc.listSchedules(actor);
+  }
+
+  @Get('schedules/:id')
+  @ApiOperation({ summary: 'Get a hunt schedule with run history' })
+  getSchedule(@CurrentUser() actor: JwtPayload, @Param('id') id: string) {
+    return this.svc.getSchedule(actor, id);
+  }
+
+  @Post('schedules')
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Create a hunt schedule' })
+  createSchedule(@CurrentUser() actor: JwtPayload, @Body() dto: CreateScheduleDto) {
+    return this.svc.createSchedule(actor, dto);
+  }
+
+  @Patch('schedules/:id')
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Update a hunt schedule' })
+  updateSchedule(
+    @CurrentUser() actor: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: UpdateScheduleDto,
+  ) {
+    return this.svc.updateSchedule(actor, id, dto);
+  }
+
+  @Delete('schedules/:id')
+  @Roles('OWNER', 'ADMIN')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a hunt schedule' })
+  deleteSchedule(@CurrentUser() actor: JwtPayload, @Param('id') id: string) {
+    return this.svc.deleteSchedule(actor, id);
+  }
+
+  @Post('schedules/:id/trigger')
+  @Roles('OWNER', 'ADMIN', 'MEMBER')
+  @ApiOperation({ summary: 'Manually trigger a hunt schedule run now' })
+  triggerSchedule(@CurrentUser() actor: JwtPayload, @Param('id') id: string) {
+    return this.svc.triggerSchedule(actor, id);
+  }
+
+  // ── Missions ──────────────────────────────────────────────────────────────────
 
   @Get()
   @ApiOperation({ summary: 'List hunt missions' })
@@ -89,7 +204,7 @@ export class HuntsController {
     return this.svc.remove(actor, id);
   }
 
-  // ── Evidence ─────────────────────────────────────────────────────────────────
+  // ── Evidence ──────────────────────────────────────────────────────────────────
 
   @Post(':id/evidence')
   @Roles('OWNER', 'ADMIN', 'MEMBER')

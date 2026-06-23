@@ -80,7 +80,103 @@ export interface THaaSStats {
   critical: number;
   evidenceCount: number;
   iocCount: number;
+  schedulesCount: number;
   recentMissions: HuntMission[];
+}
+
+// ── Playbook types ────────────────────────────────────────────────────────────
+
+export interface PlaybookQuery {
+  name: string;
+  description: string;
+  query: string;
+  earliest: string;
+  latest: string;
+}
+
+export interface HuntPlaybook {
+  id: string;
+  tenantId: string | null;
+  playbookRef: string;
+  title: string;
+  description: string;
+  category: string;
+  mitreTacticId: string | null;
+  mitreTactic: string | null;
+  mitreTechniques: string[];
+  severity: string;
+  estimatedHours: number;
+  tags: string[];
+  queries: PlaybookQuery[];
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { schedules: number };
+  schedules?: HuntSchedule[];
+}
+
+export interface HuntSchedule {
+  id: string;
+  tenantId: string;
+  playbookId: string;
+  integrationId: string;
+  scheduleRef: string;
+  name: string;
+  cronExpression: string;
+  isEnabled: boolean;
+  nextRunAt: string | null;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  autoCreateMission: boolean;
+  minResultCount: number;
+  createdAt: string;
+  updatedAt: string;
+  playbook?: Pick<HuntPlaybook, 'id' | 'playbookRef' | 'title' | 'category' | 'severity'>;
+  integration?: { id: string; name: string; platform: string; status: string };
+  runs?: HuntScheduleRun[];
+}
+
+export interface HuntScheduleRun {
+  id: string;
+  scheduleId: string;
+  tenantId: string;
+  startedAt: string;
+  completedAt: string | null;
+  status: 'RUNNING' | 'SUCCESS' | 'FAILED' | 'NO_RESULTS';
+  resultCount: number;
+  missionId: string | null;
+  errorMessage: string | null;
+  querySummary: unknown | null;
+}
+
+export interface PlaybookSearchResult {
+  sid: string;
+  resultCount: number;
+  fields: string[];
+  results: Array<Record<string, string>>;
+}
+
+export interface CreatePlaybookPayload {
+  title: string;
+  description: string;
+  category: string;
+  mitreTacticId?: string;
+  mitreTactic?: string;
+  mitreTechniques?: string[];
+  severity?: string;
+  estimatedHours?: number;
+  tags?: string[];
+  queries?: PlaybookQuery[];
+}
+
+export interface CreateSchedulePayload {
+  playbookId: string;
+  integrationId: string;
+  name: string;
+  cronExpression: string;
+  isEnabled?: boolean;
+  autoCreateMission?: boolean;
+  minResultCount?: number;
 }
 
 export interface CreateHuntMissionPayload {
@@ -130,6 +226,47 @@ export interface CreateIOCPayload {
 
 export const huntsApi = {
   stats: (): Promise<THaaSStats> => api.get(`${BASE}/stats`),
+
+  // Playbooks
+  listPlaybooks: (): Promise<HuntPlaybook[]> => api.get(`${BASE}/playbooks`),
+  getPlaybook: (id: string): Promise<HuntPlaybook> => api.get(`${BASE}/playbooks/${id}`),
+  createPlaybook: (payload: CreatePlaybookPayload): Promise<HuntPlaybook> =>
+    api.post(`${BASE}/playbooks`, payload),
+  updatePlaybook: (id: string, payload: Partial<CreatePlaybookPayload>): Promise<HuntPlaybook> =>
+    api.patch(`${BASE}/playbooks/${id}`, payload),
+  deletePlaybook: (id: string): Promise<void> => api.delete(`${BASE}/playbooks/${id}`),
+  launchPlaybook: (
+    id: string,
+    payload?: { analystName?: string; notes?: string },
+  ): Promise<{ mission: HuntMission; playbook: HuntPlaybook }> =>
+    api.post(`${BASE}/playbooks/${id}/launch`, payload ?? {}),
+  runPlaybookQuery: (payload: {
+    integrationId: string;
+    query: string;
+    earliest?: string;
+    latest?: string;
+  }): Promise<PlaybookSearchResult> => api.post(`${BASE}/playbooks/run-query`, payload),
+
+  // Schedules
+  listSchedules: (): Promise<HuntSchedule[]> => api.get(`${BASE}/schedules`),
+  getSchedule: (id: string): Promise<HuntSchedule> => api.get(`${BASE}/schedules/${id}`),
+  createSchedule: (payload: CreateSchedulePayload): Promise<HuntSchedule> =>
+    api.post(`${BASE}/schedules`, payload),
+  updateSchedule: (
+    id: string,
+    payload: Partial<
+      CreateSchedulePayload & {
+        isEnabled: boolean;
+        autoCreateMission: boolean;
+        minResultCount: number;
+      }
+    >,
+  ): Promise<HuntSchedule> => api.patch(`${BASE}/schedules/${id}`, payload),
+  deleteSchedule: (id: string): Promise<void> => api.delete(`${BASE}/schedules/${id}`),
+  triggerSchedule: (
+    id: string,
+  ): Promise<{ run: string; status: string; totalResults: number; missionId: string | null }> =>
+    api.post(`${BASE}/schedules/${id}/trigger`, {}),
 
   list: (params?: { status?: HuntStatus; priority?: HuntPriority }): Promise<HuntMission[]> => {
     const qs = new URLSearchParams();

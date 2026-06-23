@@ -122,6 +122,8 @@ model Tenant {
   integrations     Integration[]
   integrationLogs  IntegrationLog[]
   huntMissions     HuntMission[]
+  huntPlaybooks    HuntPlaybook[]
+  huntSchedules    HuntSchedule[]
   parent           Tenant?        @relation("TenantHierarchy", fields: [parentTenantId], references: [id])
   children         Tenant[]       @relation("TenantHierarchy")
 
@@ -547,9 +549,10 @@ model Integration {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
 
-  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  deployments SiemDeployment[]
-  logs        IntegrationLog[]
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deployments   SiemDeployment[]
+  logs          IntegrationLog[]
+  huntSchedules HuntSchedule[]
 
   @@unique([tenantId, platform, name])
   @@index([tenantId])
@@ -714,4 +717,83 @@ model HuntIOC {
   @@index([missionId])
   @@index([tenantId, type])
   @@map("hunt_iocs")
+}
+
+// ── THaaS Playbooks ───────────────────────────────────────────────────────────
+
+model HuntPlaybook {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String?  @map("tenant_id") @db.Uuid  // null = global (platform-provided)
+  playbookRef     String   @map("playbook_ref")         // PBK-0001
+  title           String
+  description     String   @db.Text
+  category        String                                 // Ransomware | APT | Lateral Movement …
+  mitreTacticId   String?  @map("mitre_tactic_id")
+  mitreTactic     String?  @map("mitre_tactic")
+  mitreTechniques String[] @default([]) @map("mitre_techniques")
+  severity        String   @default("HIGH")
+  estimatedHours  Int      @default(4) @map("estimated_hours")
+  tags            String[] @default([])
+  // JSON array: Array<{name:string; description:string; query:string; earliest:string; latest:string}>
+  queries         Json     @default("[]")
+  isGlobal        Boolean  @default(false) @map("is_global")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  schedules HuntSchedule[]
+
+  @@unique([tenantId, playbookRef])
+  @@index([tenantId])
+  @@index([isGlobal])
+  @@map("th_playbooks")
+}
+
+// ── THaaS Schedules ───────────────────────────────────────────────────────────
+
+model HuntSchedule {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  playbookId        String    @map("playbook_id") @db.Uuid
+  integrationId     String    @map("integration_id") @db.Uuid
+  scheduleRef       String    @map("schedule_ref")   // SCH-0001
+  name              String
+  cronExpression    String    @map("cron_expression") // standard 5-field cron
+  isEnabled         Boolean   @default(true) @map("is_enabled")
+  nextRunAt         DateTime? @map("next_run_at")
+  lastRunAt         DateTime? @map("last_run_at")
+  lastRunStatus     String?   @map("last_run_status") // RUNNING | SUCCESS | FAILED | NO_RESULTS
+  autoCreateMission Boolean   @default(true) @map("auto_create_mission")
+  minResultCount    Int       @default(1) @map("min_result_count")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  playbook    HuntPlaybook @relation(fields: [playbookId], references: [id])
+  integration Integration  @relation(fields: [integrationId], references: [id])
+  runs        HuntScheduleRun[]
+
+  @@unique([tenantId, scheduleRef])
+  @@index([tenantId])
+  @@index([isEnabled, nextRunAt])
+  @@map("th_schedules")
+}
+
+model HuntScheduleRun {
+  id           String    @id @default(uuid()) @db.Uuid
+  scheduleId   String    @map("schedule_id") @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  startedAt    DateTime  @default(now()) @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  status       String    // RUNNING | SUCCESS | FAILED | NO_RESULTS
+  resultCount  Int       @default(0) @map("result_count")
+  missionId    String?   @map("mission_id") @db.Uuid  // auto-created mission, if any
+  errorMessage String?   @map("error_message")
+  querySummary Json?     @map("query_summary")
+
+  schedule HuntSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId])
+  @@index([tenantId])
+  @@map("th_schedule_runs")
 }

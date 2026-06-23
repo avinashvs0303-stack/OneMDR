@@ -1112,6 +1112,106 @@ export class IntegrationsService {
     return { sid, resultCount: results.length, fields, results };
   }
 
+  // Generic Splunk search used by THaaS playbook queries and scheduled hunts
+  async runArbitraryQuery(
+    actor: JwtPayload,
+    integrationId: string,
+    query: string,
+    earliest: string,
+    latest: string,
+  ): Promise<{
+    sid: string;
+    resultCount: number;
+    fields: string[];
+    results: Array<Record<string, string>>;
+  }> {
+    const tenantId = actor.tenantId!;
+    const integration = await this.db.integration.findFirst({
+      where: { id: integrationId, tenantId },
+    });
+    if (!integration) throw new NotFoundException('Integration not found');
+    if (integration.platform !== 'SPLUNK')
+      throw new BadRequestException('Ad-hoc search is only supported for Splunk');
+
+    const cfg = integration.config as Record<string, string>;
+    const host = integration.host.replace(/\/$/, '');
+    const base = this.splunkBase(host, cfg);
+    const parsed = new URL(base);
+    const isCloud = !parsed.port || parsed.port === '443';
+
+    const headers: Record<string, string> = { 'X-Requested-With': 'XMLHttpRequest' };
+    if (isCloud) {
+      const webSession = await this.getSplunkWebSession(base, cfg);
+      if (!webSession) throw new BadRequestException('Cannot authenticate to Splunk Cloud');
+      headers['Cookie'] = webSession.cookies;
+      headers['X-Splunk-Form-Key'] = webSession.csrfToken;
+    } else {
+      headers['Authorization'] = `Bearer ${cfg['apiToken'] ?? ''}`;
+    }
+
+    const jobsPath = isCloud
+      ? `${base}/en-US/splunkd/__raw/services/search/jobs?output_mode=json`
+      : `${base}/services/search/jobs?output_mode=json`;
+
+    const body = new URLSearchParams({
+      search: query,
+      earliest_time: earliest,
+      latest_time: latest,
+      output_mode: 'json',
+    });
+    const createRes = await fetch(jobsPath, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!createRes.ok) {
+      const text = await createRes.text();
+      throw new BadRequestException(
+        `Splunk job creation failed ${createRes.status}: ${text.slice(0, 200)}`,
+      );
+    }
+    const createJson = (await createRes.json()) as { sid?: string };
+    const sid = createJson.sid;
+    if (!sid) throw new BadRequestException('Splunk did not return a SID');
+
+    const jobPath = isCloud
+      ? `${base}/en-US/splunkd/__raw/services/search/jobs/${encodeURIComponent(sid)}?output_mode=json`
+      : `${base}/services/search/jobs/${encodeURIComponent(sid)}?output_mode=json`;
+
+    let isDone = false;
+    for (let i = 0; i < 30 && !isDone; i++) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+      try {
+        const pollRes = await fetch(jobPath, { headers, signal: AbortSignal.timeout(5000) });
+        if (pollRes.ok) {
+          const pollJson = (await pollRes.json()) as {
+            entry?: Array<{ content: Record<string, unknown> }>;
+          };
+          isDone = Boolean(pollJson.entry?.[0]?.content['isDone']);
+        }
+      } catch {
+        /* keep polling */
+      }
+    }
+    if (!isDone) throw new BadRequestException('Search timed out after 30 seconds');
+
+    const resultsPath = isCloud
+      ? `${base}/en-US/splunkd/__raw/services/search/jobs/${encodeURIComponent(sid)}/results?output_mode=json&count=100`
+      : `${base}/services/search/jobs/${encodeURIComponent(sid)}/results?output_mode=json&count=100`;
+
+    const resultsRes = await fetch(resultsPath, { headers, signal: AbortSignal.timeout(10000) });
+    if (!resultsRes.ok) throw new BadRequestException('Failed to fetch search results');
+
+    const resultsJson = (await resultsRes.json()) as {
+      results?: Array<Record<string, string>>;
+      fields?: Array<{ name: string }>;
+    };
+    const results = resultsJson.results ?? [];
+    const fields = (resultsJson.fields ?? []).map((f) => f.name).filter((n) => !n.startsWith('_'));
+    return { sid, resultCount: results.length, fields, results };
+  }
+
   private async assertOwnership(tenantId: string, id: string) {
     const exists = await this.db.integration.findFirst({
       where: { id, tenantId },

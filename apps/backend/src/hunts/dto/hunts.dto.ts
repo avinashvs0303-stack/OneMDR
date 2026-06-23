@@ -89,3 +89,77 @@ export class CreateHuntIOCDto {
   @ApiPropertyOptional() @IsOptional() @IsString() confidence?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
 }
+
+// ── Playbook DTOs ─────────────────────────────────────────────────────────────
+
+export class PlaybookQueryDto {
+  @ApiProperty() @IsString() name: string;
+  @ApiProperty() @IsString() description: string;
+  @ApiProperty() @IsString() query: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() earliest?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() latest?: string;
+}
+
+export class CreatePlaybookDto {
+  @ApiProperty() @IsString() title: string;
+  @ApiProperty() @IsString() description: string;
+  @ApiProperty() @IsString() category: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() mitreTacticId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() mitreTactic?: string;
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() mitreTechniques?: string[];
+  @ApiPropertyOptional() @IsOptional() @IsString() severity?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() estimatedHours?: string;
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() tags?: string[];
+  @ApiPropertyOptional({ type: [PlaybookQueryDto] })
+  @IsOptional()
+  @IsArray()
+  queries?: PlaybookQueryDto[];
+}
+
+export class UpdatePlaybookDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() title?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() category?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() mitreTacticId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() mitreTactic?: string;
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() mitreTechniques?: string[];
+  @ApiPropertyOptional() @IsOptional() @IsString() severity?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() estimatedHours?: string;
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() tags?: string[];
+  @ApiPropertyOptional({ type: [PlaybookQueryDto] })
+  @IsOptional()
+  @IsArray()
+  queries?: PlaybookQueryDto[];
+}
+
+export class LaunchPlaybookDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() analystName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+}
+
+export class RunPlaybookQueryDto {
+  @ApiProperty() @IsString() integrationId: string;
+  @ApiProperty() @IsString() query: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() earliest?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() latest?: string;
+}
+
+// ── Schedule DTOs ─────────────────────────────────────────────────────────────
+
+export class CreateScheduleDto {
+  @ApiProperty() @IsString() playbookId: string;
+  @ApiProperty() @IsString() integrationId: string;
+  @ApiProperty() @IsString() name: string;
+  @ApiProperty() @IsString() cronExpression: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isEnabled?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() autoCreateMission?: boolean;
+  @ApiPropertyOptional() @IsOptional() minResultCount?: number;
+}
+
+export class UpdateScheduleDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() name?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() cronExpression?: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isEnabled?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() autoCreateMission?: boolean;
+  @ApiPropertyOptional() @IsOptional() minResultCount?: number;
+}
