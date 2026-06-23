@@ -70,8 +70,8 @@ export class HuntsService {
 
   async stats(actor: JwtPayload) {
     const tenantId = actor.tenantId!;
-    const [total, active, complete, planned, critical, evidenceCount, iocCount, schedulesCount] =
-      await Promise.all([
+    const [total, active, complete, planned, critical, evidenceCount, iocCount] = await Promise.all(
+      [
         this.prisma.huntMission.count({ where: { tenantId } }),
         this.prisma.huntMission.count({ where: { tenantId, status: 'ACTIVE' } }),
         this.prisma.huntMission.count({ where: { tenantId, status: 'COMPLETE' } }),
@@ -79,8 +79,12 @@ export class HuntsService {
         this.prisma.huntMission.count({ where: { tenantId, priority: 'CRITICAL' } }),
         this.prisma.huntEvidence.count({ where: { tenantId, isFalsePositive: false } }),
         this.prisma.huntIOC.count({ where: { tenantId } }),
-        this.prisma.huntSchedule.count({ where: { tenantId, isEnabled: true } }),
-      ]);
+      ],
+    );
+    // th_schedules may not exist yet if migration is pending — default to 0
+    const schedulesCount = await this.prisma.huntSchedule
+      .count({ where: { tenantId, isEnabled: true } })
+      .catch(() => 0);
 
     const recentMissions = await this.prisma.huntMission.findMany({
       where: { tenantId, status: { in: ['ACTIVE', 'PLANNED'] } },

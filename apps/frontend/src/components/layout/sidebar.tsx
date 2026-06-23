@@ -184,7 +184,7 @@ export function Sidebar() {
           </span>
           <ul className="space-y-0.5">
             {THAAS_NAV.map(({ label, href, icon: Icon }) => {
-              const active = pathname === href || pathname.startsWith(href + '/');
+              const active = pathname === href;
               return (
                 <li key={href}>
                   <Link

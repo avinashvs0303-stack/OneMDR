@@ -15,7 +15,12 @@ export class HuntSchedulerService {
     if (this.running) return; // prevent overlap
     this.running = true;
     try {
-      const due = await this.huntsService.getDueSchedules();
+      const due = await this.huntsService.getDueSchedules().catch((err: unknown) => {
+        this.logger.warn(
+          `[THaaS-Cron] getDueSchedules failed (migration pending?): ${String(err)}`,
+        );
+        return [] as Awaited<ReturnType<typeof this.huntsService.getDueSchedules>>;
+      });
       if (due.length === 0) return;
 
       this.logger.log(`[THaaS-Cron] ${due.length} schedule(s) due to run`);
