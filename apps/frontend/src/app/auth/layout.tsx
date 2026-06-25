@@ -28,7 +28,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <div className="flex gap-8 text-xs text-white/40">
           <span>SOC 2 Type II</span>
           <span>GDPR Compliant</span>
-          <span>99.9% SLA</span>
         </div>
       </div>
 

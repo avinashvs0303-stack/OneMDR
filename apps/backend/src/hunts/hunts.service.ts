@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { Prisma } from '@onemdr/database';
 import { PrismaService } from '../database/prisma.service';
 import { IntegrationsService } from '../integrations/integrations.service';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
@@ -19,6 +25,18 @@ type Mission = Awaited<ReturnType<PrismaService['huntMission']['findFirst']>> & 
 type EvidenceRow = Awaited<ReturnType<PrismaService['huntEvidence']['findFirst']>> & object;
 type IOCRow = Awaited<ReturnType<PrismaService['huntIOC']['findFirst']>> & object;
 
+function rethrowMissingTable(err: unknown, table: string): never {
+  if (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    (err.code === 'P2021' || err.code === 'P2010')
+  ) {
+    throw new ServiceUnavailableException(
+      `Table "${table}" not found — apply pending migrations in Supabase SQL Editor (20260621000003_add_thaas, 20260623000001_th_playbooks_schedules).`,
+    );
+  }
+  throw err;
+}
+
 export interface PlaybookQuery {
   name: string;
   description: string;
@@ -37,31 +55,37 @@ export class HuntsService {
   // ── Mission ref generator ─────────────────────────────────────────────────────
 
   private async nextMissionRef(tenantId: string): Promise<string> {
-    const last = await this.prisma.huntMission.findFirst({
-      where: { tenantId },
-      orderBy: { missionRef: 'desc' },
-      select: { missionRef: true },
-    });
+    const last = await this.prisma.huntMission
+      .findFirst({
+        where: { tenantId },
+        orderBy: { missionRef: 'desc' },
+        select: { missionRef: true },
+      })
+      .catch((err) => rethrowMissingTable(err, 'hunt_missions'));
     const num = last ? parseInt(last.missionRef.replace('HNT-', ''), 10) + 1 : 1;
     return `HNT-${String(num).padStart(4, '0')}`;
   }
 
   private async nextPlaybookRef(tenantId: string): Promise<string> {
-    const last = await this.prisma.huntPlaybook.findFirst({
-      where: { tenantId },
-      orderBy: { playbookRef: 'desc' },
-      select: { playbookRef: true },
-    });
+    const last = await this.prisma.huntPlaybook
+      .findFirst({
+        where: { tenantId },
+        orderBy: { playbookRef: 'desc' },
+        select: { playbookRef: true },
+      })
+      .catch((err) => rethrowMissingTable(err, 'th_playbooks'));
     const num = last ? parseInt(last.playbookRef.replace('PBK-', ''), 10) + 1 : 100;
     return `PBK-${String(num).padStart(4, '0')}`;
   }
 
   private async nextScheduleRef(tenantId: string): Promise<string> {
-    const last = await this.prisma.huntSchedule.findFirst({
-      where: { tenantId },
-      orderBy: { scheduleRef: 'desc' },
-      select: { scheduleRef: true },
-    });
+    const last = await this.prisma.huntSchedule
+      .findFirst({
+        where: { tenantId },
+        orderBy: { scheduleRef: 'desc' },
+        select: { scheduleRef: true },
+      })
+      .catch((err) => rethrowMissingTable(err, 'th_schedules'));
     const num = last ? parseInt(last.scheduleRef.replace('SCH-', ''), 10) + 1 : 1;
     return `SCH-${String(num).padStart(4, '0')}`;
   }
@@ -111,17 +135,19 @@ export class HuntsService {
   // ── Missions CRUD ─────────────────────────────────────────────────────────────
 
   async list(actor: JwtPayload, status?: string, priority?: string) {
-    return this.prisma.huntMission.findMany({
-      where: {
-        tenantId: actor.tenantId,
-        ...(status ? { status: status as Mission['status'] } : {}),
-        ...(priority ? { priority: priority as Mission['priority'] } : {}),
-      },
-      orderBy: [{ status: 'asc' }, { priority: 'asc' }, { createdAt: 'desc' }],
-      include: {
-        _count: { select: { evidence: { where: { isFalsePositive: false } }, iocs: true } },
-      },
-    });
+    return this.prisma.huntMission
+      .findMany({
+        where: {
+          tenantId: actor.tenantId,
+          ...(status ? { status: status as Mission['status'] } : {}),
+          ...(priority ? { priority: priority as Mission['priority'] } : {}),
+        },
+        orderBy: [{ status: 'asc' }, { priority: 'asc' }, { createdAt: 'desc' }],
+        include: {
+          _count: { select: { evidence: { where: { isFalsePositive: false } }, iocs: true } },
+        },
+      })
+      .catch((err) => rethrowMissingTable(err, 'hunt_missions'));
   }
 
   async findOne(actor: JwtPayload, id: string) {
@@ -254,13 +280,15 @@ export class HuntsService {
   // ── Playbooks ─────────────────────────────────────────────────────────────────
 
   async listPlaybooks(actor: JwtPayload) {
-    return this.prisma.huntPlaybook.findMany({
-      where: {
-        OR: [{ isGlobal: true }, { tenantId: actor.tenantId }],
-      },
-      include: { _count: { select: { schedules: { where: { tenantId: actor.tenantId } } } } },
-      orderBy: [{ isGlobal: 'desc' }, { severity: 'asc' }, { title: 'asc' }],
-    });
+    return this.prisma.huntPlaybook
+      .findMany({
+        where: {
+          OR: [{ isGlobal: true }, { tenantId: actor.tenantId }],
+        },
+        include: { _count: { select: { schedules: { where: { tenantId: actor.tenantId } } } } },
+        orderBy: [{ isGlobal: 'desc' }, { severity: 'asc' }, { title: 'asc' }],
+      })
+      .catch((err) => rethrowMissingTable(err, 'th_playbooks'));
   }
 
   async getPlaybook(actor: JwtPayload, id: string) {

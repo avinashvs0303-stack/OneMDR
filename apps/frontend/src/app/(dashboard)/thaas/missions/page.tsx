@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { ApiRequestError } from '@/lib/api';
 import { Header } from '@/components/layout/header';
 import { Plus, X, Loader2, Trash2, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -70,8 +71,9 @@ export default function HuntMissionsPage() {
         ...(filterPriority ? { priority: filterPriority } : {}),
       });
       setMissions(data);
-    } catch {
-      setError('Failed to load hunt missions');
+    } catch (err) {
+      const msg = err instanceof ApiRequestError ? err.message : 'Failed to load hunt missions';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -879,8 +881,9 @@ function NewMissionModal({
         notes: notes.trim() || undefined,
       });
       onCreated(m);
-    } catch {
-      setErr('Failed to create hunt mission');
+    } catch (err) {
+      const msg = err instanceof ApiRequestError ? err.message : 'Failed to create hunt mission';
+      setErr(msg);
     } finally {
       setBusy(false);
     }
