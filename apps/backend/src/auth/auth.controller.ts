@@ -1,10 +1,10 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { EnableMfaDto, DisableMfaDto, MfaChallengeDto } from './dto/mfa.dto';
+import { EnableMfaDto, DisableMfaDto, MfaChallengeDto, UpdateProfileDto } from './dto/mfa.dto';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @ApiTags('auth')
@@ -20,6 +20,50 @@ export class AuthController {
   async me(@CurrentUser() user: JwtPayload) {
     const profile = await this.authService.getMe(user);
     return { data: profile ?? user };
+  }
+
+  @Patch('me')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update current user profile' })
+  async updateMe(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
+    const profile = await this.authService.updateMe(user, dto);
+    return { data: profile };
+  }
+
+  @Get('members')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List all members of the current tenant' })
+  async members(@CurrentUser() user: JwtPayload) {
+    const members = await this.authService.getMembers(user);
+    return { data: members };
+  }
+
+  @Get('tenant')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get current tenant settings' })
+  async tenant(@CurrentUser() user: JwtPayload) {
+    const t = await this.authService.getTenant(user);
+    return { data: t };
+  }
+
+  @Patch('tenant')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update workspace settings (OWNER/ADMIN only)' })
+  async updateTenant(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { name?: string; mfaEnforced?: boolean },
+  ) {
+    const t = await this.authService.updateTenant(user, dto);
+    return { data: t };
+  }
+
+  @Get('activity')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get tenant activity feed' })
+  @ApiQuery({ name: 'limit', required: false })
+  async activity(@CurrentUser() user: JwtPayload, @Query('limit') limit?: string) {
+    const events = await this.authService.getActivity(user, limit ? parseInt(limit) : 50);
+    return { data: events };
   }
 
   // ── MFA: Setup + Enable + Disable ───────────────────────────────────────────

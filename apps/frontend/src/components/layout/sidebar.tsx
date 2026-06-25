@@ -61,6 +61,7 @@ export function Sidebar() {
 
   const [daasExpanded, setDaasExpanded] = useState(true);
   const [thaasExpanded, setThaasExpanded] = useState(true);
+  const [opsExpanded, setOpsExpanded] = useState(true);
 
   return (
     <aside className="flex h-full w-64 flex-col bg-white/80 dark:bg-black/40 border-r border-black/10 dark:border-white/10 backdrop-blur-xl shrink-0">
@@ -227,38 +228,53 @@ export function Sidebar() {
           )}
         </div>
 
+        {/* Operations nav — collapsible */}
         <div>
-          <span className="block px-2.5 pb-1.5 text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold">
-            Operations
-          </span>
-          <ul className="space-y-0.5">
-            {OPS_NAV.map(({ label, href, icon: Icon }) => {
-              const active = pathname === href;
-              return (
-                <li key={href}>
-                  <Link
-                    href={href}
-                    className={cn(
-                      'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
-                      active
-                        ? 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-600/10 dark:border-blue-600/20 dark:text-blue-300'
-                        : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
-                    )}
-                  >
-                    <Icon
+          <button
+            type="button"
+            onClick={() => setOpsExpanded((v) => !v)}
+            className="flex w-full items-center justify-between px-2.5 pb-1.5 group"
+          >
+            <span className="text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold group-hover:text-slate-600 dark:group-hover:text-zinc-300 transition-colors">
+              Operations
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-3 w-3 text-slate-400 dark:text-zinc-500 transition-transform duration-200 group-hover:text-slate-600 dark:group-hover:text-zinc-300',
+                opsExpanded ? 'rotate-0' : '-rotate-90',
+              )}
+            />
+          </button>
+          {opsExpanded && (
+            <ul className="space-y-0.5">
+              {OPS_NAV.map(({ label, href, icon: Icon }) => {
+                const active = pathname === href;
+                return (
+                  <li key={href}>
+                    <Link
+                      href={href}
                       className={cn(
-                        'h-4 w-4 shrink-0',
+                        'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
                         active
-                          ? 'text-blue-700 dark:text-white'
-                          : 'text-slate-400 dark:text-zinc-500',
+                          ? 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-600/10 dark:border-blue-600/20 dark:text-blue-300'
+                          : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
                       )}
-                    />
-                    {label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                    >
+                      <Icon
+                        className={cn(
+                          'h-4 w-4 shrink-0',
+                          active
+                            ? 'text-blue-700 dark:text-white'
+                            : 'text-slate-400 dark:text-zinc-500',
+                        )}
+                      />
+                      {label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </nav>
 

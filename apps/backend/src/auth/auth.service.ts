@@ -3,6 +3,7 @@ import {
   ConflictException,
   UnauthorizedException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -181,5 +182,109 @@ export class AuthService {
     if (!isValid) {
       throw new UnauthorizedException('Invalid or expired TOTP code');
     }
+  }
+
+  // ── Update own profile ──────────────────────────────────────────────────────
+
+  async updateMe(
+    payload: JwtPayload,
+    dto: { firstName?: string; lastName?: string; timezone?: string },
+  ) {
+    return this.prisma.user.update({
+      where: { id: payload.sub },
+      data: {
+        ...(dto.firstName !== undefined && { firstName: dto.firstName }),
+        ...(dto.lastName !== undefined && { lastName: dto.lastName }),
+        ...(dto.timezone !== undefined && { timezone: dto.timezone }),
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        tenantId: true,
+        avatarUrl: true,
+        mfaEnabled: true,
+        timezone: true,
+        tenant: { select: { name: true, plan: true, slug: true } },
+      },
+    });
+  }
+
+  // ── List tenant members ─────────────────────────────────────────────────────
+
+  async getMembers(payload: JwtPayload) {
+    return this.prisma.user.findMany({
+      where: { tenantId: payload.tenantId, deletedAt: null },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        mfaEnabled: true,
+        lastLoginAt: true,
+        createdAt: true,
+      },
+      orderBy: [{ role: 'asc' }, { firstName: 'asc' }],
+    });
+  }
+
+  // ── Tenant settings ─────────────────────────────────────────────────────────
+
+  async getTenant(payload: JwtPayload) {
+    return this.prisma.tenant.findUniqueOrThrow({
+      where: { id: payload.tenantId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        plan: true,
+        tenantType: true,
+        isActive: true,
+        maxUsers: true,
+        licenseModules: true,
+        licenseExpiresAt: true,
+        mfaEnforced: true,
+        _count: { select: { users: { where: { deletedAt: null } } } },
+      },
+    });
+  }
+
+  async updateTenant(payload: JwtPayload, dto: { name?: string; mfaEnforced?: boolean }) {
+    if (!['OWNER', 'ADMIN'].includes(payload.role)) {
+      throw new ForbiddenException('Only OWNER or ADMIN can update workspace settings');
+    }
+    return this.prisma.tenant.update({
+      where: { id: payload.tenantId },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.mfaEnforced !== undefined && { mfaEnforced: dto.mfaEnforced }),
+      },
+      select: { id: true, name: true, slug: true, plan: true, mfaEnforced: true },
+    });
+  }
+
+  // ── Tenant activity feed ────────────────────────────────────────────────────
+
+  async getActivity(payload: JwtPayload, limit = 50) {
+    return this.prisma.auditLog.findMany({
+      where: { tenantId: payload.tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 100),
+      select: {
+        id: true,
+        action: true,
+        resource: true,
+        resourceId: true,
+        metadata: true,
+        createdAt: true,
+        actor: {
+          select: { id: true, firstName: true, lastName: true, email: true, role: true },
+        },
+      },
+    });
   }
 }

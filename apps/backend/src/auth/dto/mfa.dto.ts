@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, Length } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsOptional, Length } from 'class-validator';
 
 export class VerifyMfaDto {
   @ApiProperty({ example: '123456', description: '6-digit TOTP code from authenticator app' })
@@ -27,4 +27,10 @@ export class UseBackupCodeDto {
   @IsString()
   @Length(8, 8)
   backupCode: string;
+}
+
+export class UpdateProfileDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() firstName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() lastName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() timezone?: string;
 }
