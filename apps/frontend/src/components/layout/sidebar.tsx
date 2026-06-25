@@ -10,7 +10,6 @@ import {
   Database,
   Search,
   FileText,
-  Bell,
   Users,
   Settings,
   Building2,
@@ -21,6 +20,10 @@ import {
   BookOpen,
   Fingerprint,
   ChevronDown,
+  Phone,
+  AlertCircle,
+  FolderOpen,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/store/auth.store';
@@ -45,8 +48,11 @@ const THAAS_NAV = [
 ];
 
 const OPS_NAV = [
-  { label: 'My Team', href: '/members', icon: Users },
-  { label: 'Notifications', href: '/notifications', icon: Bell },
+  { label: 'SOC Roster', href: '/members', icon: Users },
+  { label: 'On-Call', href: '/soc/oncall', icon: Phone },
+  { label: 'Incidents', href: '/soc/incidents', icon: AlertCircle },
+  { label: 'Documentation', href: '/soc/docs', icon: FolderOpen },
+  { label: 'Activity', href: '/notifications', icon: Activity },
 ];
 
 const DAAS_PATHS = DAAS_NAV.map((n) => n.href);
@@ -236,7 +242,7 @@ export function Sidebar() {
             className="flex w-full items-center justify-between px-2.5 pb-1.5 group"
           >
             <span className="text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold group-hover:text-slate-600 dark:group-hover:text-zinc-300 transition-colors">
-              Operations
+              SOC Operations
             </span>
             <ChevronDown
               className={cn(
