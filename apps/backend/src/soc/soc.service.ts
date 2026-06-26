@@ -36,7 +36,7 @@ export class SocService {
   async listDocuments(user: JwtPayload, category?: string) {
     try {
       return await this.prisma.socDocument.findMany({
-        where: { tenantId: user.tenantId, ...(category ? { category } : {}) },
+        where: { tenantId: user.tenantId!, ...(category ? { category } : {}) },
         orderBy: [{ isPinned: 'desc' }, { updatedAt: 'desc' }],
       });
     } catch (e) {
@@ -49,7 +49,9 @@ export class SocService {
   }
 
   async getDocument(user: JwtPayload, id: string) {
-    const doc = await this.prisma.socDocument.findFirst({ where: { id, tenantId: user.tenantId } });
+    const doc = await this.prisma.socDocument.findFirst({
+      where: { id, tenantId: user.tenantId! },
+    });
     if (!doc) throw new NotFoundException('Document not found');
     return doc;
   }
@@ -57,7 +59,7 @@ export class SocService {
   async createDocument(user: JwtPayload, dto: CreateDocumentDto) {
     return this.prisma.socDocument.create({
       data: {
-        tenantId: user.tenantId,
+        tenantId: user.tenantId!,
         title: dto.title,
         content: dto.content,
         category: dto.category ?? 'General',
@@ -93,7 +95,7 @@ export class SocService {
   async listChanges(user: JwtPayload, status?: string) {
     try {
       return await this.prisma.socChange.findMany({
-        where: { tenantId: user.tenantId, ...(status ? { status } : {}) },
+        where: { tenantId: user.tenantId!, ...(status ? { status } : {}) },
         orderBy: { createdAt: 'desc' },
       });
     } catch (e) {
@@ -106,11 +108,11 @@ export class SocService {
   }
 
   async createChange(user: JwtPayload, dto: CreateChangeDto) {
-    const count = await this.prisma.socChange.count({ where: { tenantId: user.tenantId } });
+    const count = await this.prisma.socChange.count({ where: { tenantId: user.tenantId! } });
     const changeRef = `CHG-${String(count + 1).padStart(4, '0')}`;
     return this.prisma.socChange.create({
       data: {
-        tenantId: user.tenantId,
+        tenantId: user.tenantId!,
         changeRef,
         title: dto.title,
         description: dto.description ?? '',
@@ -129,7 +131,7 @@ export class SocService {
 
   async updateChangeStatus(user: JwtPayload, id: string, dto: UpdateChangeStatusDto) {
     const existing = await this.prisma.socChange.findFirst({
-      where: { id, tenantId: user.tenantId },
+      where: { id, tenantId: user.tenantId! },
     });
     if (!existing) throw new NotFoundException('Change not found');
     return this.prisma.socChange.update({
@@ -150,7 +152,7 @@ export class SocService {
   async listRequests(user: JwtPayload, status?: string) {
     try {
       return await this.prisma.socServiceRequest.findMany({
-        where: { tenantId: user.tenantId, ...(status ? { status } : {}) },
+        where: { tenantId: user.tenantId!, ...(status ? { status } : {}) },
         orderBy: { createdAt: 'desc' },
       });
     } catch (e) {
@@ -163,11 +165,13 @@ export class SocService {
   }
 
   async createRequest(user: JwtPayload, dto: CreateRequestDto) {
-    const count = await this.prisma.socServiceRequest.count({ where: { tenantId: user.tenantId } });
+    const count = await this.prisma.socServiceRequest.count({
+      where: { tenantId: user.tenantId! },
+    });
     const requestRef = `REQ-${String(count + 1).padStart(4, '0')}`;
     return this.prisma.socServiceRequest.create({
       data: {
-        tenantId: user.tenantId,
+        tenantId: user.tenantId!,
         requestRef,
         title: dto.title,
         description: dto.description ?? '',
@@ -181,7 +185,7 @@ export class SocService {
 
   async updateRequestStatus(user: JwtPayload, id: string, dto: UpdateRequestStatusDto) {
     const existing = await this.prisma.socServiceRequest.findFirst({
-      where: { id, tenantId: user.tenantId },
+      where: { id, tenantId: user.tenantId! },
     });
     if (!existing) throw new NotFoundException('Request not found');
     return this.prisma.socServiceRequest.update({
@@ -212,7 +216,7 @@ export class SocService {
   async getRosterShifts(user: JwtPayload, weekStart: string) {
     try {
       return await this.prisma.socRosterShift.findMany({
-        where: { tenantId: user.tenantId, weekStart: new Date(weekStart) },
+        where: { tenantId: user.tenantId!, weekStart: new Date(weekStart) },
         orderBy: [{ shiftType: 'asc' }, { dayOfWeek: 'asc' }],
       });
     } catch (e) {
@@ -229,14 +233,14 @@ export class SocService {
     return this.prisma.socRosterShift.upsert({
       where: {
         tenantId_weekStart_shiftType_dayOfWeek: {
-          tenantId: user.tenantId,
+          tenantId: user.tenantId!,
           weekStart: new Date(dto.weekStart),
           shiftType: dto.shiftType,
           dayOfWeek: dto.dayOfWeek,
         },
       },
       create: {
-        tenantId: user.tenantId,
+        tenantId: user.tenantId!,
         weekStart: new Date(dto.weekStart),
         shiftType: dto.shiftType,
         dayOfWeek: dto.dayOfWeek,
@@ -258,7 +262,7 @@ export class SocService {
 
   async clearShift(user: JwtPayload, id: string) {
     const shift = await this.prisma.socRosterShift.findFirst({
-      where: { id, tenantId: user.tenantId },
+      where: { id, tenantId: user.tenantId! },
     });
     if (!shift) throw new NotFoundException('Shift not found');
     return this.prisma.socRosterShift.delete({ where: { id } });
@@ -278,9 +282,9 @@ export class SocService {
 
   async listChannels(user: JwtPayload) {
     try {
-      await this.ensureDefaultChannels(user.tenantId);
+      await this.ensureDefaultChannels(user.tenantId!);
       return await this.prisma.socChannel.findMany({
-        where: { tenantId: user.tenantId },
+        where: { tenantId: user.tenantId! },
         orderBy: { createdAt: 'asc' },
       });
     } catch (e) {
@@ -295,7 +299,7 @@ export class SocService {
   async createChannel(user: JwtPayload, dto: CreateChannelDto) {
     return this.prisma.socChannel.create({
       data: {
-        tenantId: user.tenantId,
+        tenantId: user.tenantId!,
         name: dto.name.toLowerCase().replace(/\s+/g, '-'),
         description: dto.description ?? '',
         isPrivate: dto.isPrivate ?? false,
@@ -308,7 +312,7 @@ export class SocService {
   async getMessages(user: JwtPayload, channelId: string, cursor?: string) {
     try {
       const channel = await this.prisma.socChannel.findFirst({
-        where: { id: channelId, tenantId: user.tenantId },
+        where: { id: channelId, tenantId: user.tenantId! },
       });
       if (!channel) throw new NotFoundException('Channel not found');
       const messages = await this.prisma.socMessage.findMany({
@@ -332,13 +336,13 @@ export class SocService {
 
   async sendMessage(user: JwtPayload, channelId: string, dto: SendMessageDto, authorName: string) {
     const channel = await this.prisma.socChannel.findFirst({
-      where: { id: channelId, tenantId: user.tenantId },
+      where: { id: channelId, tenantId: user.tenantId! },
     });
     if (!channel) throw new NotFoundException('Channel not found');
     return this.prisma.socMessage.create({
       data: {
         channelId,
-        tenantId: user.tenantId,
+        tenantId: user.tenantId!,
         authorId: user.sub,
         authorName,
         authorRole: user.role,
@@ -350,7 +354,7 @@ export class SocService {
 
   async deleteMessage(user: JwtPayload, channelId: string, messageId: string) {
     const msg = await this.prisma.socMessage.findFirst({
-      where: { id: messageId, channelId, tenantId: user.tenantId },
+      where: { id: messageId, channelId, tenantId: user.tenantId! },
     });
     if (!msg) throw new NotFoundException('Message not found');
     return this.prisma.socMessage.update({
