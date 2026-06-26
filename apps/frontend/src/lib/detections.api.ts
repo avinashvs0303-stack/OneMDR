@@ -12,6 +12,11 @@ export type DetectionPlatform =
   | 'ELASTIC'
   | 'QRADAR'
   | 'DEFENDER'
+  | 'DEFENDER_O365'
+  | 'CROWDSTRIKE'
+  | 'CORTEX_XDR'
+  | 'SERVICENOW'
+  | 'JIRA'
   | 'SIGMA'
   | 'CUSTOM';
 export type QueryLanguage = 'SPL' | 'KQL' | 'YARA_L' | 'EQL' | 'AQL' | 'SIGMA' | 'CUSTOM';

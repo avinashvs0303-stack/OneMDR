@@ -8,14 +8,33 @@ export type IntegrationPlatform =
   | 'ELASTIC'
   | 'QRADAR'
   | 'DEFENDER'
+  | 'DEFENDER_O365'
+  | 'CROWDSTRIKE'
+  | 'CORTEX_XDR'
+  | 'SERVICENOW'
+  | 'JIRA'
   | 'SIGMA'
   | 'CUSTOM';
 
+const ALL_PLATFORMS: IntegrationPlatform[] = [
+  'SPLUNK',
+  'SENTINEL',
+  'CHRONICLE',
+  'ELASTIC',
+  'QRADAR',
+  'DEFENDER',
+  'DEFENDER_O365',
+  'CROWDSTRIKE',
+  'CORTEX_XDR',
+  'SERVICENOW',
+  'JIRA',
+  'SIGMA',
+  'CUSTOM',
+];
+
 export class CreateIntegrationDto {
-  @ApiProperty({
-    enum: ['SPLUNK', 'SENTINEL', 'CHRONICLE', 'ELASTIC', 'QRADAR', 'DEFENDER', 'SIGMA', 'CUSTOM'],
-  })
-  @IsEnum(['SPLUNK', 'SENTINEL', 'CHRONICLE', 'ELASTIC', 'QRADAR', 'DEFENDER', 'SIGMA', 'CUSTOM'])
+  @ApiProperty({ enum: ALL_PLATFORMS })
+  @IsEnum(ALL_PLATFORMS)
   platform!: IntegrationPlatform;
 
   @ApiProperty()

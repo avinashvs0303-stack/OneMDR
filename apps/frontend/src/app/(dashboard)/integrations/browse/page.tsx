@@ -15,7 +15,7 @@ import { Eye, EyeOff, X, AlertCircle, Loader2 } from 'lucide-react';
 
 // ── Catalog definition ────────────────────────────────────────────────────────
 
-type Category = 'SIEM' | 'EDR' | 'Format' | 'Custom';
+type Category = 'SIEM' | 'EDR' | 'XDR' | 'ITSM' | 'Email' | 'Format' | 'Custom';
 
 interface AppEntry {
   platform: DetectionPlatform;
@@ -83,24 +83,77 @@ const CATALOG: AppEntry[] = [
     docsUrl: 'https://sigmahq.io',
   },
   {
+    platform: 'CROWDSTRIKE',
+    category: 'EDR',
+    vendor: 'CrowdStrike',
+    description:
+      'CrowdStrike Falcon EDR and Next-Gen SIEM. Authenticate via OAuth2 to deploy custom IOA rules and search Falcon Data Replicator.',
+    docsUrl: 'https://falcon.crowdstrike.com/documentation',
+  },
+  {
+    platform: 'CORTEX_XDR',
+    category: 'XDR',
+    vendor: 'Palo Alto Networks',
+    description:
+      'Cortex XDR extended detection and response. Push BIOC rules and query the Cortex Data Lake via API key authentication.',
+    docsUrl: 'https://docs-cortex.paloaltonetworks.com',
+  },
+  {
+    platform: 'DEFENDER_O365',
+    category: 'Email',
+    vendor: 'Microsoft',
+    description:
+      'Microsoft Defender for Office 365 email security. Receive alerts on phishing, malware, and BEC via Microsoft Graph API.',
+    docsUrl: 'https://learn.microsoft.com/microsoft-365/security/office-365-security',
+  },
+  {
+    platform: 'SERVICENOW',
+    category: 'ITSM',
+    vendor: 'ServiceNow',
+    description:
+      'ServiceNow ITSM integration. Automatically create incidents and security response tickets from SOC alerts and detections.',
+    docsUrl: 'https://docs.servicenow.com',
+  },
+  {
+    platform: 'JIRA',
+    category: 'ITSM',
+    vendor: 'Atlassian',
+    description:
+      'Atlassian Jira integration. Create and track security issues, link detections to tickets, and manage remediation workflows.',
+    docsUrl: 'https://developer.atlassian.com/cloud/jira',
+  },
+  {
     platform: 'CUSTOM',
     category: 'Custom',
     vendor: 'Custom',
     description:
-      'Connect any platform with a REST API. Provide a base URL and optional API token to deploy rules to your own system.',
+      'Connect any platform with a REST API. Provide a base URL and optional API token to integrate with your own system.',
   },
 ];
 
 const CATEGORY_STYLE: Record<Category, string> = {
   SIEM: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20',
   EDR: 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/20',
+  XDR: 'text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20',
+  ITSM: 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20',
+  Email:
+    'text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20',
   Format:
     'text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20',
   Custom:
     'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-500/10 border-slate-200 dark:border-slate-500/20',
 };
 
-const ALL_CATEGORIES: Array<Category | 'All'> = ['All', 'SIEM', 'EDR', 'Format', 'Custom'];
+const ALL_CATEGORIES: Array<Category | 'All'> = [
+  'All',
+  'SIEM',
+  'EDR',
+  'XDR',
+  'ITSM',
+  'Email',
+  'Format',
+  'Custom',
+];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 

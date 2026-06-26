@@ -36,8 +36,13 @@ const SUPPORTED_PLATFORMS: DetectionPlatform[] = [
   'QRADAR',
   'SENTINEL',
   'DEFENDER',
+  'DEFENDER_O365',
   'CHRONICLE',
   'ELASTIC',
+  'CROWDSTRIKE',
+  'CORTEX_XDR',
+  'SERVICENOW',
+  'JIRA',
   'CUSTOM',
 ];
 
