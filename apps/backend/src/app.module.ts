@@ -16,6 +16,7 @@ import { HuntsModule } from './hunts/hunts.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SocModule } from './soc/soc.module';
 import { SecretsModule } from './secrets/secrets.module';
+import { ThreatModelsModule } from './threat-models/threat-models.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
 
@@ -99,6 +100,7 @@ import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
     HuntsModule,
     SocModule,
     SecretsModule,
+    ThreatModelsModule,
     // TenantsModule,     ← Step 2
     // UsersModule,       ← Step 2
     // WorkspacesModule,  ← Step 3

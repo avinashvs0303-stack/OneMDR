@@ -29,6 +29,7 @@ import {
   MessageSquare,
   CalendarDays,
   KeyRound,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/store/auth.store';
@@ -38,6 +39,7 @@ import { useState } from 'react';
 const DAAS_NAV = [
   { label: 'SOC Command Center', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Detection Library', href: '/detections', icon: ShieldCheck },
+  { label: 'Threat Modelling', href: '/threat-models', icon: ShieldAlert },
   { label: 'ATT&CK Navigator', href: '/coverage', icon: Target },
   { label: 'AI Systems', href: '/ai-systems', icon: Brain },
   { label: 'Integrations', href: '/integrations', icon: Database },
