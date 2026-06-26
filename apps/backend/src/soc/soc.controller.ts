@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestj
 import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { SocService } from './soc.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import {
   CreateDocumentDto,
   UpdateDocumentDto,

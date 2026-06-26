@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { Prisma } from '@onemdr/database';
 import { PrismaService } from '../database/prisma.service';
-import { JwtPayload } from '../auth/strategies/jwt.strategy';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import {
   CreateDocumentDto,
   UpdateDocumentDto,
@@ -15,7 +15,9 @@ import {
 } from './dto/soc.dto';
 
 function p2021(e: unknown): boolean {
-  return e instanceof PrismaClientKnownRequestError && e.code === 'P2021';
+  return (
+    e instanceof Prisma.PrismaClientKnownRequestError && (e.code === 'P2021' || e.code === 'P2010')
+  );
 }
 
 const DEFAULT_CHANNELS = [
