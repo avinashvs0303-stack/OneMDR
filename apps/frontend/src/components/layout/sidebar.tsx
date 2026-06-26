@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   ShieldCheck,
   Target,
-  Database,
   Search,
   FileText,
   Users,
@@ -30,6 +29,7 @@ import {
   CalendarDays,
   KeyRound,
   ShieldAlert,
+  Plug,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/store/auth.store';
@@ -42,7 +42,6 @@ const DAAS_NAV = [
   { label: 'Threat Modelling', href: '/threat-models', icon: ShieldAlert },
   { label: 'ATT&CK Navigator', href: '/coverage', icon: Target },
   { label: 'AI Systems', href: '/ai-systems', icon: Brain },
-  { label: 'Integrations', href: '/integrations', icon: Database },
   { label: 'Executive Bulletins', href: '/reports', icon: FileText },
 ];
 
@@ -293,6 +292,32 @@ export function Sidebar() {
               })}
             </ul>
           )}
+        </div>
+
+        {/* Integrations — global, not module-specific */}
+        <div>
+          <span className="block px-2.5 pb-1.5 text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold">
+            Platform
+          </span>
+          <Link
+            href="/integrations"
+            className={cn(
+              'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
+              pathname === '/integrations' || pathname.startsWith('/integrations/')
+                ? 'bg-teal-50 border-teal-200 text-teal-900 font-semibold dark:bg-teal-600/10 dark:border-teal-600/20 dark:text-teal-300'
+                : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
+            )}
+          >
+            <Plug
+              className={cn(
+                'h-4 w-4 shrink-0',
+                pathname === '/integrations' || pathname.startsWith('/integrations/')
+                  ? 'text-teal-600 dark:text-teal-400'
+                  : 'text-slate-400 dark:text-zinc-500',
+              )}
+            />
+            Integrations
+          </Link>
         </div>
       </nav>
 
