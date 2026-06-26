@@ -1,7 +1,19 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Query,
+  Body,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { SocService } from './soc.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import {
   CreateDocumentDto,
@@ -16,8 +28,10 @@ import {
 } from './dto/soc.dto';
 
 @ApiTags('soc')
-@ApiBearerAuth()
+@ApiBearerAuth('access-token')
 @Controller('soc')
+@UseGuards(RolesGuard)
+@Roles('OWNER', 'ADMIN', 'MEMBER', 'GUEST')
 export class SocController {
   constructor(private readonly soc: SocService) {}
 
