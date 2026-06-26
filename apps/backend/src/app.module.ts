@@ -13,6 +13,7 @@ import { AdminModule } from './admin/admin.module';
 import { DetectionsModule } from './detections/detections.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { HuntsModule } from './hunts/hunts.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { SocModule } from './soc/soc.module';
 import { SecretsModule } from './secrets/secrets.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -72,6 +73,9 @@ import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
       delimiter: '.',
       maxListeners: 20,
     }),
+
+    // ── Cron / scheduled tasks ──────────────────────────────────────────────────
+    ScheduleModule.forRoot(),
 
     // ── Rate limiting (OWASP A07) ────────────────────────────────────────────
     ThrottlerModule.forRoot([
