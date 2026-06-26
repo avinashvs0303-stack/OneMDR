@@ -28,6 +28,7 @@ import {
   Ticket,
   MessageSquare,
   CalendarDays,
+  KeyRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/store/auth.store';
@@ -59,6 +60,7 @@ const OPS_NAV = [
   { label: 'Change Management', href: '/soc/changes', icon: GitPullRequest },
   { label: 'Service Requests', href: '/soc/requests', icon: Ticket },
   { label: 'Collaboration', href: '/soc/collab', icon: MessageSquare },
+  { label: 'Secret Vault', href: '/soc/secrets', icon: KeyRound },
   { label: 'Team Members', href: '/members', icon: Users },
   { label: 'Activity', href: '/notifications', icon: Activity },
 ];

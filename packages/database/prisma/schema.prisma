@@ -948,3 +948,26 @@ model SocMessage {
   @@index([tenantId])
   @@map("soc_messages")
 }
+
+// ── Shared Secrets (One-Time Secret Sharing) ──────────────────────────────────
+
+model SharedSecret {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String?   @map("tenant_id") @db.Uuid
+  creatorId      String?   @map("creator_id") @db.Uuid
+  creatorName    String?   @map("creator_name")
+  label          String?   @db.Text
+  tokenHash      String    @unique @map("token_hash")
+  encryptedBlob  String    @map("encrypted_blob") @db.Text
+  hasPassphrase  Boolean   @default(false) @map("has_passphrase")
+  passphraseHash String?   @map("passphrase_hash")
+  ttlSeconds     Int       @default(86400) @map("ttl_seconds")
+  expiresAt      DateTime  @map("expires_at")
+  viewedAt       DateTime? @map("viewed_at")
+  isRevoked      Boolean   @default(false) @map("is_revoked")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([tokenHash])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("shared_secrets")
+}

@@ -14,6 +14,7 @@ import { DetectionsModule } from './detections/detections.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { HuntsModule } from './hunts/hunts.module';
 import { SocModule } from './soc/soc.module';
+import { SecretsModule } from './secrets/secrets.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
 
@@ -93,6 +94,7 @@ import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
     IntegrationsModule,
     HuntsModule,
     SocModule,
+    SecretsModule,
     // TenantsModule,     ← Step 2
     // UsersModule,       ← Step 2
     // WorkspacesModule,  ← Step 3

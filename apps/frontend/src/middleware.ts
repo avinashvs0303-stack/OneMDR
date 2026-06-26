@@ -14,6 +14,9 @@ const AUTH_PATHS = [
   '/submit-lead',
 ];
 
+/** Public paths that require no authentication (one-time secret view links). */
+const PUBLIC_PATHS = ['/s/'];
+
 const ADMIN_PUBLIC_PATHS = ['/admin/login'];
 
 const DEV_BYPASS_ENABLED =
@@ -49,8 +52,11 @@ export async function middleware(request: NextRequest) {
   }
 
   const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
+  const isPublicPath = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
   const isAdminPath = pathname.startsWith('/admin');
   const isAdminPublic = ADMIN_PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+
+  if (isPublicPath) return NextResponse.next();
 
   // ── Dev bypass ───────────────────────────────────────────────────────────────
   if (DEV_BYPASS_ENABLED) {
