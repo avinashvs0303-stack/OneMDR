@@ -339,6 +339,11 @@ export const PLATFORM_LABEL: Record<DetectionPlatform, string> = {
   ELASTIC: 'Elastic',
   QRADAR: 'QRadar',
   DEFENDER: 'Defender',
+  DEFENDER_O365: 'Defender for O365',
+  CROWDSTRIKE: 'CrowdStrike',
+  CORTEX_XDR: 'Cortex XDR',
+  SERVICENOW: 'ServiceNow',
+  JIRA: 'Jira',
   SIGMA: 'SIGMA',
   CUSTOM: 'Custom',
 };
