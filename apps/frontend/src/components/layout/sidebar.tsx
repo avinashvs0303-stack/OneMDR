@@ -24,6 +24,10 @@ import {
   AlertCircle,
   FolderOpen,
   Activity,
+  GitPullRequest,
+  Ticket,
+  MessageSquare,
+  CalendarDays,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/store/auth.store';
@@ -48,10 +52,14 @@ const THAAS_NAV = [
 ];
 
 const OPS_NAV = [
-  { label: 'SOC Roster', href: '/members', icon: Users },
+  { label: 'SOC Roster', href: '/soc/roster', icon: CalendarDays },
   { label: 'On-Call', href: '/soc/oncall', icon: Phone },
   { label: 'Incidents', href: '/soc/incidents', icon: AlertCircle },
   { label: 'Documentation', href: '/soc/docs', icon: FolderOpen },
+  { label: 'Change Management', href: '/soc/changes', icon: GitPullRequest },
+  { label: 'Service Requests', href: '/soc/requests', icon: Ticket },
+  { label: 'Collaboration', href: '/soc/collab', icon: MessageSquare },
+  { label: 'Team Members', href: '/members', icon: Users },
   { label: 'Activity', href: '/notifications', icon: Activity },
 ];
 

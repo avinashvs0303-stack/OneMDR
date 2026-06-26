@@ -124,6 +124,11 @@ model Tenant {
   huntMissions     HuntMission[]
   huntPlaybooks    HuntPlaybook[]
   huntSchedules    HuntSchedule[]
+  socDocuments     SocDocument[]
+  socChanges       SocChange[]
+  socRequests      SocServiceRequest[]
+  socRosterShifts  SocRosterShift[]
+  socChannels      SocChannel[]
   parent           Tenant?        @relation("TenantHierarchy", fields: [parentTenantId], references: [id])
   children         Tenant[]       @relation("TenantHierarchy")
 
@@ -796,4 +801,150 @@ model HuntScheduleRun {
   @@index([scheduleId])
   @@index([tenantId])
   @@map("th_schedule_runs")
+}
+
+// ── SOC Documents ─────────────────────────────────────────────────────────────
+
+model SocDocument {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  title       String
+  content     String   @db.Text
+  category    String   @default("General")
+  tags        String[] @default([])
+  authorId    String?  @map("author_id") @db.Uuid
+  authorName  String?  @map("author_name")
+  isPinned    Boolean  @default(false) @map("is_pinned")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, category])
+  @@map("soc_documents")
+}
+
+// ── SOC Change Management ─────────────────────────────────────────────────────
+
+model SocChange {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  changeRef      String    @map("change_ref")
+  title          String
+  description    String    @db.Text
+  changeType     String    @default("STANDARD") @map("change_type")
+  priority       String    @default("MEDIUM")
+  status         String    @default("DRAFT")
+  riskLevel      String    @default("LOW") @map("risk_level")
+  impact         String    @db.Text
+  rollbackPlan   String    @db.Text @map("rollback_plan")
+  scheduledStart DateTime? @map("scheduled_start")
+  scheduledEnd   DateTime? @map("scheduled_end")
+  requesterId    String?   @map("requester_id") @db.Uuid
+  requesterName  String?   @map("requester_name")
+  approverId     String?   @map("approver_id") @db.Uuid
+  approverName   String?   @map("approver_name")
+  rejectionNote  String?   @map("rejection_note") @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, changeRef])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("soc_changes")
+}
+
+// ── SOC Service Requests ──────────────────────────────────────────────────────
+
+model SocServiceRequest {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  requestRef      String   @map("request_ref")
+  title           String
+  description     String   @db.Text
+  category        String   @default("ACCESS")
+  priority        String   @default("MEDIUM")
+  status          String   @default("OPEN")
+  requesterId     String?  @map("requester_id") @db.Uuid
+  requesterName   String?  @map("requester_name")
+  assigneeId      String?  @map("assignee_id") @db.Uuid
+  assigneeName    String?  @map("assignee_name")
+  resolutionNote  String?  @map("resolution_note") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, requestRef])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("soc_service_requests")
+}
+
+// ── SOC Roster Shifts ─────────────────────────────────────────────────────────
+
+model SocRosterShift {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  weekStart    DateTime @map("week_start") @db.Date
+  shiftType    String   @map("shift_type")
+  dayOfWeek    Int      @map("day_of_week")
+  analystId    String?  @map("analyst_id") @db.Uuid
+  analystName  String?  @map("analyst_name")
+  startTime    String   @map("start_time")
+  endTime      String   @map("end_time")
+  isOncall     Boolean  @default(false) @map("is_oncall")
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, weekStart, shiftType, dayOfWeek])
+  @@index([tenantId, weekStart])
+  @@map("soc_roster_shifts")
+}
+
+// ── SOC Channels ──────────────────────────────────────────────────────────────
+
+model SocChannel {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  name        String
+  description String   @default("") @db.Text
+  icon        String   @default("hash")
+  isPrivate   Boolean  @default(false) @map("is_private")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  messages SocMessage[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("soc_channels")
+}
+
+// ── SOC Messages ──────────────────────────────────────────────────────────────
+
+model SocMessage {
+  id          String    @id @default(uuid()) @db.Uuid
+  channelId   String    @map("channel_id") @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  authorId    String    @map("author_id") @db.Uuid
+  authorName  String    @map("author_name")
+  authorRole  String    @default("MEMBER") @map("author_role")
+  content     String    @db.Text
+  messageType String    @default("TEXT") @map("message_type")
+  metadata    Json?
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  editedAt    DateTime? @map("edited_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  channel SocChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId, createdAt(sort: Desc)])
+  @@index([tenantId])
+  @@map("soc_messages")
 }
