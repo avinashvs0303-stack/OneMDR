@@ -1536,7 +1536,7 @@ export default function DetectionsPage() {
                                     <select
                                       value={runSearchRange}
                                       onChange={(e) => setRunSearchRange(e.target.value)}
-                                      className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-1.5 py-1 text-[10px] font-medium text-violet-700 dark:text-violet-400 outline-none cursor-pointer"
+                                      className="rounded-lg border border-violet-500/20 bg-violet-500/5 dark:bg-zinc-800 px-1.5 py-1 text-[10px] font-medium text-violet-700 dark:text-violet-400 outline-none cursor-pointer"
                                       title="Time range for ad-hoc search"
                                     >
                                       <option value="-1h">1h</option>
@@ -1955,7 +1955,7 @@ export default function DetectionsPage() {
                   <select
                     value={form.platform}
                     onChange={(e) => handlePlatformChange(e.target.value as DetectionPlatform)}
-                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                   >
                     {ALL_PLATFORM_OPTIONS.map((p) => (
                       <option key={p} value={p}>
@@ -1973,7 +1973,7 @@ export default function DetectionsPage() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, severity: e.target.value as DetectionSeverity }))
                     }
-                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                   >
                     {ALL_SEVERITY_OPTIONS.map((s) => (
                       <option key={s} value={s}>
@@ -1994,7 +1994,7 @@ export default function DetectionsPage() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, queryLanguage: e.target.value as QueryLanguage }))
                   }
-                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                 >
                   {ALL_LANG_OPTIONS.map((l) => (
                     <option key={l} value={l}>
@@ -2029,7 +2029,7 @@ export default function DetectionsPage() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, ruleType: e.target.value as DetectionRuleType }))
                     }
-                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                   >
                     {ALL_RULE_TYPE_OPTIONS.map((r) => (
                       <option key={r} value={r}>
@@ -2050,7 +2050,7 @@ export default function DetectionsPage() {
                         lifecycleStage: e.target.value as DetectionLifecycle,
                       }))
                     }
-                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                   >
                     {ALL_LIFECYCLE_OPTIONS.map((l) => (
                       <option key={l} value={l}>
@@ -2071,7 +2071,7 @@ export default function DetectionsPage() {
                         workflowStatus: e.target.value as DetectionWorkflowStatus,
                       }))
                     }
-                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                   >
                     {ALL_WORKFLOW_STATUS_OPTIONS.map((s) => (
                       <option key={s} value={s}>
@@ -2092,7 +2092,7 @@ export default function DetectionsPage() {
                     value={form.mitreAttackId ?? ''}
                     onChange={(e) => setForm((f) => ({ ...f, mitreAttackId: e.target.value }))}
                     placeholder="T1059.001"
-                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                   />
                 </div>
                 <div>
@@ -2103,7 +2103,7 @@ export default function DetectionsPage() {
                     value={form.mitreTactic ?? ''}
                     onChange={(e) => setForm((f) => ({ ...f, mitreTactic: e.target.value }))}
                     placeholder="Execution"
-                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                   />
                 </div>
                 <div>
@@ -2114,7 +2114,7 @@ export default function DetectionsPage() {
                     value={form.mitreTechnique ?? ''}
                     onChange={(e) => setForm((f) => ({ ...f, mitreTechnique: e.target.value }))}
                     placeholder="PowerShell"
-                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                   />
                 </div>
               </div>
@@ -2130,7 +2130,7 @@ export default function DetectionsPage() {
                     value={nistInput}
                     onChange={(e) => setNistInput(e.target.value)}
                     placeholder="SI-3, SI-4, AU-2"
-                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                   />
                 </div>
                 <div>
@@ -2142,7 +2142,7 @@ export default function DetectionsPage() {
                     value={dsInput}
                     onChange={(e) => setDsInput(e.target.value)}
                     placeholder="Windows Event Logs, Sysmon"
-                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                   />
                 </div>
               </div>
@@ -2155,7 +2155,7 @@ export default function DetectionsPage() {
                   value={tagsInput}
                   onChange={(e) => setTagsInput(e.target.value)}
                   placeholder="powershell, obfuscation, windows"
-                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
+                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-800 dark:text-zinc-200 outline-none focus:border-amber-500/50"
                 />
               </div>
             </div>
@@ -2401,7 +2401,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-md pl-3 pr-7 py-1.5 text-xs font-medium text-slate-700 dark:text-zinc-300 focus:border-amber-500/50 focus:outline-none cursor-pointer"
+        className="appearance-none rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-zinc-800 backdrop-blur-md pl-3 pr-7 py-1.5 text-xs font-medium text-slate-700 dark:text-zinc-300 focus:border-amber-500/50 focus:outline-none cursor-pointer"
         aria-label={label}
       >
         {options.map((o) => (

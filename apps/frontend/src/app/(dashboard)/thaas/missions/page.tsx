@@ -124,7 +124,7 @@ export default function HuntMissionsPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as HuntStatus | '')}
-          className="rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
         >
           <option value="">All Statuses</option>
           {STATUS_ORDER.map((s) => (
@@ -137,7 +137,7 @@ export default function HuntMissionsPage() {
         <select
           value={filterPriority}
           onChange={(e) => setFilterPriority(e.target.value as HuntPriority | '')}
-          className="rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
         >
           <option value="">All Priorities</option>
           {PRIORITIES.map((p) => (
@@ -308,7 +308,7 @@ function MissionRow({
               onStatusChange(m.id, e.target.value as HuntStatus);
             }}
             className={cn(
-              'rounded-full border px-2 py-0.5 text-[10px] font-semibold focus:outline-none cursor-pointer',
+              'rounded-full border px-2 py-0.5 text-[10px] font-semibold focus:outline-none cursor-pointer dark:bg-zinc-800',
               sc.badge,
             )}
           >
@@ -498,7 +498,7 @@ function DetailPanel({
                 <select
                   value={evType}
                   onChange={(e) => setEvType(e.target.value as HuntEvidenceType)}
-                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none"
+                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none"
                 >
                   {EVIDENCE_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -522,7 +522,7 @@ function DetailPanel({
                 <select
                   value={evSeverity}
                   onChange={(e) => setEvSeverity(e.target.value)}
-                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none"
+                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none"
                 >
                   {['HIGH', 'MEDIUM', 'LOW', 'INFO'].map((s) => (
                     <option key={s} value={s}>
@@ -583,7 +583,7 @@ function DetailPanel({
                 <select
                   value={iocType}
                   onChange={(e) => setIocType(e.target.value as HuntIOCType)}
-                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none"
+                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none"
                 >
                   {IOC_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -600,7 +600,7 @@ function DetailPanel({
                 <select
                   value={iocConf}
                   onChange={(e) => setIocConf(e.target.value)}
-                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none"
+                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-slate-700 dark:text-zinc-300 focus:outline-none"
                 >
                   {['HIGH', 'MEDIUM', 'LOW'].map((c) => (
                     <option key={c} value={c}>
@@ -931,7 +931,7 @@ function NewMissionModal({
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as HuntPriority)}
-                className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
               >
                 {PRIORITIES.map((p) => (
                   <option key={p} value={p}>
@@ -945,7 +945,7 @@ function NewMissionModal({
               <select
                 value={tacticId}
                 onChange={(e) => setTacticId(e.target.value)}
-                className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
               >
                 <option value="">None</option>
                 {TACTIC_OPTIONS.map((t) => (

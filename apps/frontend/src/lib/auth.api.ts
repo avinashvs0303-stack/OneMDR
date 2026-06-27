@@ -34,12 +34,14 @@ export interface TenantInfo {
   id: string;
   name: string;
   slug: string;
-  plan: string;
+  plan: 'FREE' | 'PRO' | 'ENTERPRISE';
   tenantType: string;
   isActive: boolean;
   maxUsers: number;
   licenseModules: string[];
   licenseExpiresAt: string | null;
+  trialEndsAt: string | null;
+  billingEmail: string | null;
   mfaEnforced: boolean;
   _count: { users: number };
 }

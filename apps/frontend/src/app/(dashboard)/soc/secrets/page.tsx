@@ -293,7 +293,7 @@ export default function SecretsPage() {
                     <select
                       value={ttl}
                       onChange={(e) => setTtl(Number(e.target.value))}
-                      className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-slate-50 dark:bg-zinc-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {TTL_OPTIONS.map((o) => (
                         <option key={o.value} value={o.value}>

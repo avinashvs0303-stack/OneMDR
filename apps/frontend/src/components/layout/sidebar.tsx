@@ -30,6 +30,7 @@ import {
   KeyRound,
   ShieldAlert,
   Plug,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/store/auth.store';
@@ -37,7 +38,6 @@ import { getInitials } from '@/lib/utils';
 import { useState } from 'react';
 
 const DAAS_NAV = [
-  { label: 'SOC Command Center', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Detection Library', href: '/detections', icon: ShieldCheck },
   { label: 'Threat Modelling', href: '/threat-models', icon: ShieldAlert },
   { label: 'ATT&CK Navigator', href: '/coverage', icon: Target },
@@ -75,6 +75,8 @@ export function Sidebar() {
   const inDaaS = DAAS_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
   const inTHaaS = THAAS_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
   const inModules = pathname === '/modules';
+  const inDashboards = pathname === '/dashboards' || pathname.startsWith('/dashboards/');
+  const inSOCCmd = pathname === '/dashboard';
 
   const [daasExpanded, setDaasExpanded] = useState(true);
   const [thaasExpanded, setThaasExpanded] = useState(true);
@@ -123,28 +125,43 @@ export function Sidebar() {
 
       {/* ── Nav ─────────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-        {/* Module hub link */}
+        {/* Home section */}
         <div>
           <span className="block px-2.5 pb-1.5 text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider font-semibold">
             Home
           </span>
-          <Link
-            href="/modules"
-            className={cn(
-              'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
-              inModules
-                ? 'bg-blue-50 border-blue-200 text-blue-900 font-semibold dark:bg-blue-600/10 dark:border-blue-600/20 dark:text-blue-300'
-                : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
-            )}
-          >
-            <LayoutGrid
-              className={cn(
-                'h-4 w-4 shrink-0',
-                inModules ? 'text-blue-500' : 'text-slate-400 dark:text-zinc-500',
-              )}
-            />
-            Module Hub
-          </Link>
+          <ul className="space-y-0.5">
+            {[
+              { label: 'Module Hub', href: '/modules', icon: LayoutGrid, active: inModules },
+              { label: 'Dashboards', href: '/dashboards', icon: BarChart3, active: inDashboards },
+              {
+                label: 'SOC Command Center',
+                href: '/dashboard',
+                icon: LayoutDashboard,
+                active: inSOCCmd,
+              },
+            ].map(({ label, href, icon: Icon, active }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all border',
+                    active
+                      ? 'bg-blue-50 border-blue-200 text-blue-900 font-semibold dark:bg-blue-600/10 dark:border-blue-600/20 dark:text-blue-300'
+                      : 'border-transparent text-slate-500 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white',
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      'h-4 w-4 shrink-0',
+                      active ? 'text-blue-500' : 'text-slate-400 dark:text-zinc-500',
+                    )}
+                  />
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* DaaS nav — collapsible */}

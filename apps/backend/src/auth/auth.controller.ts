@@ -1,4 +1,14 @@
-import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  Query,
+  HttpCode,
+  HttpStatus,
+  BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -64,6 +74,24 @@ export class AuthController {
   async activity(@CurrentUser() user: JwtPayload, @Query('limit') limit?: string) {
     const events = await this.authService.getActivity(user, limit ? parseInt(limit) : 50);
     return { data: events };
+  }
+
+  // ── Upgrade request ─────────────────────────────────────────────────────────
+
+  @Post('upgrade-request')
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Submit a plan upgrade request (logged as a support case for Clarbit)' })
+  async upgradeRequest(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { targetPlan: string; reason?: string },
+  ) {
+    const allowed = ['PRO', 'ENTERPRISE'];
+    if (!allowed.includes(body.targetPlan)) {
+      throw new BadRequestException('Invalid target plan');
+    }
+    await this.authService.submitUpgradeRequest(user, body.targetPlan, body.reason ?? '');
+    return { data: { message: 'Upgrade request submitted successfully.' } };
   }
 
   // ── MFA: Setup + Enable + Disable ───────────────────────────────────────────

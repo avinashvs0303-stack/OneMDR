@@ -12,6 +12,7 @@ import {
   FileText,
   ArrowRight,
   Lock,
+  LayoutDashboard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +30,19 @@ interface Module {
 }
 
 const MODULES: Module[] = [
+  {
+    id: 'dashboards',
+    name: 'Dashboards',
+    abbr: 'Dash',
+    description:
+      'CISO, SOC Manager, Detection Analytics, and Custom dashboards with pre-defined widgets and validated query widgets.',
+    icon: LayoutDashboard,
+    href: '/dashboards',
+    color: 'border-blue-500/30 hover:border-blue-500/60 hover:shadow-blue-500/10',
+    iconBg: 'bg-blue-500/10 text-blue-400',
+    active: true,
+    badge: 'Active',
+  },
   {
     id: 'daas',
     name: 'Detection as a Service',

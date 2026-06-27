@@ -247,9 +247,59 @@ export class AuthService {
         maxUsers: true,
         licenseModules: true,
         licenseExpiresAt: true,
+        trialEndsAt: true,
+        billingEmail: true,
         mfaEnforced: true,
         _count: { select: { users: { where: { deletedAt: null } } } },
       },
+    });
+  }
+
+  // ── Upgrade request ─────────────────────────────────────────────────────────
+
+  async submitUpgradeRequest(
+    payload: JwtPayload,
+    targetPlan: string,
+    reason: string,
+  ): Promise<void> {
+    if (!payload.tenantId) {
+      throw new ForbiddenException('No tenant context for this account');
+    }
+
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: payload.sub },
+      select: {
+        firstName: true,
+        lastName: true,
+        tenant: { select: { name: true, plan: true } },
+      },
+    });
+
+    const currentPlan = user.tenant.plan;
+    const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ') || payload.email;
+
+    await this.prisma.supportCase.create({
+      data: {
+        tenantId: payload.tenantId,
+        title: `Plan Upgrade Request: ${currentPlan} → ${targetPlan}`,
+        description:
+          `Organisation: ${user.tenant.name}\n` +
+          `Current plan: ${currentPlan}\n` +
+          `Requested plan: ${targetPlan}\n` +
+          `Submitted by: ${displayName} <${payload.email}>\n\n` +
+          `Reason: ${reason?.trim() || 'No reason provided'}`,
+        priority: 'HIGH',
+        submittedByEmail: payload.email,
+        submittedByName: displayName,
+      },
+    });
+
+    this.emitter.emit('audit.log', {
+      tenantId: payload.tenantId,
+      actorId: payload.sub,
+      action: AuditAction.RESOURCE_CREATED,
+      resource: 'upgrade_request',
+      metadata: { targetPlan, currentPlan },
     });
   }
 
