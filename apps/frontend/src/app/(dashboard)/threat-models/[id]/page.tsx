@@ -251,7 +251,7 @@ function RiskMatrix({ threats }: { threats: TmThreat[] }) {
                           )}
                         </div>
                         {list.length > 0 && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/10 rounded-lg p-2 text-xs text-slate-700 dark:text-zinc-300 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-lg p-2 text-xs text-slate-700 dark:text-zinc-300 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                             {list.map((t) => (
                               <div key={t.id} className="py-0.5 truncate">
                                 {t.title}
@@ -575,7 +575,7 @@ export default function ThreatModelDetailPage({ params }: { params: Promise<{ id
                   <button className="flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 hover:border-slate-300 dark:hover:border-zinc-600 transition-colors">
                     {model.status} <ChevronDown className="w-3 h-3" />
                   </button>
-                  <div className="absolute left-0 top-full mt-1 w-36 bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                  <div className="absolute left-0 top-full mt-1 w-36 bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
                     {(['DRAFT', 'REVIEW', 'APPROVED', 'ARCHIVED'] as ModelStatus[]).map((s) => (
                       <button
                         key={s}

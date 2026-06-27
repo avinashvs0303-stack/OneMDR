@@ -260,7 +260,7 @@ export default function DashboardsPage() {
           </button>
 
           {dropdownOpen && (
-            <div className="absolute left-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-xl overflow-hidden">
+            <div className="absolute left-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 shadow-xl overflow-hidden">
               {DASHBOARD_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const isActive = opt.value === view;
