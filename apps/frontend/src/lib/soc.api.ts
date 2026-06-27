@@ -217,3 +217,94 @@ export const sendMessage = (
 
 export const deleteMessage = (channelId: string, messageId: string): Promise<void> =>
   api.delete(`${BASE}/channels/${channelId}/messages/${messageId}`);
+
+// ── Incidents ─────────────────────────────────────────────────────────────────
+
+export interface SocIncident {
+  id: string;
+  tenantId: string;
+  incidentRef: string;
+  severity: string;
+  title: string;
+  description: string;
+  status: string;
+  slaBreached: boolean;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const listIncidents = (status?: string, severity?: string): Promise<SocIncident[]> => {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (severity) params.set('severity', severity);
+  const q = params.toString();
+  return api.get(`${BASE}/incidents${q ? `?${q}` : ''}`);
+};
+
+export const createIncident = (data: {
+  severity?: string;
+  title: string;
+  description?: string;
+  assigneeName?: string;
+}): Promise<SocIncident> => api.post(`${BASE}/incidents`, data);
+
+export const updateIncidentStatus = (
+  id: string,
+  data: { status: string; assigneeName?: string; slaBreached?: boolean },
+): Promise<SocIncident> => api.patch(`${BASE}/incidents/${id}/status`, data);
+
+export const deleteIncident = (id: string): Promise<void> => api.delete(`${BASE}/incidents/${id}`);
+
+// ── Service Request: Delete ───────────────────────────────────────────────────
+
+export const deleteRequest = (id: string): Promise<void> => api.delete(`${BASE}/requests/${id}`);
+
+// ── Permission Groups ─────────────────────────────────────────────────────────
+
+export interface GroupMember {
+  id: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+  };
+}
+
+export interface PermissionGroup {
+  id: string;
+  tenantId: string;
+  name: string;
+  description: string;
+  color: string;
+  permissions: string[];
+  createdAt: string;
+  updatedAt: string;
+  memberships: GroupMember[];
+}
+
+export const listGroups = (): Promise<PermissionGroup[]> => api.get(`${BASE}/groups`);
+
+export const createGroup = (data: {
+  name: string;
+  description?: string;
+  color?: string;
+  permissions?: string[];
+}): Promise<PermissionGroup> => api.post(`${BASE}/groups`, data);
+
+export const updateGroup = (
+  id: string,
+  data: { name?: string; description?: string; color?: string; permissions?: string[] },
+): Promise<PermissionGroup> => api.patch(`${BASE}/groups/${id}`, data);
+
+export const deleteGroup = (id: string): Promise<void> => api.delete(`${BASE}/groups/${id}`);
+
+export const addGroupMember = (groupId: string, userId: string): Promise<void> =>
+  api.post(`${BASE}/groups/${groupId}/members`, { userId });
+
+export const removeGroupMember = (groupId: string, userId: string): Promise<void> =>
+  api.delete(`${BASE}/groups/${groupId}/members/${userId}`);

@@ -12,6 +12,11 @@ import {
   UpsertShiftDto,
   CreateChannelDto,
   SendMessageDto,
+  CreateIncidentDto,
+  UpdateIncidentStatusDto,
+  CreateGroupDto,
+  UpdateGroupDto,
+  GroupMembershipDto,
 } from './dto/soc.dto';
 
 function p2021(e: unknown): boolean {
@@ -361,5 +366,167 @@ export class SocService {
       where: { id: messageId },
       data: { isDeleted: true },
     });
+  }
+
+  // ── Service Request: Delete ─────────────────────────────────────────────────
+
+  async deleteRequest(user: JwtPayload, id: string) {
+    const existing = await this.prisma.socServiceRequest.findFirst({
+      where: { id, tenantId: user.tenantId! },
+    });
+    if (!existing) throw new NotFoundException('Request not found');
+    await this.prisma.socServiceRequest.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  // ── Incidents ───────────────────────────────────────────────────────────────
+
+  async listIncidents(user: JwtPayload, status?: string, severity?: string) {
+    try {
+      return await this.prisma.socIncident.findMany({
+        where: {
+          tenantId: user.tenantId!,
+          ...(status ? { status } : {}),
+          ...(severity ? { severity } : {}),
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (e) {
+      if (p2021(e))
+        throw new ServiceUnavailableException(
+          'Run migration 20260627000002_soc_incidents_and_groups.',
+        );
+      throw e;
+    }
+  }
+
+  async createIncident(user: JwtPayload, dto: CreateIncidentDto) {
+    const count = await this.prisma.socIncident.count({ where: { tenantId: user.tenantId! } });
+    const incidentRef = `INC-${String(count + 1).padStart(4, '0')}`;
+    return this.prisma.socIncident.create({
+      data: {
+        tenantId: user.tenantId!,
+        incidentRef,
+        severity: dto.severity ?? 'P2',
+        title: dto.title,
+        description: dto.description ?? '',
+        assigneeId: dto.assigneeName ? user.sub : null,
+        assigneeName: dto.assigneeName ?? null,
+      },
+    });
+  }
+
+  async updateIncidentStatus(user: JwtPayload, id: string, dto: UpdateIncidentStatusDto) {
+    const existing = await this.prisma.socIncident.findFirst({
+      where: { id, tenantId: user.tenantId! },
+    });
+    if (!existing) throw new NotFoundException('Incident not found');
+    return this.prisma.socIncident.update({
+      where: { id },
+      data: {
+        status: dto.status,
+        ...(dto.slaBreached !== undefined && { slaBreached: dto.slaBreached }),
+        ...(dto.assigneeName !== undefined && {
+          assigneeName: dto.assigneeName,
+          assigneeId: user.sub,
+        }),
+        ...(dto.status === 'RESOLVED' && { resolvedAt: new Date() }),
+      },
+    });
+  }
+
+  async deleteIncident(user: JwtPayload, id: string) {
+    const existing = await this.prisma.socIncident.findFirst({
+      where: { id, tenantId: user.tenantId! },
+    });
+    if (!existing) throw new NotFoundException('Incident not found');
+    await this.prisma.socIncident.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  // ── Permission Groups ───────────────────────────────────────────────────────
+
+  async listGroups(user: JwtPayload) {
+    try {
+      return await this.prisma.permissionGroup.findMany({
+        where: { tenantId: user.tenantId! },
+        include: {
+          memberships: {
+            include: {
+              user: {
+                select: { id: true, firstName: true, lastName: true, email: true, role: true },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+    } catch (e) {
+      if (p2021(e))
+        throw new ServiceUnavailableException(
+          'Run migration 20260627000002_soc_incidents_and_groups.',
+        );
+      throw e;
+    }
+  }
+
+  async createGroup(user: JwtPayload, dto: CreateGroupDto) {
+    return this.prisma.permissionGroup.create({
+      data: {
+        tenantId: user.tenantId!,
+        name: dto.name,
+        description: dto.description ?? '',
+        color: dto.color ?? 'blue',
+        permissions: dto.permissions ?? [],
+      },
+      include: { memberships: true },
+    });
+  }
+
+  async updateGroup(user: JwtPayload, id: string, dto: UpdateGroupDto) {
+    const existing = await this.prisma.permissionGroup.findFirst({
+      where: { id, tenantId: user.tenantId! },
+    });
+    if (!existing) throw new NotFoundException('Group not found');
+    return this.prisma.permissionGroup.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.color !== undefined && { color: dto.color }),
+        ...(dto.permissions !== undefined && { permissions: dto.permissions }),
+      },
+      include: { memberships: true },
+    });
+  }
+
+  async deleteGroup(user: JwtPayload, id: string) {
+    const existing = await this.prisma.permissionGroup.findFirst({
+      where: { id, tenantId: user.tenantId! },
+    });
+    if (!existing) throw new NotFoundException('Group not found');
+    await this.prisma.permissionGroup.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  async addGroupMember(user: JwtPayload, groupId: string, dto: GroupMembershipDto) {
+    const group = await this.prisma.permissionGroup.findFirst({
+      where: { id: groupId, tenantId: user.tenantId! },
+    });
+    if (!group) throw new NotFoundException('Group not found');
+    return this.prisma.groupMembership.upsert({
+      where: { groupId_userId: { groupId, userId: dto.userId } },
+      create: { tenantId: user.tenantId!, groupId, userId: dto.userId },
+      update: {},
+    });
+  }
+
+  async removeGroupMember(user: JwtPayload, groupId: string, userId: string) {
+    const existing = await this.prisma.groupMembership.findFirst({
+      where: { groupId, userId, tenantId: user.tenantId! },
+    });
+    if (!existing) throw new NotFoundException('Membership not found');
+    await this.prisma.groupMembership.delete({ where: { groupId_userId: { groupId, userId } } });
+    return { deleted: true };
   }
 }

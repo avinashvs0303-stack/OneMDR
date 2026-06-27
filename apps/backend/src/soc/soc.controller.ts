@@ -25,6 +25,11 @@ import {
   UpsertShiftDto,
   CreateChannelDto,
   SendMessageDto,
+  CreateIncidentDto,
+  UpdateIncidentStatusDto,
+  CreateGroupDto,
+  UpdateGroupDto,
+  GroupMembershipDto,
 } from './dto/soc.dto';
 
 @ApiTags('soc')
@@ -105,6 +110,83 @@ export class SocController {
     @Body() dto: UpdateRequestStatusDto,
   ) {
     return this.soc.updateRequestStatus(u, id, dto);
+  }
+
+  @Delete('requests/:id')
+  deleteRequest(@CurrentUser() u: JwtPayload, @Param('id') id: string) {
+    return this.soc.deleteRequest(u, id);
+  }
+
+  // ── Incidents ───────────────────────────────────────────────────────────────
+
+  @Get('incidents')
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'severity', required: false })
+  listIncidents(
+    @CurrentUser() u: JwtPayload,
+    @Query('status') status?: string,
+    @Query('severity') severity?: string,
+  ) {
+    return this.soc.listIncidents(u, status, severity);
+  }
+
+  @Post('incidents')
+  createIncident(@CurrentUser() u: JwtPayload, @Body() dto: CreateIncidentDto) {
+    return this.soc.createIncident(u, dto);
+  }
+
+  @Patch('incidents/:id/status')
+  updateIncidentStatus(
+    @CurrentUser() u: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: UpdateIncidentStatusDto,
+  ) {
+    return this.soc.updateIncidentStatus(u, id, dto);
+  }
+
+  @Delete('incidents/:id')
+  deleteIncident(@CurrentUser() u: JwtPayload, @Param('id') id: string) {
+    return this.soc.deleteIncident(u, id);
+  }
+
+  // ── Permission Groups ───────────────────────────────────────────────────────
+
+  @Get('groups')
+  listGroups(@CurrentUser() u: JwtPayload) {
+    return this.soc.listGroups(u);
+  }
+
+  @Post('groups')
+  createGroup(@CurrentUser() u: JwtPayload, @Body() dto: CreateGroupDto) {
+    return this.soc.createGroup(u, dto);
+  }
+
+  @Patch('groups/:id')
+  updateGroup(@CurrentUser() u: JwtPayload, @Param('id') id: string, @Body() dto: UpdateGroupDto) {
+    return this.soc.updateGroup(u, id, dto);
+  }
+
+  @Delete('groups/:id')
+  deleteGroup(@CurrentUser() u: JwtPayload, @Param('id') id: string) {
+    return this.soc.deleteGroup(u, id);
+  }
+
+  @Post('groups/:id/members')
+  addGroupMember(
+    @CurrentUser() u: JwtPayload,
+    @Param('id') groupId: string,
+    @Body() dto: GroupMembershipDto,
+  ) {
+    return this.soc.addGroupMember(u, groupId, dto);
+  }
+
+  @Delete('groups/:id/members/:userId')
+  removeGroupMember(
+    @CurrentUser() u: JwtPayload,
+    @Param('id') groupId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.soc.removeGroupMember(u, groupId, userId);
   }
 
   // ── Roster ──────────────────────────────────────────────────────────────────

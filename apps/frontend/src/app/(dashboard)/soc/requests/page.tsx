@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, X, ChevronRight, Clock, Ticket } from 'lucide-react';
-import { listRequests, createRequest, updateRequestStatus } from '@/lib/soc.api';
+import { Plus, X, ChevronRight, Clock, Ticket, Trash2 } from 'lucide-react';
+import { listRequests, createRequest, updateRequestStatus, deleteRequest } from '@/lib/soc.api';
 import type { SocServiceRequest } from '@/lib/soc.api';
 import { cn } from '@/lib/utils';
 
@@ -72,6 +72,8 @@ export default function RequestsPage() {
   const [saving, setSaving] = useState(false);
   const [resolveNote, setResolveNote] = useState('');
   const [resolveModal, setResolveModal] = useState<{ id: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     try {
@@ -150,6 +152,21 @@ export default function RequestsPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
+    try {
+      await deleteRequest(deleteConfirm.id);
+      setDeleteConfirm(null);
+      if (selected?.id === deleteConfirm.id) setSelected(null);
+      await load();
+    } catch {
+      setError('Failed to delete request');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const kpis = {
     open: requests.filter((r) => r.status === 'OPEN').length,
     inProgress: requests.filter(
@@ -216,6 +233,14 @@ export default function RequestsPage() {
                 Cancel
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setDeleteConfirm({ id: selected.id, title: selected.title })}
+              className="rounded-lg border border-red-200 dark:border-red-800 p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+              title="Delete request"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
@@ -304,6 +329,42 @@ export default function RequestsPage() {
                   className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
                 >
                   Mark Resolved
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="rounded-xl bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/10 p-6 w-96 shadow-xl space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/25">
+                  <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">Delete Request</h3>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+                    Permanently delete &ldquo;{deleteConfirm.title}&rdquo;? This cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm(null)}
+                  disabled={deleting}
+                  className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-1.5 text-xs font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDelete()}
+                  disabled={deleting}
+                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleting ? 'Deleting…' : 'Delete permanently'}
                 </button>
               </div>
             </div>
@@ -401,57 +462,112 @@ export default function RequestsPage() {
         ) : (
           <div className="space-y-2">
             {requests.map((r) => (
-              <button
+              <div
                 key={r.id}
-                type="button"
-                onClick={() => setSelected(r)}
-                className="w-full text-left rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 p-4 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+                className="relative rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 hover:border-blue-300 dark:hover:border-blue-700 transition-colors group"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-mono text-slate-400">{r.requestRef}</span>
-                      <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:text-slate-300">
-                        {CATEGORY_LABEL[r.category]}
-                      </span>
+                <button
+                  type="button"
+                  onClick={() => setSelected(r)}
+                  className="w-full text-left p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-mono text-slate-400">{r.requestRef}</span>
+                        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:text-slate-300">
+                          {CATEGORY_LABEL[r.category]}
+                        </span>
+                        <span
+                          className={cn(
+                            'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                            STATUS_STYLE[r.status],
+                          )}
+                        >
+                          {STATUS_LABEL[r.status]}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                        {r.title}
+                      </h3>
+                      {r.assigneeName && (
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Assigned to: {r.assigneeName}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0 pr-8">
                       <span
                         className={cn(
                           'rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                          STATUS_STYLE[r.status],
+                          PRIORITY_STYLE[r.priority],
                         )}
                       >
-                        {STATUS_LABEL[r.status]}
+                        {r.priority}
                       </span>
-                    </div>
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                      {r.title}
-                    </h3>
-                    {r.assigneeName && (
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Assigned to: {r.assigneeName}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span
-                      className={cn(
-                        'rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                        PRIORITY_STYLE[r.priority],
-                      )}
-                    >
-                      {r.priority}
-                    </span>
-                    <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-1 justify-end">
-                      <Clock className="h-3 w-3" />
-                      {new Date(r.createdAt).toLocaleDateString()}
+                      <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-1 justify-end">
+                        <Clock className="h-3 w-3" />
+                        {new Date(r.createdAt).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </button>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteConfirm({ id: r.id, title: r.title });
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
+                  title="Delete request"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="rounded-xl bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/10 p-6 w-96 shadow-xl">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/25">
+                <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white">Delete Request</h3>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+                  This will permanently delete{' '}
+                  <span className="font-medium text-slate-700 dark:text-zinc-200">
+                    &ldquo;{deleteConfirm.title}&rdquo;
+                  </span>
+                  . This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDelete()}
+                disabled={deleting}
+                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting…' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

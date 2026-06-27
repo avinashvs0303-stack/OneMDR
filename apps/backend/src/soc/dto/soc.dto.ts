@@ -105,3 +105,38 @@ export class SendMessageDto {
   @ApiProperty() @IsString() content: string;
   @ApiPropertyOptional() @IsOptional() @IsIn(['TEXT', 'ALERT', 'FILE']) messageType?: string;
 }
+
+// ── Incidents ────────────────────────────────────────────────────────────────
+
+export class CreateIncidentDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() severity?: string;
+  @ApiProperty() @IsString() title!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() assigneeName?: string;
+}
+
+export class UpdateIncidentStatusDto {
+  @ApiProperty() @IsString() status!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() assigneeName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() slaBreached?: boolean;
+}
+
+// ── Permission Groups ────────────────────────────────────────────────────────
+
+export class CreateGroupDto {
+  @ApiProperty() @IsString() name!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() color?: string;
+  @ApiPropertyOptional() @IsOptional() @IsArray() @IsString({ each: true }) permissions?: string[];
+}
+
+export class UpdateGroupDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() name?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() color?: string;
+  @ApiPropertyOptional() @IsOptional() @IsArray() @IsString({ each: true }) permissions?: string[];
+}
+
+export class GroupMembershipDto {
+  @ApiProperty() @IsString() userId!: string;
+}
